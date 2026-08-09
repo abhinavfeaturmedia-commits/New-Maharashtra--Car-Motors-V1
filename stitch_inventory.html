@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Inventory Listing Page - Shree Swami Samarth Motors</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0f1729",
+                        "primary-foreground": "#ffffff",
+                        "accent": "#f59e0b",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#14171e",
+                        "surface": "#ffffff",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "0.75rem", "xl": "1rem", "2xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-primary font-display antialiased min-h-screen flex flex-col">
+<!-- Header -->
+<header class="sticky top-0 z-50 bg-white border-b border-[#eaecf1] shadow-sm">
+<div class="max-w-[1440px] mx-auto px-4 lg:px-8">
+<div class="flex items-center justify-between h-20 gap-8">
+<!-- Logo Area -->
+<div class="flex items-center gap-4 text-primary shrink-0">
+<div class="size-10 bg-primary rounded-lg flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-2xl">directions_car</span>
+</div>
+<h2 class="text-primary text-xl font-bold leading-tight tracking-tight hidden sm:block">Shree Swami Samarth Motors</h2>
+</div>
+<!-- Desktop Nav -->
+<nav class="hidden md:flex items-center gap-8">
+<a class="text-primary font-medium hover:text-accent transition-colors" href="#">Home</a>
+<a class="text-primary font-bold border-b-2 border-primary pb-0.5" href="#">Inventory</a>
+<a class="text-primary font-medium hover:text-accent transition-colors" href="#">Sell Car</a>
+<a class="text-primary font-medium hover:text-accent transition-colors" href="#">Contact</a>
+</nav>
+<!-- Actions -->
+<div class="flex flex-1 justify-end items-center gap-4">
+<label class="hidden lg:flex flex-col min-w-40 h-10 max-w-64 w-full group">
+<div class="flex w-full flex-1 items-stretch rounded-xl h-full bg-[#eaecf1] group-focus-within:ring-2 group-focus-within:ring-primary/20 transition-all">
+<div class="text-[#5d6a89] flex items-center justify-center pl-3">
+<span class="material-symbols-outlined text-[20px]">search</span>
+</div>
+<input class="w-full bg-transparent border-none text-primary placeholder:text-[#5d6a89] px-3 text-sm focus:ring-0" placeholder="Search cars..."/>
+</div>
+</label>
+<div class="flex gap-3">
+<button class="flex size-10 items-center justify-center rounded-xl bg-[#eaecf1] text-primary hover:bg-primary hover:text-white transition-colors">
+<span class="material-symbols-outlined text-[20px]">favorite</span>
+</button>
+<button class="flex size-10 items-center justify-center rounded-xl bg-[#eaecf1] text-primary hover:bg-primary hover:text-white transition-colors">
+<span class="material-symbols-outlined text-[20px]">person</span>
+</button>
+<button class="md:hidden flex size-10 items-center justify-center rounded-xl bg-[#eaecf1] text-primary">
+<span class="material-symbols-outlined text-[20px]">menu</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Layout -->
+<main class="flex-1 max-w-[1440px] mx-auto w-full px-4 lg:px-8 py-8 flex flex-col lg:flex-row gap-8">
+<!-- Sidebar Filters -->
+<aside class="w-full lg:w-[280px] shrink-0 space-y-6">
+<div class="flex items-center justify-between pb-2 border-b border-gray-200">
+<h3 class="font-bold text-lg text-primary">Filters</h3>
+<button class="text-sm font-medium text-red-600 hover:text-red-700">Clear All</button>
+</div>
+<!-- Price Range Slider -->
+<div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+<div class="flex justify-between items-center mb-4">
+<p class="text-primary font-semibold text-sm">Price Range</p>
+<span class="text-xs text-gray-500 font-medium">₹ Lakhs</span>
+</div>
+<div class="relative h-1 w-full bg-gray-200 rounded-full my-4">
+<div class="absolute left-[20%] right-[30%] h-full bg-primary rounded-full"></div>
+<!-- Thumb 1 -->
+<div class="absolute top-1/2 left-[20%] -translate-x-1/2 -translate-y-1/2 size-5 bg-white border-2 border-primary rounded-full shadow cursor-pointer hover:scale-110 transition-transform"></div>
+<!-- Thumb 2 -->
+<div class="absolute top-1/2 right-[30%] translate-x-1/2 -translate-y-1/2 size-5 bg-white border-2 border-primary rounded-full shadow cursor-pointer hover:scale-110 transition-transform"></div>
+</div>
+<div class="flex justify-between mt-2 text-sm text-primary font-medium">
+<span>₹2L</span>
+<span>₹50L</span>
+</div>
+</div>
+<!-- Accordion Filters -->
+<div class="flex flex-col gap-3">
+<!-- Make & Model -->
+<details class="group bg-white rounded-xl border border-gray-200 overflow-hidden" open="">
+<summary class="flex cursor-pointer items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors select-none">
+<span class="font-semibold text-sm text-primary">Make &amp; Model</span>
+<span class="material-symbols-outlined text-gray-500 transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="px-4 pb-4 pt-1 space-y-2">
+<label class="flex items-center gap-3 cursor-pointer group/item">
+<input checked="" class="size-4 rounded border-gray-300 text-primary focus:ring-primary/20 cursor-pointer" type="checkbox"/>
+<span class="text-sm text-gray-600 group-hover/item:text-primary">Maruti Suzuki <span class="text-gray-400 text-xs">(12)</span></span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer group/item">
+<input class="size-4 rounded border-gray-300 text-primary focus:ring-primary/20 cursor-pointer" type="checkbox"/>
+<span class="text-sm text-gray-600 group-hover/item:text-primary">Hyundai <span class="text-gray-400 text-xs">(8)</span></span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer group/item">
+<input class="size-4 rounded border-gray-300 text-primary focus:ring-primary/20 cursor-pointer" type="checkbox"/>
+<span class="text-sm text-gray-600 group-hover/item:text-primary">Tata <span class="text-gray-400 text-xs">(6)</span></span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer group/item">
+<input class="size-4 rounded border-gray-300 text-primary focus:ring-primary/20 cursor-pointer" type="checkbox"/>
+<span class="text-sm text-gray-600 group-hover/item:text-primary">Toyota <span class="text-gray-400 text-xs">(4)</span></span>
+</label>
+</div>
+</details>
+<!-- Year -->
+<details class="group bg-white rounded-xl border border-gray-200 overflow-hidden">
+<summary class="flex cursor-pointer items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors select-none">
+<span class="font-semibold text-sm text-primary">Year</span>
+<span class="material-symbols-outlined text-gray-500 transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="px-4 pb-4 pt-1 space-y-2">
+<div class="flex gap-2">
+<span class="px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium cursor-pointer hover:border-primary hover:text-primary bg-gray-50">2023</span>
+<span class="px-3 py-1.5 rounded-lg border border-primary bg-primary/5 text-primary text-xs font-medium cursor-pointer">2022</span>
+<span class="px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium cursor-pointer hover:border-primary hover:text-primary bg-gray-50">2021</span>
+</div>
+</div>
+</details>
+<!-- Fuel Type -->
+<details class="group bg-white rounded-xl border border-gray-200 overflow-hidden">
+<summary class="flex cursor-pointer items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors select-none">
+<span class="font-semibold text-sm text-primary">Fuel Type</span>
+<span class="material-symbols-outlined text-gray-500 transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="px-4 pb-4 pt-1 space-y-2">
+<label class="flex items-center gap-3 cursor-pointer group/item">
+<input class="size-4 rounded border-gray-300 text-primary focus:ring-primary/20 cursor-pointer" type="checkbox"/>
+<span class="text-sm text-gray-600 group-hover/item:text-primary">Petrol</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer group/item">
+<input class="size-4 rounded border-gray-300 text-primary focus:ring-primary/20 cursor-pointer" type="checkbox"/>
+<span class="text-sm text-gray-600 group-hover/item:text-primary">Diesel</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer group/item">
+<input class="size-4 rounded border-gray-300 text-primary focus:ring-primary/20 cursor-pointer" type="checkbox"/>
+<span class="text-sm text-gray-600 group-hover/item:text-primary">CNG</span>
+</label>
+</div>
+</details>
+<!-- Transmission -->
+<details class="group bg-white rounded-xl border border-gray-200 overflow-hidden">
+<summary class="flex cursor-pointer items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors select-none">
+<span class="font-semibold text-sm text-primary">Transmission</span>
+<span class="material-symbols-outlined text-gray-500 transition-transform group-open:rotate-180">expand_more</span>
+</summary>
+<div class="px-4 pb-4 pt-1 space-y-2">
+<label class="flex items-center gap-3 cursor-pointer group/item">
+<input class="size-4 rounded border-gray-300 text-primary focus:ring-primary/20 cursor-pointer" type="checkbox"/>
+<span class="text-sm text-gray-600 group-hover/item:text-primary">Automatic</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer group/item">
+<input class="size-4 rounded border-gray-300 text-primary focus:ring-primary/20 cursor-pointer" type="checkbox"/>
+<span class="text-sm text-gray-600 group-hover/item:text-primary">Manual</span>
+</label>
+</div>
+</details>
+</div>
+<button class="w-full py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-colors shadow-md shadow-primary/20">
+                Apply Filters
+            </button>
+</aside>
+<!-- Main Content -->
+<div class="flex-1 flex flex-col gap-6 min-w-0">
+<!-- Page Header -->
+<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+<div>
+<h1 class="text-3xl font-bold text-primary tracking-tight">Used Car Inventory</h1>
+<p class="text-gray-500 mt-1">Discover your perfect ride from our certified collection in Kolhapur.</p>
+</div>
+<div class="flex items-center gap-3 bg-white p-2 rounded-xl border border-gray-200 shadow-sm">
+<button class="size-9 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600">
+<span class="material-symbols-outlined text-[20px]">grid_view</span>
+</button>
+<button class="size-9 flex items-center justify-center rounded-lg bg-transparent hover:bg-gray-100 text-gray-400">
+<span class="material-symbols-outlined text-[20px]">view_list</span>
+</button>
+</div>
+</div>
+<!-- Sort Bar -->
+<div class="flex items-center justify-between bg-white px-5 py-3 rounded-xl border border-gray-200 shadow-sm">
+<p class="text-gray-600 font-medium text-sm">Showing <span class="text-primary font-bold">45</span> Cars</p>
+<div class="flex items-center gap-3">
+<span class="text-sm text-gray-500 hidden sm:inline">Sort by:</span>
+<div class="relative group">
+<button class="flex items-center gap-2 text-sm font-semibold text-primary hover:text-accent transition-colors">
+                            Newest First
+                            <span class="material-symbols-outlined text-[18px]">sort</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Car Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+<!-- Car Card 1 -->
+<div class="group flex flex-col bg-white rounded-xl overflow-hidden border border-gray-200 hover:border-primary/20 shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all duration-300">
+<div class="relative aspect-[4/3] overflow-hidden bg-gray-100">
+<img alt="Front view of a silver Hyundai Creta SUV parked outdoors" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Silver SUV car front view" src="https://lh3.googleusercontent.com/aida-public/AB6AXuChe0IjLvbvOYTIswYlvwzaEJjKzBStx2ujiIcRDpzDfmsH1fAMHgU1Ekj02A0h-LUCv2wHtKBfh93KXM6UfhUBvi30FNTvHKbqw-UPkJ6Zrr-Q-EK0sZMMhOQMDEnwyVJH1sPStMkbZW1lrrYcUkS1lp7OaLheghRsBYrSL-Bh8CIi7VJXtz1KvPNveey-bBdwxuw3zrQ7lUWFMbW1LdE91qczUsMk5quycy8elsL2p_xFTXBk7BkGk828RxdRMSrABp4RQ5L3jOq-"/>
+<div class="absolute top-3 left-3 flex gap-2">
+<span class="bg-accent text-white text-xs font-bold px-2.5 py-1 rounded shadow-md flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">verified</span>
+                                Certified
+                            </span>
+<span class="bg-primary text-white text-xs font-bold px-2.5 py-1 rounded shadow-md">New Arrival</span>
+</div>
+<button class="absolute top-3 right-3 size-8 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-gray-600 hover:text-red-500 hover:bg-white transition-colors">
+<span class="material-symbols-outlined text-[18px]">favorite</span>
+</button>
+<div class="absolute bottom-3 left-3 right-3 flex justify-between text-white drop-shadow-md">
+<span class="flex items-center gap-1 text-xs font-medium">
+<span class="material-symbols-outlined text-[14px]">photo_camera</span> 8 Photos
+                            </span>
+</div>
+</div>
+<div class="p-4 flex flex-col flex-1">
+<div class="mb-3">
+<h3 class="text-lg font-bold text-primary truncate">2021 Hyundai Creta</h3>
+<p class="text-sm text-gray-500 font-medium">SX 1.5 Petrol Automatic</p>
+</div>
+<div class="flex items-center justify-between gap-2 mb-4 text-xs text-gray-600 bg-gray-50 p-2 rounded-lg border border-gray-100">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-gray-400">speed</span>
+                                24,000 km
+                            </div>
+<div class="w-px h-3 bg-gray-300"></div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-gray-400">local_gas_station</span>
+                                Petrol
+                            </div>
+<div class="w-px h-3 bg-gray-300"></div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-gray-400">settings</span>
+                                Auto
+                            </div>
+</div>
+<div class="mt-auto">
+<div class="flex items-end gap-2 mb-1">
+<span class="text-2xl font-bold text-primary">₹ 14.50 Lakh</span>
+</div>
+<p class="text-xs text-gray-500 mb-4 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-accent">payments</span>
+                                EMI starts @ ₹24,450/mo
+                            </p>
+<div class="grid grid-cols-2 gap-3">
+<button class="flex items-center justify-center py-2.5 px-3 rounded-lg border border-gray-200 text-primary font-semibold text-sm hover:bg-gray-50 transition-colors">
+                                    View Details
+                                </button>
+<button class="flex items-center justify-center py-2.5 px-3 rounded-lg bg-primary text-white font-semibold text-sm hover:bg-primary/90 transition-colors shadow-sm">
+                                    Book Test Drive
+                                </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Car Card 2 -->
+<div class="group flex flex-col bg-white rounded-xl overflow-hidden border border-gray-200 hover:border-primary/20 shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all duration-300">
+<div class="relative aspect-[4/3] overflow-hidden bg-gray-100">
+<img alt="Front view of a white Honda City sedan" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="White sedan car front view" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB08X-Q9KKtbgVZpfY9lXEar8u_t3lHR-f9tpS7oHb6F92q9sOBOJ5E8H8hHr-34TIRT7INd_0q1zu7s3XrTHUBMRVQtubo-Aex_KHjGVTwCkFl9z7URwcy058LIo1MRwLHYy9jmsCPAbpfe7ROScacaosrr--68zTdM5Z1-n-mouvBtyRfyrqYqDADcDOPDGuiB9e2Pso-Ygh1loezBKU1mxROKhMw_lCm-fO4CMDKD3u-1z3zyx92nWyXn0AMtHE6_IkeC73iJGQX"/>
+<div class="absolute top-3 left-3">
+<span class="bg-accent text-white text-xs font-bold px-2.5 py-1 rounded shadow-md flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">verified</span>
+                                Certified
+                            </span>
+</div>
+<button class="absolute top-3 right-3 size-8 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-gray-600 hover:text-red-500 hover:bg-white transition-colors">
+<span class="material-symbols-outlined text-[18px]">favorite</span>
+</button>
+</div>
+<div class="p-4 flex flex-col flex-1">
+<div class="mb-3">
+<h3 class="text-lg font-bold text-primary truncate">2020 Honda City</h3>
+<p class="text-sm text-gray-500 font-medium">ZX Diesel Manual</p>
+</div>
+<div class="flex items-center justify-between gap-2 mb-4 text-xs text-gray-600 bg-gray-50 p-2 rounded-lg border border-gray-100">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-gray-400">speed</span>
+                                45,000 km
+                            </div>
+<div class="w-px h-3 bg-gray-300"></div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-gray-400">local_gas_station</span>
+                                Diesel
+                            </div>
+<div class="w-px h-3 bg-gray-300"></div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-gray-400">settings</span>
+                                Manual
+                            </div>
+</div>
+<div class="mt-auto">
+<div class="flex items-end gap-2 mb-1">
+<span class="text-2xl font-bold text-primary">₹ 11.25 Lakh</span>
+<span class="text-sm text-gray-400 line-through pb-1">₹ 11.75</span>
+</div>
+<p class="text-xs text-gray-500 mb-4 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-accent">payments</span>
+                                EMI starts @ ₹18,900/mo
+                            </p>
+<div class="grid grid-cols-2 gap-3">
+<button class="flex items-center justify-center py-2.5 px-3 rounded-lg border border-gray-200 text-primary font-semibold text-sm hover:bg-gray-50 transition-colors">
+                                    View Details
+                                </button>
+<button class="flex items-center justify-center py-2.5 px-3 rounded-lg bg-primary text-white font-semibold text-sm hover:bg-primary/90 transition-colors shadow-sm">
+                                    Book Test Drive
+                                </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Car Card 3 -->
+<div class="group flex flex-col bg-white rounded-xl overflow-hidden border border-gray-200 hover:border-primary/20 shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all duration-300">
+<div class="relative aspect-[4/3] overflow-hidden bg-gray-100">
+<img alt="Side view of a red Tata Nexon compact SUV" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Red compact SUV car side view" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAoZPh7HL87GdVJvVImSFLHSod9bmaS2A4A24AE2xkmD5GPpOAWslCtY9qFxk5dAVL0YP1TN08WTSDBXAN7qjo4bR-G82SmOZxJgiLlVF9HTRYsQcyfBIhsZc_I9PqoT8lZ-YjFIEfGzgqv2-r2SZlXJuPFydMc-Pgl2tGihtar5SJ8F4UDvcfrD5oLToLz28LKMeNC8DtV1du6cDlwKnVYKz_FLuiowNDhLih4ZpwOENPOcdnZUJUXtbXiLH-SboDK7NqxPosimXrp"/>
+<div class="absolute top-3 left-3">
+<span class="bg-accent text-white text-xs font-bold px-2.5 py-1 rounded shadow-md flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">verified</span>
+                                Certified
+                            </span>
+</div>
+<button class="absolute top-3 right-3 size-8 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-gray-600 hover:text-red-500 hover:bg-white transition-colors">
+<span class="material-symbols-outlined text-[18px]">favorite</span>
+</button>
+</div>
+<div class="p-4 flex flex-col flex-1">
+<div class="mb-3">
+<h3 class="text-lg font-bold text-primary truncate">2022 Tata Nexon</h3>
+<p class="text-sm text-gray-500 font-medium">XZ+ Petrol Automatic</p>
+</div>
+<div class="flex items-center justify-between gap-2 mb-4 text-xs text-gray-600 bg-gray-50 p-2 rounded-lg border border-gray-100">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-gray-400">speed</span>
+                                12,500 km
+                            </div>
+<div class="w-px h-3 bg-gray-300"></div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-gray-400">local_gas_station</span>
+                                Petrol
+                            </div>
+<div class="w-px h-3 bg-gray-300"></div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-gray-400">settings</span>
+                                Auto
+                            </div>
+</div>
+<div class="mt-auto">
+<div class="flex items-end gap-2 mb-1">
+<span class="text-2xl font-bold text-primary">₹ 9.85 Lakh</span>
+</div>
+<p class="text-xs text-gray-500 mb-4 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-accent">payments</span>
+                                EMI starts @ ₹16,500/mo
+                            </p>
+<div class="grid grid-cols-2 gap-3">
+<button class="flex items-center justify-center py-2.5 px-3 rounded-lg border border-gray-200 text-primary font-semibold text-sm hover:bg-gray-50 transition-colors">
+                                    View Details
+                                </button>
+<button class="flex items-center justify-center py-2.5 px-3 rounded-lg bg-primary text-white font-semibold text-sm hover:bg-primary/90 transition-colors shadow-sm">
+                                    Book Test Drive
+                                </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Car Card 4 -->
+<div class="group flex flex-col bg-white rounded-xl overflow-hidden border border-gray-200 hover:border-primary/20 shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all duration-300">
+<div class="relative aspect-[4/3] overflow-hidden bg-gray-100">
+<img alt="Silver Toyota Fortuner SUV parked" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Silver luxury SUV parked" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAPYVXWJt257op9Mu17pLbm-FxQaNsK6JLL60qAxHH5S2pp8X5lF_LpTxYWKcSSy6Php0fKKMjrb4qQlJLds0CjdwD2T1xzQ9MWHLl2svTJkth1BLJlY4v3pQXQE2aP6blnAVvpJ7Jnj0_8spjVFeEUwYBUJ8IbvbIhEjcjP2pOn92jQFkNfhUcE86RzdiPXPAoXmMfrBRXowvzn4e6JlM67K9736WhM1iPt6YSwgpLmRqlEbEfbfqrATqOyioVb1XV1f8K92GCDidM"/>
+<div class="absolute top-3 left-3 flex gap-2">
+<span class="bg-accent text-white text-xs font-bold px-2.5 py-1 rounded shadow-md flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">verified</span>
+                                Certified
+                            </span>
+</div>
+<button class="absolute top-3 right-3 size-8 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-gray-600 hover:text-red-500 hover:bg-white transition-colors">
+<span class="material-symbols-outlined text-[18px]">favorite</span>
+</button>
+</div>
+<div class="p-4 flex flex-col flex-1">
+<div class="mb-3">
+<h3 class="text-lg font-bold text-primary truncate">2019 Toyota Fortuner</h3>
+<p class="text-sm text-gray-500 font-medium">4x4 Diesel Automatic</p>
+</div>
+<div class="flex items-center justify-between gap-2 mb-4 text-xs text-gray-600 bg-gray-50 p-2 rounded-lg border border-gray-100">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-gray-400">speed</span>
+                                68,000 km
+                            </div>
+<div class="w-px h-3 bg-gray-300"></div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-gray-400">local_gas_station</span>
+                                Diesel
+                            </div>
+<div class="w-px h-3 bg-gray-300"></div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-gray-400">settings</span>
+                                Auto
+                            </div>
+</div>
+<div class="mt-auto">
+<div class="flex items-end gap-2 mb-1">
+<span class="text-2xl font-bold text-primary">₹ 32.50 Lakh</span>
+</div>
+<p class="text-xs text-gray-500 mb-4 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-accent">payments</span>
+                                EMI starts @ ₹54,200/mo
+                            </p>
+<div class="grid grid-cols-2 gap-3">
+<button class="flex items-center justify-center py-2.5 px-3 rounded-lg border border-gray-200 text-primary font-semibold text-sm hover:bg-gray-50 transition-colors">
+                                    View Details
+                                </button>
+<button class="flex items-center justify-center py-2.5 px-3 rounded-lg bg-primary text-white font-semibold text-sm hover:bg-primary/90 transition-colors shadow-sm">
+                                    Book Test Drive
+                                </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Car Card 5 -->
+<div class="group flex flex-col bg-white rounded-xl overflow-hidden border border-gray-200 hover:border-primary/20 shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all duration-300">
+<div class="relative aspect-[4/3] overflow-hidden bg-gray-100">
+<img alt="Front view of a dark grey Maruti Suzuki Swift hatchback" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Dark grey hatchback car" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7irqUNXMpunb9s7vI_cT0-J62amxJwBmFTMF8tgbOQMcMYbyZqZ2jMSOMwgrTGF16xXRsa_fFPq6tpL-dQjN5Pa7efREdrWj_VtCwd6vT1VV-FAM_J6AGs0TA7JHo4vX4zcLghPL5HShAqAOvMYz5w0AFkDxplaJ0J4AzRhmd_xkeoe4_VnT9DWZMzxRCpHhtKy-hir0F_VINv2fGS7eXHnA7N8VT19vFeqTC7skX_GgzuR0UdIrq05vTGViNsNTxycRAL77KModw"/>
+<div class="absolute top-3 left-3">
+<span class="bg-gray-800/80 backdrop-blur-sm text-white text-xs font-bold px-2.5 py-1 rounded shadow-md border border-white/20">
+                                Value Pick
+                            </span>
+</div>
+<button class="absolute top-3 right-3 size-8 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-gray-600 hover:text-red-500 hover:bg-white transition-colors">
+<span class="material-symbols-outlined text-[18px]">favorite</span>
+</button>
+</div>
+<div class="p-4 flex flex-col flex-1">
+<div class="mb-3">
+<h3 class="text-lg font-bold text-primary truncate">2020 Maruti Swift</h3>
+<p class="text-sm text-gray-500 font-medium">ZXi Plus Petrol</p>
+</div>
+<div class="flex items-center justify-between gap-2 mb-4 text-xs text-gray-600 bg-gray-50 p-2 rounded-lg border border-gray-100">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-gray-400">speed</span>
+                                32,000 km
+                            </div>
+<div class="w-px h-3 bg-gray-300"></div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-gray-400">local_gas_station</span>
+                                Petrol
+                            </div>
+<div class="w-px h-3 bg-gray-300"></div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-gray-400">settings</span>
+                                Manual
+                            </div>
+</div>
+<div class="mt-auto">
+<div class="flex items-end gap-2 mb-1">
+<span class="text-2xl font-bold text-primary">₹ 6.45 Lakh</span>
+</div>
+<p class="text-xs text-gray-500 mb-4 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-accent">payments</span>
+                                EMI starts @ ₹10,800/mo
+                            </p>
+<div class="grid grid-cols-2 gap-3">
+<button class="flex items-center justify-center py-2.5 px-3 rounded-lg border border-gray-200 text-primary font-semibold text-sm hover:bg-gray-50 transition-colors">
+                                    View Details
+                                </button>
+<button class="flex items-center justify-center py-2.5 px-3 rounded-lg bg-primary text-white font-semibold text-sm hover:bg-primary/90 transition-colors shadow-sm">
+                                    Book Test Drive
+                                </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Car Card 6 -->
+<div class="group flex flex-col bg-white rounded-xl overflow-hidden border border-gray-200 hover:border-primary/20 shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all duration-300">
+<div class="relative aspect-[4/3] overflow-hidden bg-gray-100">
+<img alt="Front view of a white Renault Kwid" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="White compact city car" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDfmvjXSWZTv9WgcmtxJ474o4YjuXDg72BXufMz3En3YQ0s5qWZjmZLmJlqQIAID9Sir9CaN9Og87VAZEvBARDB0kPs82Fb_akMja2mLgc2XzqvolbTYt8EiKIXRspHPzlK3PpLzQgPWd7tR3gD6Bpl_DM1Z6TJRncZXl8cM6Q21Pqe1rjNuUtAcEaQAlid-3ydWpdLZhBaEUtPriw5dtfFJ_Rstyf4qTqPvexpBlid7RaIX9Y25Cf2z5O8cyxBqbM-LXZHopMg4Vfb"/>
+<div class="absolute top-3 left-3">
+<span class="bg-accent text-white text-xs font-bold px-2.5 py-1 rounded shadow-md flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">verified</span>
+                                Certified
+                            </span>
+</div>
+<button class="absolute top-3 right-3 size-8 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-gray-600 hover:text-red-500 hover:bg-white transition-colors">
+<span class="material-symbols-outlined text-[18px]">favorite</span>
+</button>
+</div>
+<div class="p-4 flex flex-col flex-1">
+<div class="mb-3">
+<h3 class="text-lg font-bold text-primary truncate">2021 Renault Kwid</h3>
+<p class="text-sm text-gray-500 font-medium">Climber AMT</p>
+</div>
+<div class="flex items-center justify-between gap-2 mb-4 text-xs text-gray-600 bg-gray-50 p-2 rounded-lg border border-gray-100">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-gray-400">speed</span>
+                                18,000 km
+                            </div>
+<div class="w-px h-3 bg-gray-300"></div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-gray-400">local_gas_station</span>
+                                Petrol
+                            </div>
+<div class="w-px h-3 bg-gray-300"></div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-gray-400">settings</span>
+                                Auto
+                            </div>
+</div>
+<div class="mt-auto">
+<div class="flex items-end gap-2 mb-1">
+<span class="text-2xl font-bold text-primary">₹ 4.80 Lakh</span>
+</div>
+<p class="text-xs text-gray-500 mb-4 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-accent">payments</span>
+                                EMI starts @ ₹8,100/mo
+                            </p>
+<div class="grid grid-cols-2 gap-3">
+<button class="flex items-center justify-center py-2.5 px-3 rounded-lg border border-gray-200 text-primary font-semibold text-sm hover:bg-gray-50 transition-colors">
+                                    View Details
+                                </button>
+<button class="flex items-center justify-center py-2.5 px-3 rounded-lg bg-primary text-white font-semibold text-sm hover:bg-primary/90 transition-colors shadow-sm">
+                                    Book Test Drive
+                                </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Pagination -->
+<div class="flex justify-center mt-10">
+<nav class="flex items-center gap-2">
+<button class="size-10 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-primary transition-colors disabled:opacity-50">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="size-10 flex items-center justify-center rounded-lg bg-primary text-white font-medium">1</button>
+<button class="size-10 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-primary transition-colors font-medium">2</button>
+<button class="size-10 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-primary transition-colors font-medium">3</button>
+<span class="text-gray-400">...</span>
+<button class="size-10 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-primary transition-colors font-medium">12</button>
+<button class="size-10 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-primary transition-colors">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</nav>
+</div>
+</div>
+</main>
+<!-- Simple Footer -->
+<footer class="bg-white border-t border-[#eaecf1] mt-auto">
+<div class="max-w-[1440px] mx-auto px-4 lg:px-8 py-10">
+<div class="flex flex-col md:flex-row justify-between items-center gap-6">
+<div class="flex flex-col items-center md:items-start gap-2">
+<div class="flex items-center gap-3 text-primary">
+<div class="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-xl">directions_car</span>
+</div>
+<h2 class="text-lg font-bold">Shree Swami Samarth Motors</h2>
+</div>
+<p class="text-sm text-gray-500">Premium Used Cars in Kolhapur</p>
+</div>
+<div class="flex gap-6 text-sm text-gray-600 font-medium">
+<a class="hover:text-primary transition-colors" href="#">Privacy Policy</a>
+<a class="hover:text-primary transition-colors" href="#">Terms of Service</a>
+<a class="hover:text-primary transition-colors" href="#">Support</a>
+</div>
+<div class="flex gap-4">
+<a class="text-gray-400 hover:text-primary transition-colors" href="#"><span class="material-symbols-outlined">social_leaderboard</span></a>
+<a class="text-gray-400 hover:text-primary transition-colors" href="#"><span class="material-symbols-outlined">photo_camera</span></a> <!-- Instagram approx -->
+<a class="text-gray-400 hover:text-primary transition-colors" href="#"><span class="material-symbols-outlined">call</span></a>
+</div>
+</div>
+<div class="text-center mt-8 text-xs text-gray-400">
+                © 2023 Shree Swami Samarth Motors. All rights reserved.
+            </div>
+</div>
+</footer>
+</body></html>

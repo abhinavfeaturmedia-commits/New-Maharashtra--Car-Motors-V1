@@ -1,0 +1,168 @@
+@import "tailwindcss";
+
+@theme {
+  /* Primary Colors */
+  --color-primary: #0f1729;
+  --color-primary-light: #1e293b;
+  --color-primary-foreground: #ffffff;
+
+  /* Accent Colors */
+  --color-accent: #f59e0b;
+  --color-accent-hover: #d97706;
+  --color-accent-light: rgba(245, 158, 11, 0.1);
+
+  /* Status Colors */
+  --color-success: #16a34a;
+  --color-success-light: rgba(22, 163, 74, 0.1);
+  --color-danger: #dc2626;
+  --color-danger-light: rgba(220, 38, 38, 0.1);
+  --color-warning: #f59e0b;
+  --color-warning-light: rgba(245, 158, 11, 0.1);
+  --color-info: #2563eb;
+  --color-info-light: rgba(37, 99, 235, 0.1);
+
+  /* Surface Colors */
+  --color-background-light: #f8fafc;
+  --color-background-dark: #0b0f1a;
+  --color-surface-light: #ffffff;
+  --color-surface-dark: #1e293b;
+  --color-surface-muted: #f1f5f9;
+
+  /* Border */
+  --color-border: #e2e8f0;
+  --color-border-dark: #334155;
+
+  /* Typography */
+  --font-display: "Outfit", sans-serif;
+  --font-body: "Plus Jakarta Sans", "Outfit", sans-serif;
+
+  /* Border Radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-card: 0 1px 3px rgba(15, 23, 41, 0.04), 0 4px 12px rgba(15, 23, 41, 0.06);
+  --shadow-card-hover: 0 4px 12px rgba(15, 23, 41, 0.08), 0 12px 32px rgba(15, 23, 41, 0.1);
+  --shadow-elevated: 0 8px 24px rgba(15, 23, 41, 0.12), 0 20px 48px rgba(15, 23, 41, 0.08);
+}
+
+@layer base {
+  html {
+    font-size: 14.4px;
+    /* 90% of 16px — scales all rem-based sizing proportionally */
+    -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background-light text-slate-900 font-body antialiased;
+    width: 100%;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-display font-bold;
+  }
+}
+
+@layer utilities {
+  .container-main {
+    @apply max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 w-full;
+  }
+
+  .glass-card {
+    @apply bg-white/80 backdrop-blur-xl border border-white/20 shadow-[var(--shadow-card)];
+  }
+
+  .card-shadow {
+    box-shadow: var(--shadow-card);
+  }
+
+  .card-shadow-hover {
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-accent to-amber-400;
+  }
+}
+
+/* Accountability Animations */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 4px rgba(249, 115, 22, 0.2), inset 0 0 2px rgba(249, 115, 22, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(249, 115, 22, 0.6), inset 0 0 4px rgba(249, 115, 22, 0.3);
+  }
+}
+
+@keyframes rotate-gradient {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pop-milestone {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  10% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  20% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  90% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+}
+
+@keyframes float-ember {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-20px) scale(0.6);
+    opacity: 0;
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s infinite ease-in-out;
+}
+
+.animate-rotate-gradient {
+  animation: rotate-gradient 6s linear infinite;
+}
+
+.animate-pop-milestone {
+  animation: pop-milestone 2.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-float-ember {
+  animation: float-ember 1.5s ease-out infinite;
+}
