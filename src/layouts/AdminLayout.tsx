@@ -629,18 +629,18 @@ const StaffAccountabilityModals: React.FC = () => {
         try {
             const { error } = await supabase
                 .from('staff_commitments')
-                .insert({
+                .upsert({
                     user_id: profile.id,
                     date: todayStr,
                     ...commForm
-                });
+                }, { onConflict: 'user_id,date' });
             if (error) throw error;
             setShowCommitmentModal(false);
             // Re-trigger checks to see if report is needed (e.g. if logged in after 6pm)
             checkLogs();
-        } catch (err) {
+        } catch (err: any) {
             console.error("Error submitting commitments:", err);
-            alert("Failed to submit commitments. Please try again.");
+            alert(`Failed to submit commitments: ${err.message || 'Please try again.'}`);
         } finally {
             setSubmitting(false);
         }
@@ -654,16 +654,16 @@ const StaffAccountabilityModals: React.FC = () => {
         try {
             const { error } = await supabase
                 .from('staff_daily_reports')
-                .insert({
+                .upsert({
                     user_id: profile.id,
                     date: todayStr,
                     ...repForm
-                });
+                }, { onConflict: 'user_id,date' });
             if (error) throw error;
             setShowReportModal(false);
-        } catch (err) {
+        } catch (err: any) {
             console.error("Error submitting daily report:", err);
-            alert("Failed to submit daily report. Please try again.");
+            alert(`Failed to submit daily report: ${err.message || 'Please try again.'}`);
         } finally {
             setSubmitting(false);
         }
