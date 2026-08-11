@@ -554,8 +554,14 @@ const Inventory = () => {
                                         </button>
                                         
                                         <div className={`px-5 pb-5 mt-auto ${viewMode === 'list' ? 'sm:w-1/3 sm:border-l sm:border-slate-100 sm:flex sm:flex-col sm:justify-center' : ''}`}>
-                                            <div className="flex items-baseline gap-2 mb-4">
-                                                <span className="text-xl font-black text-primary font-display">₹ {formatPriceLakh(car.price)} Lakh</span>
+                                            <div className="flex flex-col mb-4">
+                                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">On-Road Price</span>
+                                                <div className="flex items-baseline gap-2">
+                                                    <span className="text-xl font-black text-primary font-display tabular-nums">₹ {formatPriceLakh(car.price)} Lakh</span>
+                                                </div>
+                                                <span className="text-[11px] text-amber-600 font-semibold mt-0.5 tabular-nums">
+                                                    Est. EMI from ₹{Math.round((car.price * 0.8 * 0.1) / 12).toLocaleString('en-IN')}/mo
+                                                </span>
                                             </div>
                                             <div className="flex gap-2">
                                                 <Link to={`/book-test-drive?car=${car.id}`} className="flex-1 h-10 flex items-center justify-center text-xs font-semibold text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">

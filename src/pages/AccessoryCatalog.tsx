@@ -345,7 +345,7 @@ const AccessoryCatalog: React.FC = () => {
                                                     </div>
                                                     <div className="mt-4 pt-3 border-t border-slate-50 flex items-center justify-between">
                                                         <span className="text-sm font-semibold text-slate-400">Price</span>
-                                                        <span className="text-base sm:text-lg font-black text-primary font-display">
+                                                        <span className="text-base sm:text-lg font-black text-primary font-display tabular-nums">
                                                             ₹ {Number(item.price).toLocaleString('en-IN')}
                                                         </span>
                                                     </div>
@@ -387,18 +387,18 @@ const AccessoryCatalog: React.FC = () => {
                                 <div className="space-y-3">
                                     <div className="flex justify-between text-sm">
                                         <span className="text-slate-500 font-medium">Selected Accessories ({selectedAccessories.length})</span>
-                                        <span className="font-bold text-slate-800">₹ {accessoriesTotal.toLocaleString('en-IN')}</span>
+                                        <span className="font-bold text-slate-800 tabular-nums">₹ {accessoriesTotal.toLocaleString('en-IN')}</span>
                                     </div>
                                     {selectedCar && (
                                         <div className="flex justify-between text-sm">
                                             <span className="text-slate-500 font-medium">Vehicle Price ({selectedCar.make})</span>
-                                            <span className="font-bold text-slate-800">₹ {carPrice.toLocaleString('en-IN')}</span>
+                                            <span className="font-bold text-slate-800 tabular-nums">₹ {carPrice.toLocaleString('en-IN')}</span>
                                         </div>
                                     )}
                                     <div className="h-px bg-slate-100" />
                                     <div className="flex justify-between items-baseline pt-1">
                                         <span className="text-base font-bold text-slate-800">Total Quote</span>
-                                        <span className="text-2xl font-black text-primary font-display">₹ {totalQuote.toLocaleString('en-IN')}</span>
+                                        <span className="text-2xl font-black text-primary font-display tabular-nums">₹ {totalQuote.toLocaleString('en-IN')}</span>
                                     </div>
                                 </div>
 

@@ -680,7 +680,7 @@ const Home = () => {
                                         <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                                             <div>
                                                 <span className="text-[9px] text-slate-400 font-bold uppercase">Price</span>
-                                                <p className="text-lg font-black text-primary font-display">₹ {formatPriceLakh(car.price)} L</p>
+                                                <p className="text-lg font-black text-primary font-display tabular-nums">₹ {formatPriceLakh(car.price)} L</p>
                                             </div>
                                             <Link to={`/car/${car.id}`} className="inline-flex items-center gap-1 bg-accent/10 hover:bg-accent text-accent hover:text-primary px-3.5 py-2 rounded-lg text-xs font-bold transition-all">
                                                 View <span className="material-symbols-outlined text-sm">arrow_outward</span>
@@ -723,7 +723,7 @@ const Home = () => {
                                     {/* Timer display */}
                                     <div className="bg-white/5 border border-white/10 rounded-2xl p-4 sm:p-5 w-full mb-6">
                                         <span className="text-[10px] text-accent font-bold uppercase tracking-wider block mb-1">Time Remaining</span>
-                                        <div className="font-display font-black text-2xl sm:text-3xl text-white tracking-wider font-mono">
+                                        <div className="font-display font-black text-2xl sm:text-3xl text-white tracking-wider font-mono tabular-nums">
                                             {dealTimer || 'Calculating...'}
                                         </div>
                                     </div>
@@ -732,7 +732,7 @@ const Home = () => {
                                     <div className="flex items-center gap-6 mb-8 w-full border-t border-b border-white/5 py-4">
                                         <div>
                                             <span className="text-[10px] text-slate-400 font-bold uppercase block mb-0.5">Special Price</span>
-                                            <span className="text-3xl font-black text-accent font-display">₹ {formatPriceLakh(dealCar.price)} L</span>
+                                            <span className="text-3xl font-black text-accent font-display tabular-nums">₹ {formatPriceLakh(dealCar.price)} L</span>
                                         </div>
                                         {dealCar.original_price && dealCar.original_price > dealCar.price && (
                                             <div>

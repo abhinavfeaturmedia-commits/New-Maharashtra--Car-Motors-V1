@@ -32,182 +32,165 @@ const PublicLayout: React.FC = () => {
 
     return (
         <div className="min-h-screen flex flex-col w-full bg-background-light font-body antialiased">
-            {/* Header */}
-            <header className="sticky top-0 z-50 bg-white border-b border-border shadow-sm">
-                <div className="container-main">
-                    <div className="flex items-center justify-between h-16 sm:h-[4.5rem] gap-2 lg:gap-6">
-                        {/* Logo */}
-                        <Link to="/" className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
-                            <div className="size-9 sm:size-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-sm shrink-0">
-                                <span className="material-symbols-outlined text-xl">directions_car</span>
-                            </div>
-                            <div className="block min-w-0 flex-1">
-                                <h1 className="text-primary text-sm sm:text-lg font-bold leading-tight tracking-tight font-display truncate">
-                                    <span className="xs:hidden">NMM</span>
-                                    <span className="hidden xs:inline">New Maharashtra Motors</span>
-                                </h1>
-                            </div>
-                        </Link>
+            {/* Header — Floating White Capsule Navbar without search bar, 100% contained */}
+            <header className="sticky top-4 z-50 w-full px-3 sm:px-6 max-w-7xl mx-auto transition-all duration-300">
+                <div className="bg-white/95 backdrop-blur-xl rounded-full border border-slate-200/90 shadow-[0_12px_40px_rgba(0,0,0,0.18)] px-4 sm:px-5 py-2 flex items-center justify-between gap-2 overflow-hidden">
+                    {/* Left: Logo & Brand Badge */}
+                    <Link to="/" className="flex items-center gap-2.5 shrink-0 group">
+                        <div className="size-9 rounded-full bg-[#0B0F1A] flex items-center justify-center text-amber-400 shadow-md group-hover:scale-105 transition-transform shrink-0">
+                            <span className="material-symbols-outlined text-lg font-black">directions_car</span>
+                        </div>
+                        <span className="hidden md:inline text-xs sm:text-sm font-black text-slate-900 font-display tracking-tight whitespace-nowrap">
+                            New Maharashtra Motors
+                        </span>
+                    </Link>
 
-                        {/* Desktop Nav */}
-                        <nav className="hidden lg:flex items-center gap-1">
-                            {navLinks.map(link => (
+                    {/* Center: Desktop Navigation with Dark Active Pill */}
+                    <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1">
+                        {navLinks.map(link => {
+                            const active = isActive(link.path);
+                            return (
                                 <Link
                                     key={link.path}
                                     to={link.path}
-                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${isActive(link.path)
-                                        ? 'text-primary bg-slate-100 font-semibold'
-                                        : 'text-slate-600 hover:text-primary hover:bg-slate-50'
-                                        }`}
+                                    className={`relative px-2.5 xl:px-3.5 py-1.5 rounded-full text-xs xl:text-sm font-bold transition-all duration-200 cursor-pointer whitespace-nowrap ${
+                                        active ? 'text-white' : 'text-slate-600 hover:text-slate-900'
+                                    }`}
                                 >
-                                    {link.name}
-                                </Link>
-                            ))}
-                        </nav>
-
-                        {/* Actions */}
-                        <div className="flex items-center gap-1.5 sm:gap-3">
-                            <form 
-                                onSubmit={(e) => {
-                                    e.preventDefault();
-                                    if (searchVal.trim()) {
-                                        navigate(`/inventory?search=${encodeURIComponent(searchVal.trim())}`);
-                                    }
-                                }}
-                                className="hidden md:flex items-center gap-2 bg-slate-50 rounded-xl px-4 h-10 border border-slate-100 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary/30 transition-all min-w-[10rem] lg:min-w-[12.5rem]"
-                            >
-                                <Search size={16} className="text-slate-400 shrink-0" />
-                                <input
-                                    value={searchVal}
-                                    onChange={(e) => setSearchVal(e.target.value)}
-                                    className="bg-transparent border-none text-sm text-primary placeholder:text-slate-400 w-full outline-none"
-                                    placeholder="Search..."
-                                />
-                            </form>
-
-                            <button className="hidden lg:flex size-10 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-primary transition-colors">
-                                <Heart size={20} />
-                            </button>
-                            <Link to="/admin/login" className="hidden lg:flex h-10 px-4 items-center justify-center gap-1.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 hover:text-primary transition-colors">
-                                <span className="material-symbols-outlined text-base">admin_panel_settings</span>
-                                Admin
-                            </Link>
-                            <Link to="/auth" className="hidden sm:flex h-10 px-5 items-center justify-center gap-2 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary-light transition-colors shadow-sm">
-                                <User size={16} />
-                                Login
-                            </Link>
-                            
-                            {/* Mobile Actions */}
-                            <button 
-                                onClick={() => {
-                                    setMobileSearchOpen(!mobileSearchOpen);
-                                    setMobileMenuOpen(false);
-                                }}
-                                className="sm:hidden flex size-9 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 transition-colors"
-                                aria-label="Search"
-                            >
-                                <Search size={18} />
-                            </button>
-                            <Link to="/auth" className="sm:hidden flex size-9 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 transition-colors">
-                                <User size={18} />
-                            </Link>
-
-                            {/* Mobile menu button */}
-                            <button
-                                onClick={() => {
-                                    setMobileMenuOpen(!mobileMenuOpen);
-                                    setMobileSearchOpen(false);
-                                }}
-                                className="lg:hidden flex size-9 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 transition-colors"
-                            >
-                                {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Mobile Search Bar Drawer */}
-                    <AnimatePresence>
-                        {mobileSearchOpen && (
-                            <motion.div 
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                                transition={{ duration: 0.2 }}
-                                className="sm:hidden overflow-hidden bg-slate-50 border-t border-slate-100"
-                            >
-                                <div className="px-4 py-3">
-                                    <form 
-                                        onSubmit={(e) => {
-                                            e.preventDefault();
-                                            if (searchVal.trim()) {
-                                                navigate(`/inventory?search=${encodeURIComponent(searchVal.trim())}`);
-                                                setMobileSearchOpen(false);
-                                            }
-                                        }}
-                                        className="flex items-center gap-2 bg-white rounded-xl px-4 h-10 border border-slate-200 shadow-sm"
-                                    >
-                                        <Search size={16} className="text-slate-400 shrink-0" />
-                                        <input
-                                            value={searchVal}
-                                            onChange={(e) => setSearchVal(e.target.value)}
-                                            autoFocus
-                                            className="bg-transparent border-none text-sm text-primary placeholder:text-slate-400 w-full outline-none"
-                                            placeholder="Search by model, make, year..."
+                                    {active && (
+                                        <motion.div
+                                            layoutId="perfectActivePill"
+                                            className="absolute inset-0 bg-[#0F1729] rounded-full shadow-md"
+                                            transition={{ type: "spring", stiffness: 400, damping: 30 }}
                                         />
-                                        {searchVal && (
-                                            <button 
-                                                type="button" 
-                                                onClick={() => setSearchVal('')} 
-                                                className="text-slate-400 hover:text-primary flex items-center"
-                                            >
-                                                <X size={16} />
-                                            </button>
-                                        )}
-                                    </form>
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                                    )}
+                                    <span className="relative z-10">{link.name}</span>
+                                </Link>
+                            );
+                        })}
+                    </nav>
 
-                    {/* Mobile Menu */}
-                    <AnimatePresence>
-                        {mobileMenuOpen && (
-                            <motion.div 
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                                transition={{ duration: 0.2 }}
-                                className="lg:hidden overflow-hidden fixed inset-x-0 top-16 bottom-0 z-[60] bg-white pt-4 pb-8 flex flex-col border-t border-slate-100"
-                            >
-                                <nav className="flex flex-col gap-1 px-4">
-                                    {navLinks.map(link => (
-                                        <Link
-                                            key={link.path}
-                                            to={link.path}
-                                            onClick={() => setMobileMenuOpen(false)}
-                                            className={`px-4 py-3.5 rounded-xl text-sm font-semibold transition-colors ${isActive(link.path)
-                                                ? 'text-primary bg-slate-50 border-l-4 border-accent'
-                                                : 'text-slate-600 hover:text-primary hover:bg-slate-50'
-                                                }`}
-                                        >
-                                            {link.name}
-                                        </Link>
-                                    ))}
-                                </nav>
-                                <div className="mt-auto pt-4 border-t border-slate-100 flex flex-col gap-3 px-6 pb-8">
-                                    <Link to="/admin/login" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 py-2 text-sm font-medium text-slate-500 hover:text-primary transition-colors">
-                                        <span className="material-symbols-outlined text-base">admin_panel_settings</span>
-                                        Staff Login
-                                    </Link>
-                                    <Link to="/auth" onClick={() => setMobileMenuOpen(false)} className="flex items-center justify-center gap-2 h-12 rounded-xl bg-primary text-white text-base font-bold hover:bg-primary-light transition-colors shadow-lg">
-                                        <User size={18} />
-                                        Sign In / Register
-                                    </Link>
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                    {/* Right: Actions & Orange Get Quote Pill Button */}
+                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                        <Link 
+                            to="/inventory"
+                            className="hidden lg:flex size-8 rounded-full bg-slate-100 border border-slate-200 text-slate-600 hover:text-primary items-center justify-center transition-all"
+                            title="Wishlist"
+                        >
+                            <Heart size={15} />
+                        </Link>
+
+                        <Link 
+                            to="/admin/login" 
+                            className="hidden md:flex size-8 rounded-full bg-slate-100 border border-slate-200 text-slate-600 hover:text-primary items-center justify-center transition-all"
+                            title="Staff Login"
+                        >
+                            <span className="material-symbols-outlined text-base">admin_panel_settings</span>
+                        </Link>
+
+                        <Link
+                            to="/contact"
+                            className="hidden sm:flex items-center justify-center h-9 px-5 rounded-full bg-amber-600 hover:bg-amber-700 text-white text-xs sm:text-sm font-black tracking-wide shadow-lg shadow-amber-600/30 transition-all hover:scale-105 active:scale-95 whitespace-nowrap cursor-pointer shrink-0"
+                        >
+                            Get Quote
+                        </Link>
+                        
+                        {/* Mobile Actions */}
+                        <Link to="/contact" className="sm:hidden flex h-8 px-3.5 items-center justify-center rounded-full bg-amber-600 text-white text-xs font-bold shadow-md whitespace-nowrap">
+                            Get Quote
+                        </Link>
+
+                        {/* Mobile menu button */}
+                        <button
+                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                            className="lg:hidden flex size-8 items-center justify-center rounded-full bg-slate-100 text-slate-700 transition-colors shrink-0"
+                        >
+                            {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
+                        </button>
+                    </div>
                 </div>
+
+                {/* Mobile Search Bar Drawer */}
+                <AnimatePresence>
+                    {mobileSearchOpen && (
+                        <motion.div 
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="sm:hidden overflow-hidden bg-white/95 backdrop-blur-md rounded-2xl mt-2 border border-slate-200 shadow-xl"
+                        >
+                            <div className="px-4 py-3">
+                                <form 
+                                    onSubmit={(e) => {
+                                        e.preventDefault();
+                                        if (searchVal.trim()) {
+                                            navigate(`/inventory?search=${encodeURIComponent(searchVal.trim())}`);
+                                            setMobileSearchOpen(false);
+                                        }
+                                    }}
+                                    className="flex items-center gap-2 bg-slate-100 rounded-full px-4 h-10 border border-slate-200 shadow-inner text-slate-800"
+                                >
+                                    <Search size={16} className="text-slate-400 shrink-0" />
+                                    <input
+                                        value={searchVal}
+                                        onChange={(e) => setSearchVal(e.target.value)}
+                                        autoFocus
+                                        className="bg-transparent border-none text-sm text-slate-800 placeholder:text-slate-400 w-full outline-none"
+                                        placeholder="Search by model, make, year..."
+                                    />
+                                    {searchVal && (
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setSearchVal('')} 
+                                            className="text-slate-400 hover:text-slate-700 flex items-center"
+                                        >
+                                            <X size={16} />
+                                        </button>
+                                    )}
+                                </form>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* Mobile Menu Drawer */}
+                <AnimatePresence>
+                    {mobileMenuOpen && (
+                        <motion.div 
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="lg:hidden overflow-hidden fixed inset-x-4 top-20 z-[60] bg-white/95 backdrop-blur-2xl rounded-3xl p-6 flex flex-col border border-slate-200/90 shadow-2xl text-slate-900 max-h-[80vh] overflow-y-auto"
+                        >
+                            <nav className="flex flex-col gap-1.5">
+                                {navLinks.map(link => (
+                                    <Link
+                                        key={link.path}
+                                        to={link.path}
+                                        onClick={() => setMobileMenuOpen(false)}
+                                        className={`px-4 py-3 rounded-full text-sm font-bold transition-all ${isActive(link.path)
+                                            ? 'text-white bg-[#0B0F1A] shadow-md'
+                                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                                            }`}
+                                    >
+                                        {link.name}
+                                    </Link>
+                                ))}
+                            </nav>
+                            <div className="mt-6 pt-4 border-t border-slate-100 flex flex-col gap-3">
+                                <Link to="/admin/login" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 py-2 text-sm font-semibold text-slate-600 hover:text-primary transition-colors">
+                                    <span className="material-symbols-outlined text-base">admin_panel_settings</span>
+                                    Staff Portal Login
+                                </Link>
+                                <Link to="/contact" onClick={() => setMobileMenuOpen(false)} className="flex items-center justify-center gap-2 h-12 rounded-full bg-amber-600 text-white text-base font-black tracking-wide hover:bg-amber-700 transition-colors shadow-lg">
+                                    Get Quote
+                                </Link>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </header>
 
             {/* Main Content */}

@@ -143,10 +143,27 @@ const Contact = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">Message</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">What can we help you with?</label>
+                                    <div className="flex flex-wrap gap-2 mb-3">
+                                        {[
+                                            'Buying a Used Car',
+                                            'Selling My Vehicle',
+                                            'Service & Repair Booking',
+                                            'Car Loan / Finance Query'
+                                        ].map(topic => (
+                                            <button
+                                                key={topic}
+                                                type="button"
+                                                onClick={() => set('message', `[${topic}] - `)}
+                                                className={`text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${form.message.includes(topic) ? 'bg-primary text-white border-primary' : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-slate-300'}`}
+                                            >
+                                                {topic}
+                                            </button>
+                                        ))}
+                                    </div>
                                     <textarea
                                         rows={4} value={form.message} onChange={e => set('message', e.target.value)}
-                                        placeholder="I am interested in..."
+                                        placeholder="Tell us more about your requirement..."
                                         className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary/30 resize-y"
                                         disabled={loading}
                                     />

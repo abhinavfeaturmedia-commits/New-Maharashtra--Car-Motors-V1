@@ -126,7 +126,7 @@ const ServiceBooking = () => {
                     </h2>
                     <div className="grid md:grid-cols-2 gap-4 mb-10">
                         {SERVICES.map(s => (
-                            <button key={s.id} onClick={() => toggle(s.id)} className={`text-left rounded-2xl border-2 p-5 transition-all ${selected.includes(s.id) ? 'border-primary bg-primary/5 shadow-md' : 'border-slate-100 bg-white shadow-[var(--shadow-card)] hover:border-slate-200'}`}>
+                            <button key={s.id} onClick={() => toggle(s.id)} className={`text-left rounded-2xl border-2 p-5 transition-all cursor-pointer min-h-[44px] ${selected.includes(s.id) ? 'border-primary bg-primary/5 shadow-md' : 'border-slate-100 bg-white shadow-[var(--shadow-card)] hover:border-slate-200'}`}>
                                 <div className="flex items-start gap-4">
                                     <div className={`size-12 rounded-xl flex items-center justify-center shrink-0 ${selected.includes(s.id) ? 'bg-primary text-white' : 'bg-slate-100 text-slate-400'}`}>
                                         <span className="material-symbols-outlined text-xl">{s.icon}</span>

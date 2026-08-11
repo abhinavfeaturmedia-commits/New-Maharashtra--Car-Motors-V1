@@ -106,6 +106,14 @@
   .text-gradient {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-accent to-amber-400;
   }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .glass-card-dark {
+    @apply bg-slate-900/80 backdrop-blur-xl border border-white/10 shadow-2xl;
+  }
 }
 
 /* Accountability Animations */

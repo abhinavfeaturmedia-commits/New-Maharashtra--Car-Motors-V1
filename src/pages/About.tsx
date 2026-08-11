@@ -56,7 +56,7 @@ const About = () => {
                         {STATS.map(stat => (
                             <div key={stat.label} className="text-center p-6 rounded-2xl bg-slate-50 border border-slate-100">
                                 <span className="material-symbols-outlined text-accent text-3xl mb-2 block">{stat.icon}</span>
-                                <p className="text-3xl font-black text-primary font-display mb-1">{stat.value}</p>
+                                <p className="text-3xl font-black text-primary font-display mb-1 tabular-nums">{stat.value}</p>
                                 <p className="text-sm text-slate-500">{stat.label}</p>
                             </div>
                         ))}
