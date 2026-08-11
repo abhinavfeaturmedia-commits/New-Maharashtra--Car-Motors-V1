@@ -59,15 +59,14 @@ const ServiceBooking = () => {
 
         const { data: leadData, error } = await supabase.from('leads').insert({
             full_name: name.trim(),
+            name: name.trim(),
             phone: phone.trim(),
             email: email.trim() || null,
-            secondary_phone: secondaryPhone.trim() || null,
-            whatsapp_number: whatsappNumber.trim() || null,
-            personal_address: personalAddress.trim() || null,
             type: 'service',
+            lead_type: 'service',
             source: 'website',
             status: 'new',
-            message: `Services: ${selectedServiceTitles} | Vehicle: ${vehicleDesc || 'Not specified'} | Date: ${selectedDate} | Time: ${selectedTime}`,
+            message: `Services: ${selectedServiceTitles} | Vehicle: ${vehicleDesc || 'Not specified'} | Date: ${selectedDate} | Time: ${selectedTime}${personalAddress ? ` | Address: ${personalAddress}` : ''}${whatsappNumber ? ` | WhatsApp: ${whatsappNumber}` : ''}`,
         }).select().single();
 
         setSubmitting(false);

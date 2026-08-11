@@ -100,7 +100,7 @@ const AdminDashboard = () => {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-xl sm:text-2xl font-black text-primary font-display">Command Center</h1>
+                    <h1 className="text-xl sm:text-2xl font-black text-primary font-display">Command <span className="font-serif-italic font-normal text-amber-600">Center</span></h1>
                     <p className="text-slate-500 text-xs sm:text-sm">Live snapshot of your dealership metrics.</p>
                 </div>
                 <div className="flex gap-2 sm:gap-3">

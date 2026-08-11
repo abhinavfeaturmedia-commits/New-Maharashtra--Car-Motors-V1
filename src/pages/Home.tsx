@@ -376,14 +376,16 @@ const Home = () => {
         try {
             const { error: err } = await supabase.from('leads').insert({
                 type: 'reservation',
+                lead_type: 'buy',
                 full_name: reserveForm.full_name,
+                name: reserveForm.full_name,
                 phone: reserveForm.phone,
                 email: reserveForm.email || null,
                 car_make: dealCar?.make || null,
                 car_model: dealCar?.model || null,
                 car_year: dealCar?.year || null,
                 message: `Reservation inquiry with ₹10,000 deposit intent for Deal of the Week: ${dealCar?.year} ${dealCar?.make} ${dealCar?.model}.`,
-                source: 'website',
+                source: 'website_home_deal',
                 status: 'new'
             });
 
@@ -456,7 +458,8 @@ const Home = () => {
                             </div>
 
                             <h1 className="text-4xl sm:text-5xl lg:text-[3.4rem] font-black text-white leading-[1.08] tracking-tight font-display mb-5">
-                                Discover Your<br />Dream Ride,<br />
+                                Discover Your<br />
+                                <span className="font-serif-italic font-normal text-amber-400">Dream Ride,</span><br />
                                 <span className="text-accent">Effortlessly.</span>
                             </h1>
 
@@ -615,8 +618,8 @@ const Home = () => {
                 <div className="container-main">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-4">
                         <div>
-                            <h2 className="text-3xl lg:text-4xl font-black text-primary font-display tracking-tight mb-2">Fresh Arrivals</h2>
-                            <p className="text-slate-500">Hand-picked luxury vehicles newly added to our showroom.</p>
+                            <h2 className="text-3xl lg:text-4xl font-black text-primary font-display tracking-tight mb-2">Fresh <span className="font-serif-italic font-normal text-amber-600">Arrivals</span></h2>
+                            <p className="text-slate-500 font-medium text-sm">Hand-picked luxury vehicles newly added to our showroom.</p>
                         </div>
                         <Link to="/inventory" className="group inline-flex items-center gap-2 text-sm font-bold text-primary hover:text-accent transition-colors whitespace-nowrap">
                             Explore Entire Collection
@@ -711,7 +714,7 @@ const Home = () => {
                                     </span>
 
                                     <h2 className="text-3xl sm:text-4xl font-black font-display tracking-tight text-white mb-2">
-                                        {dealCar.year} {dealCar.make} {dealCar.model}
+                                        {dealCar.year} {dealCar.make} <span className="font-serif-italic font-normal text-amber-400">{dealCar.model}</span>
                                     </h2>
                                     <p className="text-slate-400 text-xs sm:text-sm mb-6 uppercase tracking-wider font-bold">
                                         {dealCar.fuel_type} • {dealCar.transmission} • {(dealCar.mileage || 0).toLocaleString()} km
@@ -798,7 +801,7 @@ const Home = () => {
                                 <span className="inline-flex items-center gap-1 text-[10px] text-accent font-bold uppercase tracking-wider mb-2">
                                     <ChevronRight size={10} /> Quick Compare
                                 </span>
-                                <h3 className="text-xl font-bold text-primary font-display">Side-by-Side Specs</h3>
+                                <h3 className="text-xl font-bold text-primary font-display">Side-by-Side <span className="font-serif-italic font-normal text-amber-600">Specs</span></h3>
                                 <p className="text-xs text-slate-400 mt-1">Select two cars to compare at a glance.</p>
                             </div>
 
@@ -947,7 +950,7 @@ const Home = () => {
                 <div className="container-main">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-3">
                         <div>
-                            <h2 className="text-2xl font-black text-primary font-display tracking-tight">Browse by Body Type</h2>
+                            <h2 className="text-2xl font-black text-primary font-display tracking-tight">Browse by <span className="font-serif-italic font-normal text-amber-600">Body Type</span></h2>
                             <p className="text-sm text-slate-500 mt-0.5">Find your perfect shape</p>
                         </div>
                         <Link to="/inventory" className="text-xs font-bold text-primary hover:text-accent transition-colors flex items-center gap-1">

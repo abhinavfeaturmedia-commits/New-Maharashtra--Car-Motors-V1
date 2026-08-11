@@ -42,7 +42,7 @@ const AdminSales = () => {
     }, [sales, period, typeFilter, search]);
 
     // ─── Aggregate Stats ──────────────────────────────────────────────────────
-    const totalRevenue       = filtered.reduce((a, s) => a + (Number(s.final_price) || 0), 0);
+    const totalRevenue       = filtered.reduce((a, s) => a + (Number(s.sale_price ?? s.final_price) || 0), 0);
     const totalNetIncome     = filtered.reduce((a, s) => a + (Number(s.profit) || 0), 0);
     const consignmentFees    = filtered.filter(s => s.sale_type === 'consignment').reduce((a, s) => a + (Number(s.consignment_fee_collected) || 0), 0);
     const avgDealSize        = filtered.length > 0 ? Math.round(totalRevenue / filtered.length) : 0;
@@ -54,10 +54,10 @@ const AdminSales = () => {
             ...filtered.map(s => [
                 s.sale_date,
                 `${s.car?.year || ''} ${s.car?.make || ''} ${s.car?.model || ''}`.trim(),
-                s.customer?.full_name || '',
-                s.customer?.phone || '',
+                s.customer?.full_name || s.customer_name || '',
+                s.customer?.phone || s.customer_phone || '',
                 s.sale_type || 'purchased',
-                s.final_price,
+                s.sale_price ?? s.final_price ?? '',
                 s.profit || '',
                 (s.notes || '').replace(/,/g, ';'),
             ])
@@ -171,14 +171,14 @@ const AdminSales = () => {
                                                 </div>
                                             </td>
                                             <td className="px-5 py-3.5">
-                                                <p className="text-sm font-semibold text-primary"><HighlightText text={sale.customer?.full_name || 'Unknown'} highlight={search} /></p>
-                                                <p className="text-xs text-slate-400">{sale.customer?.phone || ''}</p>
+                                                <p className="text-sm font-semibold text-primary"><HighlightText text={sale.customer?.full_name || sale.customer_name || 'Unknown'} highlight={search} /></p>
+                                                <p className="text-xs text-slate-400">{sale.customer?.phone || sale.customer_phone || ''}</p>
                                             </td>
                                             <td className="px-5 py-3.5">
                                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${badge.cls}`}>{badge.label}</span>
                                             </td>
                                             <td className="px-5 py-3.5 text-right">
-                                                <span className="text-sm font-bold text-green-600">{formatCurrency(sale.final_price)}</span>
+                                                <span className="text-sm font-bold text-green-600">{formatCurrency(sale.sale_price ?? sale.final_price ?? 0)}</span>
                                                 {isConsignment && <p className="text-[10px] text-slate-400">pass-through</p>}
                                             </td>
                                             <td className="px-5 py-3.5 text-right">

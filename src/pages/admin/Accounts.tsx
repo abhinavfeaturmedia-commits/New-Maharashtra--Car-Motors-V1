@@ -95,7 +95,7 @@ const Accounts = () => {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-black text-primary font-display">Accounts & Payments</h1>
+                    <h1 className="text-2xl font-black text-primary font-display">Accounts & <span className="font-serif-italic font-normal text-amber-600">Payments</span></h1>
                     <p className="text-slate-500 text-sm">System-generated global operating ledger derived from CRM activity.</p>
                 </div>
                 <div className="flex gap-2">

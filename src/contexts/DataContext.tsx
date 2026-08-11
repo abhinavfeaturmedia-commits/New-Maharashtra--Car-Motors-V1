@@ -147,6 +147,21 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     useEffect(() => {
         refreshData();
+
+        // Subscribe to real-time updates for leads and bookings
+        const channel = supabase
+            .channel('realtime:global_updates')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, () => {
+                refreshData();
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
+                refreshData();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, []);
 
     return (

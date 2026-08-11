@@ -25,7 +25,9 @@ const SellCar = () => {
         setLoading(true);
         const { error: err } = await supabase.from('leads').insert({
             type: 'sell_car',
+            lead_type: 'sell',
             full_name: form.full_name.trim(),
+            name: form.full_name.trim(),
             phone: form.phone.trim(),
             car_make: form.car_make.trim() || null,
             car_model: form.car_model.trim() || null,

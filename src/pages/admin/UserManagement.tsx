@@ -321,7 +321,7 @@ const UserManagement = () => {
             {/* ── Header ── */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-black text-primary font-display">User Management</h1>
+                    <h1 className="text-2xl font-black text-primary font-display">User <span className="font-serif-italic font-normal text-amber-600">Management</span></h1>
                     <p className="text-slate-500 text-sm mt-0.5">
                         {loading ? '…' : `${users.length} staff account${users.length !== 1 ? 's' : ''}`} · Create users and control their access.
                     </p>

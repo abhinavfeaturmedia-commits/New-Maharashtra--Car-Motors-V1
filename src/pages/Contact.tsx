@@ -23,7 +23,9 @@ const Contact = () => {
 
         const { error: insertError } = await supabase.from('leads').insert({
             type: 'contact',
+            lead_type: 'general',
             full_name: form.full_name.trim(),
+            name: form.full_name.trim(),
             phone: form.phone.trim(),
             email: form.email.trim() || null,
             message: form.message.trim() || null,

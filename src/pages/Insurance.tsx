@@ -18,7 +18,9 @@ const Insurance = () => {
 
         const { error: err } = await supabase.from('leads').insert({
             type: 'insurance',
+            lead_type: 'insurance',
             full_name: form.full_name.trim(),
+            name: form.full_name.trim(),
             phone: form.phone.trim(),
             car_model: form.car_model.trim() || null,
             source: 'website_insurance',

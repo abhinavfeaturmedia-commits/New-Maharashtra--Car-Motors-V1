@@ -59,7 +59,7 @@ const ConsignmentTracker = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
     const [saleModal, setSaleModal] = useState<{ car: ConsignmentCar } | null>(null);
-    const [saleForm, setSaleForm] = useState({ buyer_name: '', final_price: '' });
+    const [saleForm, setSaleForm] = useState({ buyer_name: '', buyer_phone: '', final_price: '' });
     const [saleSaving, setSaleSaving] = useState(false);
 
     const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
@@ -85,7 +85,7 @@ const ConsignmentTracker = () => {
             const car = cars.find(c => c.id === id);
             if (car) {
                 setSaleModal({ car });
-                setSaleForm({ buyer_name: '', final_price: String(car.consignment_agreed_price || car.price || '') });
+                setSaleForm({ buyer_name: '', buyer_phone: '', final_price: String(car.consignment_agreed_price || car.price || '') });
                 return; // open modal first
             }
         }
@@ -110,23 +110,39 @@ const ConsignmentTracker = () => {
             if (car.consignment_fee_type === 'fixed') fee = car.consignment_fee_value || 0;
             else if (car.consignment_fee_type === 'percentage' && car.consignment_fee_value) fee = Math.round(salePrice * car.consignment_fee_value / 100);
 
-            // Insert sale record
-            const { error: saleErr } = await supabase.from('sales').insert({
-                inventory_id: car.id,
-                sale_date: new Date().toISOString().split('T')[0],
-                final_price: salePrice,
-                sale_type: 'consignment',
-                profit: fee,
-                consignment_fee_collected: fee,
-                purchase_cost_snapshot: 0,
-                status: 'completed',
-                payment_status: 'paid',
-                notes: `Consignment sale — buyer: ${saleForm.buyer_name}. Owner: ${car.consignment_owner_name || 'Unknown'}. Swami fee: ₹${fee.toLocaleString('en-IN')}`,
+            // Record sale atomically via stored procedure (or fallback)
+            const { error: rpcErr } = await supabase.rpc('complete_vehicle_sale', {
+                p_inventory_id: car.id,
+                p_customer_name: saleForm.buyer_name || 'Consignment Buyer',
+                p_customer_phone: saleForm.buyer_phone || '0000000000',
+                p_sale_price: salePrice,
+                p_sale_type: 'consignment',
+                p_notes: `Consignment sale — buyer: ${saleForm.buyer_name}. Owner: ${car.consignment_owner_name || 'Unknown'}. Swami fee: ₹${fee.toLocaleString('en-IN')}`,
             });
-            if (saleErr) throw saleErr;
 
-            // Mark car sold
-            await supabase.from('inventory').update({ status: 'sold' }).eq('id', car.id);
+            if (rpcErr) {
+                console.warn('RPC complete_vehicle_sale unavailable, falling back to manual insert:', rpcErr);
+                // Fallback to manual insert & update
+                const { error: saleErr } = await supabase.from('sales').insert({
+                    inventory_id: car.id,
+                    customer_name: saleForm.buyer_name || 'Consignment Buyer',
+                    customer_phone: saleForm.buyer_phone || '0000000000',
+                    sale_date: new Date().toISOString().split('T')[0],
+                    sale_price: salePrice,
+                    sale_type: 'consignment',
+                    profit: fee,
+                    consignment_fee_collected: fee,
+                    purchase_cost_snapshot: 0,
+                    status: 'completed',
+                    payment_status: 'paid',
+                    notes: `Consignment sale — buyer: ${saleForm.buyer_name}. Owner: ${car.consignment_owner_name || 'Unknown'}. Swami fee: ₹${fee.toLocaleString('en-IN')}`,
+                });
+                if (saleErr) throw saleErr;
+
+                // Mark car sold
+                await supabase.from('inventory').update({ status: 'sold' }).eq('id', car.id);
+            }
+
             setCars(prev => prev.map(c => c.id === car.id ? { ...c, status: 'sold' } : c));
             setSaleModal(null);
             showToast(`Sale recorded. Swami earned ₹${fee.toLocaleString('en-IN')} fee.`);
@@ -424,6 +440,10 @@ const ConsignmentTracker = () => {
                             <div>
                                 <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1.5">Buyer Name</label>
                                 <input required value={saleForm.buyer_name} onChange={e => setSaleForm({...saleForm, buyer_name: e.target.value})} placeholder="Buyer's full name" className="w-full h-10 border border-slate-200 rounded-xl px-3 text-sm outline-none focus:ring-2 focus:ring-purple-200" />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1.5">Buyer Phone Number</label>
+                                <input required value={saleForm.buyer_phone} onChange={e => setSaleForm({...saleForm, buyer_phone: e.target.value})} placeholder="Buyer's 10-digit phone number" className="w-full h-10 border border-slate-200 rounded-xl px-3 text-sm outline-none focus:ring-2 focus:ring-purple-200" />
                             </div>
                             <div>
                                 <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1.5">Final Sale Price (₹)</label>

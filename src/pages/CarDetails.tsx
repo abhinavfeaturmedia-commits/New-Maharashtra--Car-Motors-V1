@@ -682,7 +682,7 @@ const CarDetails = () => {
                         if (feats.length === 0) return null;
                         return (
                             <div>
-                                <h2 className="text-xl font-bold text-primary font-display mb-5">Key Features & Specifications</h2>
+                                <h2 className="text-xl font-bold text-primary font-display mb-5">Key Features & <span className="font-serif-italic font-normal text-amber-600">Specifications</span></h2>
                                 <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-[var(--shadow-card)] flex flex-wrap gap-2.5">
                                     {feats.map((feat, idx) => (
                                         <span key={idx} className="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-100 text-slate-700 text-xs font-semibold px-4 py-2.5 rounded-xl shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-all duration-200">

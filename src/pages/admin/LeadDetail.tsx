@@ -1124,7 +1124,7 @@ const LeadDetail = () => {
             <div className="flex items-center justify-between mb-2 gap-3">
                 <div className="flex items-center gap-3">
                     <Link to="/admin/leads" className="p-2 hover:bg-slate-100 rounded-lg transition-colors"><span className="material-symbols-outlined text-slate-400">arrow_back</span></Link>
-                    <h1 className="text-xl font-bold text-primary font-display">Lead Profile</h1>
+                    <h1 className="text-xl font-bold text-primary font-display">Lead <span className="font-serif-italic font-normal text-amber-600">Profile</span></h1>
                 </div>
                 {!isEditing && (
                     <div className="flex gap-2">

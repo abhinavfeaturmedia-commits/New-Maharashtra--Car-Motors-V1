@@ -112,7 +112,9 @@ const BookTestDrive = () => {
 
         const { data: leadData, error: err } = await supabase.from('leads').insert({
             type: 'test_drive',
+            lead_type: 'buy',
             full_name: form.full_name.trim(),
+            name: form.full_name.trim(),
             phone: form.phone.trim(),
             car_make: car?.make || null,
             car_model: car?.model || null,
@@ -131,10 +133,14 @@ const BookTestDrive = () => {
                 await supabase.from('bookings').insert({
                     lead_id: leadData.id,
                     inventory_id: car?.id || null,
+                    customer_name: form.full_name.trim(),
+                    customer_phone: form.phone.trim(),
                     booking_type: 'test_drive',
+                    preferred_date: isoDate,
                     booking_date: isoDate,
+                    preferred_time: selectedTime,
                     booking_time: selectedTime,
-                    status: 'scheduled'
+                    status: 'pending'
                 });
             }
             setSubmitted(true);
@@ -178,8 +184,10 @@ const BookTestDrive = () => {
                     ) : (
                         <>
                             <div>
-                                <h1 className="text-2xl font-black text-primary font-display mb-1">Select Date & Time</h1>
-                                <p className="text-slate-500 text-sm">Choose a convenient slot for your test drive at our Kolhapur showroom.</p>
+                                <h1 className="text-2xl sm:text-3xl font-black text-primary font-display mb-1">
+                                    Select <span className="font-serif-italic font-normal text-amber-600">Date & Time</span>
+                                </h1>
+                                <p className="text-slate-500 text-sm">Choose a convenient slot for your test drive at our showroom.</p>
                             </div>
 
                             {/* Calendar */}

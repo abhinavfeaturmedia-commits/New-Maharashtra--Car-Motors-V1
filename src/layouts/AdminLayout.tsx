@@ -382,8 +382,8 @@ const AdminLayout: React.FC = () => {
                             <span className="material-symbols-outlined text-lg">directions_car</span>
                         </div>
                         <div>
-                            <p className="text-sm font-bold text-primary font-display">New Maharashtra Motors Admin</p>
-                            <p className="text-[10px] text-slate-400">Pune Branch</p>
+                            <p className="text-sm font-bold text-primary font-display">Maharashtra Motors <span className="font-serif-italic font-normal text-amber-600">Admin</span></p>
+                            <p className="text-[10px] text-slate-400">Pune Hub</p>
                         </div>
                     </Link>
                     <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-slate-400 hover:text-slate-600">

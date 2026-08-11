@@ -41,7 +41,9 @@ const EMICalculator = () => {
 
         const { error: err } = await supabase.from('leads').insert({
             type: 'finance',
+            lead_type: 'finance',
             full_name: applyForm.full_name.trim(),
+            name: applyForm.full_name.trim(),
             phone: applyForm.phone.trim(),
             email: applyForm.email.trim() || null,
             budget: `₹${(loanAmount / 100000).toFixed(2)}L`,
