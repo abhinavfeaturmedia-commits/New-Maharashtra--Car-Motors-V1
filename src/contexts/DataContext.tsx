@@ -113,7 +113,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 safeFetchAll(() => supabase.from('leads').select('*, assigned_profile:profiles!leads_assigned_to_fkey(full_name, avatar_url)').order('created_at', { ascending: false })),
                 safeFetchAll(() => supabase.from('customers').select('*').order('created_at', { ascending: false })),
                 safeFetchAll(() => supabase.from('inventory').select('*').order('created_at', { ascending: false })),
-                safeFetchAll(() => supabase.from('sales').select('*, customer:customers(id,full_name,phone,email), car:inventory(id,make,model,year,registration_no,license_plate)').order('sale_date', { ascending: false })),
+                safeFetchAll(() => supabase.from('sales').select('*, customer:customer_id(id,full_name,phone,email), car:inventory_id(id,make,model,year,registration_no,license_plate)').order('sale_date', { ascending: false })),
                 safeFetchAll(() => supabase.from('bookings').select('*, lead:leads(id,full_name,phone), car:inventory(id,make,model,year)').order('booking_date', { ascending: false })),
                 // lead_activities — join profiles on created_by
                 safeFetchAll(() => supabase.from('lead_activities').select('*, creator:profiles!created_by(full_name, avatar_url)').order('created_at', { ascending: false })),
@@ -135,11 +135,37 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 safeFetchAll(() => supabase.from('customer_alert_configs').select('*')),
             ]);
 
-
             setLeads(leadsData || []);
             setCustomers(customersData || []);
             setInventory(inventoryData || []);
-            setSales(salesData || []);
+            
+            // Normalize sales data with fallback mapping
+            let rawSales = salesData || [];
+            if (rawSales.length === 0) {
+                try {
+                    const { data: fallbackSales } = await supabase.from('sales').select('*');
+                    if (fallbackSales && fallbackSales.length > 0) {
+                        rawSales = fallbackSales;
+                    }
+                } catch (err) {
+                    console.error("Fallback sales fetch error:", err);
+                }
+            }
+
+            const inventoryMap = new Map((inventoryData || []).map((i: any) => [i.id, i]));
+            const customerMap = new Map((customersData || []).map((c: any) => [c.id, c]));
+
+            const normalizedSales = rawSales.map((s: any) => {
+                const carObj = s.car || s.inventory || inventoryMap.get(s.inventory_id || s.car_id) || null;
+                const custObj = s.customer || customerMap.get(s.customer_id) || (s.customer_name ? { full_name: s.customer_name, phone: s.customer_phone, email: s.customer_email } : null);
+                return {
+                    ...s,
+                    car: carObj,
+                    customer: custObj,
+                };
+            });
+
+            setSales(normalizedSales);
             setBookings(bookingsData || []);
             setActivities(activitiesData || []);
             

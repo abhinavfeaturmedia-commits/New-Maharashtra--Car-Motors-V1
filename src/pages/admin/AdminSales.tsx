@@ -338,12 +338,16 @@ const AdminSales = () => {
                                         <tr key={sale.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors cursor-pointer" onClick={() => setDetail(sale)}>
                                             <td className="px-5 py-3.5">
                                                 <div>
-                                                    <p className="text-sm font-semibold text-primary">{sale.car?.year} <HighlightText text={sale.car?.make || ''} highlight={search} /> <HighlightText text={sale.car?.model || ''} highlight={search} /></p>
-                                                    <p className="text-xs text-slate-400">{sale.car?.transmission || ''}</p>
+                                                    <p className="text-sm font-semibold text-primary">
+                                                        {sale.car?.year ? `${sale.car.year} ` : ''}
+                                                        <HighlightText text={sale.car?.make || ''} highlight={search} />{' '}
+                                                        <HighlightText text={sale.car?.model || (sale.car?.make ? '' : 'Vehicle Record')} highlight={search} />
+                                                    </p>
+                                                    <p className="text-xs text-slate-400">{sale.car?.registration_no || sale.car?.transmission || ''}</p>
                                                 </div>
                                             </td>
                                             <td className="px-5 py-3.5">
-                                                <p className="text-sm font-semibold text-primary"><HighlightText text={sale.customer?.full_name || sale.customer_name || 'Unknown'} highlight={search} /></p>
+                                                <p className="text-sm font-semibold text-primary"><HighlightText text={sale.customer?.full_name || sale.customer_name || 'Customer Record'} highlight={search} /></p>
                                                 <p className="text-xs text-slate-400">{sale.customer?.phone || sale.customer_phone || ''}</p>
                                             </td>
                                             <td className="px-5 py-3.5">
