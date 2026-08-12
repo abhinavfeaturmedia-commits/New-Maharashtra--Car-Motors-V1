@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
 import { useNotifications } from '../../contexts/NotificationContext';
 import { toWhatsAppUrl } from '../../lib/utils';
+import { compressPdf } from '../../lib/pdfCompressor';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -209,7 +210,7 @@ type Tab = 'overview' | 'deals' | 'documents' | 'timeline' | 'logs';
 const CustomerDetail = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { isAdmin, profile } = useAuth();
+    const { isAdmin, profile, user } = useAuth();
     const { sales, refreshData } = useData();
     const { addNotification } = useNotifications();
 
@@ -237,6 +238,7 @@ const CustomerDetail = () => {
     const [docForm, setDocForm] = useState(emptyDocForm);
     const [docSaving, setDocSaving] = useState(false);
     const [uploadingFile, setUploadingFile] = useState(false);
+    const [uploadStatusText, setUploadStatusText] = useState('');
 
     // Timeline state
     const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
@@ -687,10 +689,27 @@ const CustomerDetail = () => {
     const handleUploadFile = async (file: File): Promise<string | null> => {
         if (!id) return null;
         setUploadingFile(true);
-        const ext = file.name.split('.').pop();
+        setUploadStatusText('Preparing file…');
+
+        let fileToUpload = file;
+        if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+            if (file.size > 2 * 1024 * 1024) {
+                setUploadStatusText('Compressing PDF (>2MB)…');
+                const compResult = await compressPdf(file, {
+                    targetMaxMb: 1.5,
+                    quality: 0.75,
+                    onProgress: (pct, text) => setUploadStatusText(`Compressing: ${text}`)
+                });
+                fileToUpload = compResult.file;
+            }
+        }
+
+        setUploadStatusText('Uploading to storage…');
+        const ext = fileToUpload.name.split('.').pop();
         const path = `${id}/${Date.now()}.${ext}`;
-        const { error } = await supabase.storage.from('customer-documents').upload(path, file, { upsert: true });
+        const { error } = await supabase.storage.from('customer-documents').upload(path, fileToUpload, { upsert: true });
         setUploadingFile(false);
+        setUploadStatusText('');
         if (error) { alert('Upload failed: ' + error.message); return null; }
         const { data: urlData } = supabase.storage.from('customer-documents').getPublicUrl(path);
         return urlData?.publicUrl || null;
@@ -712,7 +731,7 @@ const CustomerDetail = () => {
             issue_date: docForm.issue_date || null,
             expiry_date: docForm.expiry_date || null,
             notes: docForm.notes || null,
-            uploaded_by: profile?.id || null,
+            uploaded_by: profile?.id ?? user?.id ?? null,
         };
 
         const { error } = await supabase.from('customer_documents').insert(payload);
@@ -1623,7 +1642,7 @@ const CustomerDetail = () => {
                                                 }}
                                                 className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
                                             />
-                                            {uploadingFile && <p className="text-xs text-primary mt-1 flex items-center gap-1"><span className="size-3 border-2 border-primary border-t-transparent rounded-full animate-spin" /> Uploading…</p>}
+                                            {uploadingFile && <p className="text-xs text-primary mt-1 flex items-center gap-1"><span className="size-3 border-2 border-primary border-t-transparent rounded-full animate-spin" /> {uploadStatusText || 'Uploading…'}</p>}
                                             {docForm.file_url && !uploadingFile && <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1"><span className="material-symbols-outlined text-xs">check_circle</span> {docForm.file_name || 'File uploaded'}</p>}
                                         </div>
 

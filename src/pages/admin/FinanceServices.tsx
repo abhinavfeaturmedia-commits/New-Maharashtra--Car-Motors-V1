@@ -447,7 +447,10 @@ const FinanceServices = () => {
             } else if (matchedLeads.length > 0) {
                 const { error } = await supabase.from('lead_activities').insert({
                     lead_id: matchedLeads[0].id,
+                    type: newNoteType === 'note' ? 'note' : newNoteType,
                     activity_type: newNoteType === 'note' ? 'meeting' : newNoteType,
+                    title: `Service Note (${newNoteType})`,
+                    description: newNote.trim(),
                     notes: newNote.trim()
                 });
                 if (error) throw error;
@@ -969,6 +972,12 @@ const FinanceServices = () => {
                                                 <button
                                                     key={car.id}
                                                     type="button"
+                                                    onMouseDown={(e) => {
+                                                        e.preventDefault();
+                                                        setFormData(f => ({ ...f, car_id: car.id }));
+                                                        setCarSearch(`${car.year} ${car.make} ${car.model} (${car.registration_no || 'No Reg'})`);
+                                                        setCarSearchOpen(false);
+                                                    }}
                                                     onClick={() => {
                                                         setFormData(f => ({ ...f, car_id: car.id }));
                                                         setCarSearch(`${car.year} ${car.make} ${car.model} (${car.registration_no || 'No Reg'})`);
@@ -976,6 +985,7 @@ const FinanceServices = () => {
                                                     }}
                                                     className="w-full text-left px-4 py-2 hover:bg-slate-50 text-xs border-b last:border-0 text-slate-700"
                                                 >
+
                                                     <div className="font-bold">{car.year} {car.make} {car.model}</div>
                                                     <div className="text-[10px] text-slate-400 font-mono">
                                                         ₹{Number(car.price).toLocaleString('en-IN')} • Reg: {car.registration_no || 'No Reg'}

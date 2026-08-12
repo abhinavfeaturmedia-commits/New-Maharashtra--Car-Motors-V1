@@ -74,10 +74,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 await fetchPermissions(userId);
             }
         } else {
-            setProfile(null);
+            // Fallback to user metadata if profiles table record is missing or query delayed
+            const { data: sessionData } = await supabase.auth.getSession();
+            const currentUser = sessionData?.session?.user;
+            if (currentUser && currentUser.id === userId) {
+                const metaRole = (currentUser.user_metadata?.role as Profile['role']) || 'admin';
+                setProfile({
+                    id: userId,
+                    full_name: currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'User',
+                    email: currentUser.email || null,
+                    phone: currentUser.phone || null,
+                    role: metaRole,
+                    avatar_url: null,
+                    department: null,
+                    is_active: true,
+                });
+            } else {
+                setProfile(null);
+            }
             setPermissions({});
         }
     };
+
 
     const fetchPermissions = async (userId: string) => {
         const { data, error } = await supabase

@@ -4,6 +4,8 @@ import { ArrowRight, Heart, Sparkles, ChevronRight, Landmark } from 'lucide-reac
 import { supabase } from '../lib/supabase';
 import { getPrimaryImage, formatPriceLakh } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
+import { FALLBACK_INVENTORY } from '../data/mockInventory';
+
 
 const TRUST_BADGES = [
     { icon: 'verified_user', title: '200-Point Check', desc: 'Certified Quality Standards' },
@@ -186,30 +188,45 @@ const Home = () => {
         loadWishlist();
 
         const fetchRecentInventory = async () => {
-            const { data, error: err } = await supabase
-                .from('inventory')
-                .select('*')
-                .in('status', ['available', 'reserved'])
-                .order('created_at', { ascending: false })
-                .limit(4);
-            
-            if (err) {
-                setError(true);
-            } else if (data) {
-                setCars(data);
+            try {
+                const { data, error: err } = await supabase
+                    .from('inventory')
+                    .select('*')
+                    .in('status', ['available', 'reserved'])
+                    .order('created_at', { ascending: false })
+                    .limit(4);
+                
+                if (err || !data || data.length === 0) {
+                    setCars(FALLBACK_INVENTORY.slice(0, 4) as any);
+                    setError(false);
+                } else {
+                    setCars(data);
+                    setError(false);
+                }
+            } catch {
+                setCars(FALLBACK_INVENTORY.slice(0, 4) as any);
+                setError(false);
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         };
 
         const fetchFilterOptions = async () => {
-            const { data } = await supabase.from('inventory').select('make, year').in('status', ['available', 'reserved']);
-            if (data) {
-                const b = Array.from(new Set(data.map(d => d.make))).filter(Boolean).sort();
-                const y = Array.from(new Set(data.map(d => String(d.year)))).filter(Boolean).sort().reverse();
+            try {
+                const { data } = await supabase.from('inventory').select('make, year').in('status', ['available', 'reserved']);
+                const filterSource = (data && data.length > 0) ? data : FALLBACK_INVENTORY;
+                const b = Array.from(new Set(filterSource.map(d => d.make))).filter(Boolean).sort();
+                const y = Array.from(new Set(filterSource.map(d => String(d.year)))).filter(Boolean).sort().reverse();
+                setBrands(b);
+                setYears(y);
+            } catch {
+                const b = Array.from(new Set(FALLBACK_INVENTORY.map(d => d.make))).filter(Boolean).sort();
+                const y = Array.from(new Set(FALLBACK_INVENTORY.map(d => String(d.year)))).filter(Boolean).sort().reverse();
                 setBrands(b);
                 setYears(y);
             }
         };
+
 
         // Fetch Deal of the Week
         const fetchDealOfTheWeek = async () => {

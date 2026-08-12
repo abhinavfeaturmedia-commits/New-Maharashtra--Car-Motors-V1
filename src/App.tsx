@@ -57,6 +57,7 @@ import VehicleExpenses from './pages/admin/VehicleExpenses';
 import ShareLogs from './pages/admin/ShareLogs';
 import SharedCatalogsAdmin from './pages/admin/SharedCatalogsAdmin';
 import ConsignmentTracker from './pages/admin/ConsignmentTracker';
+import PdfCompressorTool from './pages/admin/PdfCompressorTool';
 
 // Admin — Finance
 import Accounts from './pages/admin/Accounts';
@@ -157,6 +158,7 @@ const App: React.FC = () => {
                             <Route path="share-logs" element={<ModuleRoute module="operations"><ShareLogs /></ModuleRoute>} />
                             <Route path="shared-catalogs" element={<ModuleRoute module="operations"><SharedCatalogsAdmin /></ModuleRoute>} />
                             <Route path="consignments" element={<ModuleRoute module="inventory"><ConsignmentTracker /></ModuleRoute>} />
+                            <Route path="pdf-compressor" element={<PdfCompressorTool />} />
 
                             {/* Finance */}
                             <Route path="accounts" element={<ModuleRoute module="finance"><Accounts /></ModuleRoute>} />

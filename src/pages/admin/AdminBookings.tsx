@@ -123,11 +123,15 @@ const AdminBookings = () => {
             const booking = bookings.find(b => b.id === pendingUpdate.id);
             if (booking?.lead?.id) {
                 await supabase.from('leads').update({ status: 'negotiation' }).eq('id', booking.lead.id);
+                const bookingNoteText = `Test drive completed on ${booking.booking_date}. Lead moved to Negotiation.`;
                 await supabase.from('lead_activities').insert({
                     lead_id: booking.lead.id,
+                    type: 'meeting',
                     activity_type: 'meeting',
-                    notes: `Test drive completed on ${booking.booking_date}. Lead moved to Negotiation.`,
-                    created_by: 'system',
+                    title: 'Test Drive Completed',
+                    description: bookingNoteText,
+                    notes: bookingNoteText,
+                    created_by: null,
                 });
                 refreshData();
             }

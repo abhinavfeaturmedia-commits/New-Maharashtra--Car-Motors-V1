@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { compressPdf } from '../../lib/pdfCompressor';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -195,24 +196,40 @@ const AddNoteModal: React.FC<{ customerId: string; onClose: () => void; onSaved:
 // ─── Upload Document Modal ────────────────────────────────────────────────────
 
 const UploadDocModal: React.FC<{ customerId: string; onClose: () => void; onSaved: () => void }> = ({ customerId, onClose, onSaved }) => {
-    const { profile } = useAuth();
+    const { profile, user } = useAuth();
     const [docType, setDocType] = useState('aadhaar');
     const [customLabel, setCustomLabel] = useState('');
     const [partyRole, setPartyRole] = useState('buyer');
     const [file, setFile] = useState<File | null>(null);
     const [saving, setSaving] = useState(false);
+    const [statusText, setStatusText] = useState('');
     const [error, setError] = useState('');
 
     const handleSave = async () => {
         if (!file) { setError('Please select a file.'); return; }
         setSaving(true);
+        setStatusText('Preparing file…');
         setError('');
         try {
-            const ext = file.name.split('.').pop();
+            let fileToUpload = file;
+            if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+                if (file.size > 2 * 1024 * 1024) {
+                    setStatusText('Compressing PDF (>2MB)…');
+                    const compResult = await compressPdf(file, {
+                        targetMaxMb: 1.5,
+                        quality: 0.75,
+                        onProgress: (pct, text) => setStatusText(`Compressing: ${text}`)
+                    });
+                    fileToUpload = compResult.file;
+                }
+            }
+
+            setStatusText('Uploading to storage…');
+            const ext = fileToUpload.name.split('.').pop();
             const path = `${customerId}/${Date.now()}_${docType}.${ext}`;
             const { error: uploadErr } = await supabase.storage
                 .from('customer-documents')
-                .upload(path, file, { upsert: true });
+                .upload(path, fileToUpload, { upsert: true });
             if (uploadErr) throw uploadErr;
 
             const { data: { publicUrl } } = supabase.storage.from('customer-documents').getPublicUrl(path);
@@ -222,16 +239,17 @@ const UploadDocModal: React.FC<{ customerId: string; onClose: () => void; onSave
                 doc_type: docType,
                 doc_label: customLabel || null,
                 party_role: partyRole,
-                file_name: file.name,
+                file_name: fileToUpload.name,
                 file_url: publicUrl,
-                file_size_kb: Math.round(file.size / 1024),
-                uploaded_by: profile?.id,
+                file_size_kb: Math.round(fileToUpload.size / 1024),
+                uploaded_by: profile?.id ?? user?.id ?? null,
             });
             onSaved();
         } catch (e: any) {
             setError(e.message || 'Upload failed. Please try again.');
         } finally {
             setSaving(false);
+            setStatusText('');
         }
     };
 
@@ -308,8 +326,8 @@ const UploadDocModal: React.FC<{ customerId: string; onClose: () => void; onSave
                     <div className="flex gap-3">
                         <button onClick={onClose} className="flex-1 h-11 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold hover:bg-slate-50 transition-colors">Cancel</button>
                         <button onClick={handleSave} disabled={saving || !file}
-                            className="flex-1 h-11 bg-blue-600 text-white rounded-xl text-sm font-bold disabled:opacity-50 hover:bg-blue-700 transition-colors shadow-sm">
-                            {saving ? 'Uploading…' : 'Upload Document'}
+                            className="flex-1 h-11 bg-blue-600 text-white rounded-xl text-sm font-bold disabled:opacity-50 hover:bg-blue-700 transition-colors shadow-sm truncate px-2">
+                            {saving ? (statusText || 'Uploading…') : 'Upload Document'}
                         </button>
                     </div>
                 </div>

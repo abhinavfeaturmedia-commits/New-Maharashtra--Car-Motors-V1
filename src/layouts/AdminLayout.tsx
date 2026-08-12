@@ -63,6 +63,7 @@ const NAV_GROUPS: NavGroup[] = [
             { name: 'Expenses', href: '/admin/expenses', icon: 'receipt_long', module: 'operations' },
             { name: 'Share Logs', href: '/admin/share-logs', icon: 'share', module: 'operations' },
             { name: 'Shared Catalogs', href: '/admin/shared-catalogs', icon: 'folder_shared', module: 'operations' },
+            { name: 'PDF Compressor', href: '/admin/pdf-compressor', icon: 'compress', module: 'operations' },
         ],
     },
     {

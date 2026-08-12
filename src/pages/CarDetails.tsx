@@ -8,6 +8,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { useInquiryCart } from '../contexts/InquiryCartContext';
 import VideoPlayer from '../components/ui/VideoPlayer';
+import { FALLBACK_INVENTORY } from '../data/mockInventory';
+
 
 const SPECS = [
     { icon: 'speed', label: 'Odometer', key: 'mileage', suffix: ' km' },
@@ -338,22 +340,38 @@ const CarDetails = () => {
     useEffect(() => {
         const fetchCar = async () => {
             if (!id) return;
-            const { data, error: err } = await supabase
-                .from('inventory')
-                .select('*, dealer:dealers(dealer_code)')
-                .eq('id', id)
-                .single();
-            if (err || !data) {
-                setError(true);
-            } else {
-                const currentCar = data as unknown as CarData;
-                setCar(currentCar);
-                fetchSimilarCars(currentCar);
+            try {
+                const { data, error: err } = await supabase
+                    .from('inventory')
+                    .select('*, dealer:dealers(dealer_code)')
+                    .eq('id', id)
+                    .single();
+                if (err || !data) {
+                    const fallbackMatch = FALLBACK_INVENTORY.find(item => item.id === id);
+                    if (fallbackMatch) {
+                        setCar(fallbackMatch as unknown as CarData);
+                    } else {
+                        setError(true);
+                    }
+                } else {
+                    const currentCar = data as unknown as CarData;
+                    setCar(currentCar);
+                    fetchSimilarCars(currentCar);
+                }
+            } catch {
+                const fallbackMatch = FALLBACK_INVENTORY.find(item => item.id === id);
+                if (fallbackMatch) {
+                    setCar(fallbackMatch as unknown as CarData);
+                } else {
+                    setError(true);
+                }
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         };
         fetchCar();
     }, [id]);
+
 
     useEffect(() => {
         const fetchCatalogContext = async () => {

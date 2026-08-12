@@ -7,6 +7,8 @@ import { useNotifications } from '../../contexts/NotificationContext';
 import { toWhatsAppUrl, formatPriceLakh } from '../../lib/utils';
 import HighlightText from '../../components/ui/HighlightText';
 import { generateOpenRouterCompletion } from '../../lib/openrouter';
+import { FALLBACK_INVENTORY } from '../../data/mockInventory';
+
 
 // ─── Follow-Up Types ──────────────────────────────────────────────────────────
 
@@ -345,7 +347,7 @@ const LeadDetail = () => {
     const [searchParams] = useSearchParams();
     const highlightQuery = searchParams.get('search') || '';
     const { inventory, activities, settings, refreshData } = useData() as any;
-    const { profile } = useAuth();
+    const { profile, user } = useAuth();
     const { addNotification } = useNotifications();
     
     const [lead, setLead] = useState<Lead | null>(null);
@@ -475,32 +477,54 @@ const LeadDetail = () => {
         if (followUpSaving) return;
         setFollowUpSaving(true);
 
+        const formattedNextDate = followUpForm.next_followup_date
+            ? followUpForm.next_followup_date.slice(0, 10)
+            : null;
+
         const payload: any = {
             lead_id: id,
             contacted_via: followUpForm.contacted_via,
             outcome: followUpForm.outcome,
             notes: followUpForm.notes.trim() || null,
-            next_followup_date: followUpForm.next_followup_date
-                ? new Date(followUpForm.next_followup_date).toISOString()
-                : null,
+            next_followup_date: formattedNextDate,
             duration_minutes: followUpForm.duration_minutes
                 ? Number(followUpForm.duration_minutes)
                 : null,
-            assigned_to: profile?.id ?? null,
-            created_by: profile?.id ?? null,
+            assigned_to: profile?.id ?? user?.id ?? null,
+            created_by: profile?.id ?? user?.id ?? null,
             is_done: false,
+            type: 'followup',
         };
 
         const { error } = await supabase.from('follow_ups').insert(payload);
         if (!error) {
             // Also log an activity for the timeline
             const methodsJoined = followUpForm.contacted_via.join(', ');
+            const activityNoteText = `Follow-up via ${methodsJoined}: ${outcomeLabel(followUpForm.outcome)}${followUpForm.notes ? ' — ' + followUpForm.notes : ''}`;
             await supabase.from('lead_activities').insert({
                 lead_id: id,
+                type: 'followup',
                 activity_type: followUpForm.contacted_via.join(',') || 'call',
-                notes: `Follow-up via ${methodsJoined}: ${outcomeLabel(followUpForm.outcome)}${followUpForm.notes ? ' — ' + followUpForm.notes : ''}`,
-                created_by: profile?.id ?? null,
+                title: `Follow-up (${methodsJoined})`,
+                description: activityNoteText,
+                notes: activityNoteText,
+                created_by: profile?.id ?? user?.id ?? null,
             });
+
+            // If a next follow-up date was scheduled, insert a reminder task in tasks table
+            if (formattedNextDate) {
+                await supabase.from('tasks').insert({
+                    lead_id: id,
+                    title: `Follow-up with ${lead?.full_name || 'Lead'} (${methodsJoined})`,
+                    description: followUpForm.notes.trim() || `Scheduled follow-up via ${methodsJoined}`,
+                    due_date: new Date(formattedNextDate + 'T10:00:00').toISOString(),
+                    priority: 'Medium',
+                    status: 'pending',
+                    assigned_to: lead?.assigned_to ?? profile?.id ?? user?.id ?? null,
+                    created_by: profile?.id ?? user?.id ?? null,
+                    category: 'followup'
+                });
+            }
 
             // If outcome is converted, update lead status
             if (followUpForm.outcome === 'converted' && lead?.status !== 'closed_won') {
@@ -512,7 +536,8 @@ const LeadDetail = () => {
             fetchFollowUps();
             refreshData();
         } else {
-            alert('Failed to save follow-up. Please try again.');
+            console.error('Failed to save follow-up:', error);
+            alert('Failed to save follow-up: ' + (error.message || 'Please try again.'));
         }
         setFollowUpSaving(false);
     };
@@ -551,11 +576,20 @@ const LeadDetail = () => {
         if (visitSaving) return;
         setVisitSaving(true);
 
+        const staffIdToUse = profile?.id ?? user?.id;
+        if (!staffIdToUse) {
+            alert('Cannot log visit: User session profile missing. Please log in again.');
+            setVisitSaving(false);
+            return;
+        }
+
+        const visitDateFormatted = visitForm.visit_date ? visitForm.visit_date.slice(0, 10) : new Date().toISOString().slice(0, 10);
+
         const payload = {
             lead_id: id,
             customer_id: null,
-            staff_id: profile?.id,
-            visit_date: visitForm.visit_date,
+            staff_id: staffIdToUse,
+            visit_date: visitDateFormatted,
             purpose: visitForm.purpose,
             location: visitForm.location.trim() || null,
             notes: visitForm.notes.trim() || null,
@@ -566,12 +600,16 @@ const LeadDetail = () => {
         try {
             const { data, error } = await supabase.from('visits').insert(payload).select().single();
             if (!error && data) {
+                const noteText = `Visit logged on ${new Date(visitDateFormatted + 'T00:00:00').toLocaleDateString('en-IN')}: ${visitForm.purpose} was logged as ${visitForm.outcome === 'successful' ? 'Successful (Awaiting admin approval)' : 'Unsuccessful'}.${visitForm.notes ? ' Notes: ' + visitForm.notes : ''}`;
                 // Log activity to lead timeline
                 await supabase.from('lead_activities').insert({
                     lead_id: id,
-                    activity_type: 'note',
-                    notes: `Visit logged on ${new Date(visitForm.visit_date).toLocaleDateString('en-IN')}: ${visitForm.purpose} was logged as ${visitForm.outcome === 'successful' ? 'Successful (Awaiting admin approval)' : 'Unsuccessful'}.${visitForm.notes ? ' Notes: ' + visitForm.notes : ''}`,
-                    created_by: profile?.id ?? null,
+                    type: 'visit',
+                    activity_type: 'visit',
+                    title: `Customer Visit (${visitForm.purpose})`,
+                    description: noteText,
+                    notes: noteText,
+                    created_by: staffIdToUse,
                 });
 
                 // If outcome is successful, notify admins
@@ -703,19 +741,24 @@ const LeadDetail = () => {
         try {
             const { error } = await supabase.from('lead_activities').insert({
                 lead_id: id,
-                activity_type: noteType,
+                type: noteType || 'note',
+                activity_type: noteType || 'note',
+                title: noteType === 'call' ? 'Logged Call' : noteType === 'email' ? 'Sent Email' : noteType === 'meeting' ? 'Meeting' : 'Internal Note',
+                description: note.trim(),
                 notes: note.trim(),
-                created_by: profile?.id ?? null,
+                created_by: profile?.id ?? user?.id ?? null,
             });
 
             if (!error) {
                 setNote('');
                 await refreshData();
             } else {
-                alert('Failed to log activity');
+                console.error('Failed to log activity:', error);
+                alert('Failed to log activity: ' + (error.message || 'Please try again.'));
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
+            alert('Failed to log activity: ' + (error?.message || 'Please try again.'));
         }
     };
 
@@ -827,9 +870,12 @@ const LeadDetail = () => {
 
                 await supabase.from('lead_activities').insert({
                     lead_id: id,
+                    type: type || 'note',
                     activity_type: type,
+                    title: type === 'status_change' ? 'Status Changed' : type === 'assignment_change' ? 'Assignment Changed' : 'Lead Updated',
+                    description: activityNote,
                     notes: activityNote,
-                created_by: profile?.id ?? null,
+                    created_by: profile?.id ?? user?.id ?? null,
                 });
 
                 setLead({ ...lead, ...editForm } as Lead);
@@ -851,9 +897,12 @@ const LeadDetail = () => {
             if (!error) {
                 await supabase.from('lead_activities').insert({
                     lead_id: id,
+                    type: 'note',
                     activity_type: 'note',
+                    title: 'Quality Rating Updated',
+                    description: `Lead quality updated to ${newQuality}.`,
                     notes: `Lead quality updated to ${newQuality}.`,
-                    created_by: profile?.id ?? null,
+                    created_by: profile?.id ?? user?.id ?? null,
                 });
                 
                 setLead(prev => prev ? { ...prev, lead_quality: newQuality } : null);
@@ -1019,13 +1068,17 @@ const LeadDetail = () => {
             await supabase.from('leads').update({ status: 'closed_won' }).eq('id', lead?.id);
 
             // ── 8. Log Activity ──────────────────────────────────────────────────
+            const saleNoteText = source === 'consignment'
+                ? `Consignment sale ₹${salePrice.toLocaleString('en-IN')} — Swami earned ₹${profit.toLocaleString('en-IN')} fee.`
+                : `Sale closed for ₹${salePrice.toLocaleString('en-IN')}. Profit: ₹${profit.toLocaleString('en-IN')}.`;
             await supabase.from('lead_activities').insert({
                 lead_id: lead?.id,
+                type: 'meeting',
                 activity_type: 'meeting',
-                notes: source === 'consignment'
-                    ? `Consignment sale ₹${salePrice.toLocaleString('en-IN')} — Swami earned ₹${profit.toLocaleString('en-IN')} fee.`
-                    : `Sale closed for ₹${salePrice.toLocaleString('en-IN')}. Profit: ₹${profit.toLocaleString('en-IN')}.`,
-                created_by: profile?.id ?? null,
+                title: 'Sale Closed & Converted',
+                description: saleNoteText,
+                notes: saleNoteText,
+                created_by: profile?.id ?? user?.id ?? null,
             });
 
             await refreshData();
@@ -1099,11 +1152,15 @@ const LeadDetail = () => {
 
             await supabase.from('leads').update({ status: 'closed_won' }).eq('id', lead?.id);
 
+            const serviceNoteText = `Converted to ${serviceForm.type === 'loan' ? 'Loan' : 'Insurance'} service file. Provider: ${serviceForm.provider_name || 'N/A'}. Commission: ₹${Number(serviceForm.commission_earned || 0).toLocaleString('en-IN')}`;
             await supabase.from('lead_activities').insert({
                 lead_id: lead?.id,
+                type: 'meeting',
                 activity_type: 'meeting',
-                notes: `Converted to ${serviceForm.type === 'loan' ? 'Loan' : 'Insurance'} service file. Provider: ${serviceForm.provider_name || 'N/A'}. Commission: ₹${Number(serviceForm.commission_earned || 0).toLocaleString('en-IN')}`,
-                created_by: profile?.id ?? null,
+                title: 'Service File Converted',
+                description: serviceNoteText,
+                notes: serviceNoteText,
+                created_by: profile?.id ?? user?.id ?? null,
             });
 
             await refreshData();
@@ -1925,6 +1982,12 @@ const LeadDetail = () => {
                                                                             <button 
                                                                                 key={car.id} 
                                                                                 type="button"
+                                                                                onMouseDown={(e) => {
+                                                                                    e.preventDefault();
+                                                                                    setConvertForm(f => ({ ...f, inventory_id: car.id, final_price: String(car.price || '') })); 
+                                                                                    setConvertCarSearch(`${car.year} ${car.make} ${car.model}`); 
+                                                                                    setConvertCarSearchOpen(false);
+                                                                                }}
                                                                                 onClick={() => { 
                                                                                     setConvertForm(f => ({ ...f, inventory_id: car.id, final_price: String(car.price || '') })); 
                                                                                     setConvertCarSearch(`${car.year} ${car.make} ${car.model}`); 
@@ -1932,6 +1995,7 @@ const LeadDetail = () => {
                                                                                 }}
                                                                                 className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors border-b border-slate-50 last:border-0 hover:bg-slate-50 ${isSelected ? 'bg-green-50/50' : ''}`}
                                                                             >
+
                                                                                 <div className="size-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
                                                                                     <span className="material-symbols-outlined text-slate-500 text-[15px]">directions_car</span>
                                                                                 </div>
@@ -2201,8 +2265,9 @@ const LeadDetail = () => {
                                         <>
                                             <div>
                                                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">Select Car</label>
-                                                {/* Searchable combobox */}
                                                 {(() => {
+                                                    const inventorySource = (inventory && inventory.length > 0) ? inventory : (FALLBACK_INVENTORY as any);
+                                                    const availableCars = inventorySource.filter((c: any) => c.status === 'available');
                                                     const normalizedSearch = carSearch.toLowerCase().replace(/\s/g, '');
                                                     const filteredCars = availableCars.filter((car: any) => {
                                                         if (!normalizedSearch) return true;
@@ -2239,6 +2304,12 @@ const LeadDetail = () => {
                                                                         const isAlreadyAdded = carInterests.some(i => i.inventory_id === car.id);
                                                                         return (
                                                                             <button key={car.id} type="button" disabled={isAlreadyAdded}
+                                                                                onMouseDown={(e) => {
+                                                                                    e.preventDefault();
+                                                                                    setCarInterestForm(f => ({ ...f, inventory_id: car.id }));
+                                                                                    setCarSearch(`${car.year} ${car.make} ${car.model}`);
+                                                                                    setCarSearchOpen(false);
+                                                                                }}
                                                                                 onClick={() => { setCarInterestForm(f => ({ ...f, inventory_id: car.id })); setCarSearch(`${car.year} ${car.make} ${car.model}`); setCarSearchOpen(false); }}
                                                                                 className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors border-b border-slate-50 last:border-0 ${isAlreadyAdded ? 'opacity-40 cursor-not-allowed bg-slate-50' : isSelected ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
                                                                                 <div className="size-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0"><span className="material-symbols-outlined text-slate-500 text-[15px]">directions_car</span></div>

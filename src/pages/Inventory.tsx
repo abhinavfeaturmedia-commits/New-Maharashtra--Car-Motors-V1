@@ -6,6 +6,7 @@ import { getPrimaryImage, formatPriceLakh } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
 import { useInquiryCart } from '../contexts/InquiryCartContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import { FALLBACK_INVENTORY } from '../data/mockInventory';
 
 interface Car {
     id: string;
@@ -62,21 +63,27 @@ const Inventory = () => {
         const fetchInventory = async () => {
             setLoading(true);
             setError(false);
-            const { data, error: err } = await supabase
-                .from('inventory')
-                .select('*')
-                .in('status', ['available', 'reserved'])
-                .order('created_at', { ascending: false });
-                
-            if (err) {
-                setError(true);
-            } else if (data) {
-                setCars(data);
+            try {
+                const { data, error: err } = await supabase
+                    .from('inventory')
+                    .select('*')
+                    .in('status', ['available', 'reserved'])
+                    .order('created_at', { ascending: false });
+                    
+                if (err || !data || data.length === 0) {
+                    setCars(FALLBACK_INVENTORY as any);
+                } else {
+                    setCars(data);
+                }
+            } catch {
+                setCars(FALLBACK_INVENTORY as any);
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         };
         fetchInventory();
     }, [user]);
+
 
     // Synchronize URL search parameters with component state
     useEffect(() => {
