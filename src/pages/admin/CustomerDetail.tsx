@@ -250,6 +250,13 @@ const CustomerDetail = () => {
     const [inventorySearch, setInventorySearch] = useState('');
     const [inventoryList, setInventoryList] = useState<any[]>([]);
 
+    // Origin Lead state
+    const [originLead, setOriginLead] = useState<any | null>(null);
+
+    // Document search & party role filters
+    const [docSearchQuery, setDocSearchQuery] = useState('');
+    const [docPartyRoleFilter, setDocPartyRoleFilter] = useState<'all' | 'buyer' | 'seller' | 'general'>('all');
+
     // ─── Fetch customer ───────────────────────────────────────────────────────
 
     const fetchCustomer = useCallback(async () => {
@@ -275,6 +282,19 @@ const CustomerDetail = () => {
                 date_of_birth: data.date_of_birth || '',
                 notes: data.notes || '',
             });
+
+            // Fetch matching origin lead by phone
+            if (data.phone) {
+                const { data: leadData } = await supabase
+                    .from('leads')
+                    .select('*, assigned_profile:profiles!leads_assigned_to_fkey(full_name, email)')
+                    .eq('phone', data.phone)
+                    .order('created_at', { ascending: false })
+                    .limit(1);
+                if (leadData && leadData.length > 0) {
+                    setOriginLead(leadData[0]);
+                }
+            }
         } else {
             navigate('/admin/customers');
         }
@@ -297,9 +317,83 @@ const CustomerDetail = () => {
             `)
             .or(`customer_id.eq.${id},seller_customer_id.eq.${id}`)
             .order('created_at', { ascending: false });
-        setDeals((data as CustomerDeal[]) || []);
+
+        const existingDeals = (data as CustomerDeal[]) || [];
+        const existingInventoryIds = new Set(existingDeals.map(d => d.inventory_id).filter(Boolean));
+        const existingSaleIds = new Set(existingDeals.map(d => d.sale_id).filter(Boolean));
+
+        // Auto-detect any sales for this customer not yet in customer_deals
+        const customerSales = sales.filter(s => s.customer_id === id);
+        const missingSales = customerSales.filter(s =>
+            !existingSaleIds.has(s.id) && (!s.inventory_id || !existingInventoryIds.has(s.inventory_id))
+        );
+
+        const autoDeals: CustomerDeal[] = [];
+
+        for (const sale of missingSales) {
+            const saleDateStr = sale.sale_date
+                ? new Date(sale.sale_date).toISOString().split('T')[0]
+                : new Date(sale.created_at || Date.now()).toISOString().split('T')[0];
+
+            const synthDeal: CustomerDeal = {
+                id: `auto-sale-${sale.id}`,
+                customer_id: id,
+                seller_customer_id: null,
+                inventory_id: sale.inventory_id || null,
+                lead_id: sale.lead_id || null,
+                sale_id: sale.id,
+                deal_type: sale.sale_type === 'consignment' ? 'consignment' : 'purchase',
+                deal_status: 'completed',
+                inquiry_date: saleDateStr,
+                deal_date: saleDateStr,
+                rto_date: saleDateStr,
+                delivery_date: saleDateStr,
+                handover_date: saleDateStr,
+                hypothecation_clearance_date: null,
+                total_amount: Number(sale.sale_price ?? sale.final_price ?? 0),
+                advance_paid: Number(sale.sale_price ?? sale.final_price ?? 0),
+                balance_due: sale.payment_status === 'paid' ? 0 : Number(sale.balance_amount || 0),
+                payment_mode: sale.payment_method || 'Paid',
+                notes: `Auto-synced from completed purchase (${sale.car ? `${sale.car.year || ''} ${sale.car.make} ${sale.car.model}` : 'Vehicle'}).`,
+                internal_notes: 'Auto-synchronized from Sales record',
+                created_at: sale.created_at || new Date().toISOString(),
+                car: sale.car ? { make: sale.car.make, model: sale.car.model, year: sale.car.year, registration_no: sale.car.registration_no } : null,
+                lead: null,
+            };
+            autoDeals.push(synthDeal);
+
+            // Persist to Supabase customer_deals asynchronously
+            try {
+                supabase.from('customer_deals').insert({
+                    customer_id: id,
+                    inventory_id: sale.inventory_id || null,
+                    lead_id: sale.lead_id || null,
+                    sale_id: sale.id,
+                    deal_type: sale.sale_type === 'consignment' ? 'consignment' : 'purchase',
+                    deal_status: 'completed',
+                    inquiry_date: saleDateStr,
+                    deal_date: saleDateStr,
+                    rto_date: saleDateStr,
+                    delivery_date: saleDateStr,
+                    handover_date: saleDateStr,
+                    total_amount: Number(sale.sale_price ?? sale.final_price ?? 0),
+                    advance_paid: Number(sale.sale_price ?? sale.final_price ?? 0),
+                    balance_due: sale.payment_status === 'paid' ? 0 : Number(sale.balance_amount || 0),
+                    payment_mode: sale.payment_method || 'Paid',
+                    notes: `Auto-synced from completed purchase (${sale.car ? `${sale.car.make} ${sale.car.model}` : 'Vehicle'}).`,
+                }).then(() => {});
+            } catch (e) {
+                console.warn('Auto-sync insert error:', e);
+            }
+        }
+
+        const mergedDeals = [...existingDeals, ...autoDeals].sort((a, b) =>
+            new Date(b.deal_date || b.created_at).getTime() - new Date(a.deal_date || a.created_at).getTime()
+        );
+
+        setDeals(mergedDeals);
         setDealsLoading(false);
-    }, [id]);
+    }, [id, sales]);
 
     // ─── Fetch Documents ──────────────────────────────────────────────────────
 
@@ -659,8 +753,25 @@ const CustomerDetail = () => {
         return days !== null && days <= 30;
     });
 
+    const filteredDocuments = documents.filter(doc => {
+        if (docPartyRoleFilter !== 'all' && doc.party_role !== docPartyRoleFilter) {
+            return false;
+        }
+        if (docSearchQuery.trim()) {
+            const q = docSearchQuery.toLowerCase().trim();
+            const label = (doc.doc_label || '').toLowerCase();
+            const type = getDocLabel(doc.doc_type).toLowerCase();
+            const notes = (doc.notes || '').toLowerCase();
+            const role = (doc.party_role || '').toLowerCase();
+            if (!label.includes(q) && !type.includes(q) && !notes.includes(q) && !role.includes(q)) {
+                return false;
+            }
+        }
+        return true;
+    });
+
     const documentsByDeal: Record<string, CustomerDocument[]> = {};
-    documents.forEach(doc => {
+    filteredDocuments.forEach(doc => {
         const key = doc.deal_id || 'general';
         if (!documentsByDeal[key]) documentsByDeal[key] = [];
         documentsByDeal[key].push(doc);
@@ -792,6 +903,67 @@ const CustomerDetail = () => {
                 ──────────────────────────────── */}
                 {activeTab === 'overview' && (
                     <div className="p-6 space-y-6">
+                        {/* ── Lead Origin & Conversion Journey Banner ── */}
+                        {originLead && (
+                            <div className="bg-gradient-to-r from-slate-900 via-primary-dark to-primary text-white rounded-2xl p-5 shadow-lg border border-white/10 relative overflow-hidden">
+                                <div className="absolute right-0 top-0 translate-x-4 -translate-y-4 size-32 rounded-full bg-emerald-500/10 blur-2xl pointer-events-none" />
+                                <div className="flex items-start justify-between relative z-10 flex-wrap gap-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="size-11 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-white shrink-0">
+                                            <span className="material-symbols-outlined text-2xl text-emerald-400">conversion_path</span>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                                    🌱 Converted Lead Journey
+                                                </span>
+                                                {originLead.quality && (
+                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-white capitalize">
+                                                        {originLead.quality} Priority
+                                                    </span>
+                                                )}
+                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-600/30 text-emerald-200">
+                                                    Status: {originLead.status?.toUpperCase() || 'WON'}
+                                                </span>
+                                            </div>
+                                            <h3 className="text-base font-bold text-white mt-1">Originally Enquired on {formatDate(originLead.created_at)}</h3>
+                                        </div>
+                                    </div>
+                                    <Link
+                                        to={`/admin/leads/${originLead.id}`}
+                                        className="px-4 py-2 bg-white/20 hover:bg-white text-white hover:text-primary rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 shadow-sm"
+                                    >
+                                        <span className="material-symbols-outlined text-sm">open_in_new</span> Original Lead Profile
+                                    </Link>
+                                </div>
+
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 pt-4 border-t border-white/10 relative z-10 text-xs">
+                                    <div className="bg-white/5 rounded-xl p-2.5 border border-white/5">
+                                        <span className="text-white/50 block text-[10px] uppercase font-semibold mb-0.5">Lead Source</span>
+                                        <span className="font-bold text-white capitalize">{originLead.source?.replace(/_/g, ' ') || 'Direct Walk-in'}</span>
+                                    </div>
+                                    <div className="bg-white/5 rounded-xl p-2.5 border border-white/5">
+                                        <span className="text-white/50 block text-[10px] uppercase font-semibold mb-0.5">Enquiry Type</span>
+                                        <span className="font-bold text-white uppercase">{originLead.type?.replace(/_/g, ' ') || 'Vehicle Purchase'}</span>
+                                    </div>
+                                    <div className="bg-white/5 rounded-xl p-2.5 border border-white/5">
+                                        <span className="text-white/50 block text-[10px] uppercase font-semibold mb-0.5">Assigned Staff</span>
+                                        <span className="font-bold text-white">{originLead.assigned_profile?.full_name || 'Unassigned'}</span>
+                                    </div>
+                                    <div className="bg-white/5 rounded-xl p-2.5 border border-white/5">
+                                        <span className="text-white/50 block text-[10px] uppercase font-semibold mb-0.5">Interested Model</span>
+                                        <span className="font-bold text-emerald-300">{originLead.car_make ? `${originLead.car_make} ${originLead.car_model || ''}` : 'General Enquiry'}</span>
+                                    </div>
+                                </div>
+
+                                {originLead.message && (
+                                    <p className="text-xs text-white/80 mt-3 bg-white/5 rounded-xl p-3 border border-white/10 italic">
+                                        "{originLead.message}"
+                                    </p>
+                                )}
+                            </div>
+                        )}
+
                         {/* Edit Form */}
                         {isEditing ? (
                             <form onSubmit={handleEditSave} className="space-y-4 bg-slate-50 p-5 rounded-2xl border border-slate-200">
@@ -1115,7 +1287,7 @@ const CustomerDetail = () => {
                                                 </div>
                                             </div>
 
-                                            {/* Date timeline strip */}
+                                             {/* Date timeline strip */}
                                             <div className="px-5 py-4">
                                                 <div className="flex gap-2 overflow-x-auto pb-1">
                                                     {[
@@ -1134,6 +1306,53 @@ const CustomerDetail = () => {
                                                             </p>
                                                         </div>
                                                     ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Buyer & Seller Linkage Section */}
+                                            <div className="px-5 pb-4 border-t border-slate-50 pt-3">
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5 flex items-center gap-1">
+                                                    <span className="material-symbols-outlined text-xs">group</span> Deal Parties & Legal Contact Linkage
+                                                </p>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                    {/* Buyer Card */}
+                                                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3.5 flex items-start justify-between">
+                                                        <div>
+                                                            <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wide bg-emerald-100/60 px-2 py-0.5 rounded-md inline-block mb-1">
+                                                                👤 Buyer (Purchaser)
+                                                            </span>
+                                                            <p className="text-xs font-bold text-slate-800">{customer.full_name}</p>
+                                                            <p className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
+                                                                <span className="material-symbols-outlined text-[11px]">call</span> {customer.phone}
+                                                            </p>
+                                                            {customer.address && <p className="text-[10px] text-slate-400 mt-0.5 truncate max-w-[200px]">{customer.address}</p>}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Seller Card */}
+                                                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3.5 flex items-start justify-between">
+                                                        <div>
+                                                            <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wide bg-amber-100/60 px-2 py-0.5 rounded-md inline-block mb-1">
+                                                                🏷️ Seller / Previous Owner
+                                                            </span>
+                                                            {deal.seller_customer_id ? (
+                                                                <div>
+                                                                    <p className="text-xs font-bold text-slate-800 flex items-center gap-1">
+                                                                        Seller Linked
+                                                                        <Link to={`/admin/customers/${deal.seller_customer_id}`} className="text-primary hover:underline text-[10px] font-bold">
+                                                                            [View Seller 360 Hub]
+                                                                        </Link>
+                                                                    </p>
+                                                                    <p className="text-[11px] text-slate-500 mt-0.5">Customer ID: {deal.seller_customer_id.slice(0, 8)}…</p>
+                                                                </div>
+                                                            ) : (
+                                                                <div>
+                                                                    <p className="text-xs font-bold text-slate-700">Consignment / Dealership Inventory</p>
+                                                                    <p className="text-[10px] text-slate-400 mt-0.5">Original vehicle purchase & NOC records stored in Document Vault</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -1200,6 +1419,45 @@ const CustomerDetail = () => {
                                 </Link>
                             </div>
                         )}
+
+                        {/* Filter Controls & Search */}
+                        <div className="flex items-center justify-between gap-3 bg-slate-50 p-2.5 rounded-2xl border border-slate-100 flex-wrap">
+                            <div className="flex items-center gap-1.5 overflow-x-auto pb-0">
+                                {[
+                                    { id: 'all', label: 'All Documents' },
+                                    { id: 'buyer', label: '👤 Buyer Docs' },
+                                    { id: 'seller', label: '🏷️ Seller Docs' },
+                                    { id: 'general', label: '🗂️ General / KYC' },
+                                ].map(f => (
+                                    <button
+                                        key={f.id}
+                                        onClick={() => setDocPartyRoleFilter(f.id as any)}
+                                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                                            docPartyRoleFilter === f.id
+                                                ? 'bg-white text-primary shadow-xs border border-slate-200'
+                                                : 'text-slate-500 hover:text-slate-700'
+                                        }`}
+                                    >
+                                        {f.label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 h-9 min-w-[220px]">
+                                <span className="material-symbols-outlined text-slate-400 text-base">search</span>
+                                <input
+                                    value={docSearchQuery}
+                                    onChange={e => setDocSearchQuery(e.target.value)}
+                                    placeholder="Search document name, type..."
+                                    className="bg-transparent text-xs text-primary outline-none w-full"
+                                />
+                                {docSearchQuery && (
+                                    <button onClick={() => setDocSearchQuery('')} className="material-symbols-outlined text-slate-300 text-xs hover:text-slate-500">
+                                        close
+                                    </button>
+                                )}
+                            </div>
+                        </div>
 
                         {/* Document Add Form */}
                         {isAddingDoc && (

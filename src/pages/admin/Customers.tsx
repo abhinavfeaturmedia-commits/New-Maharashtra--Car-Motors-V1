@@ -504,7 +504,6 @@ const Customers = () => {
         e.preventDefault();
         if (!addForm.full_name || !addForm.phone) return;
         setSaving(true);
-        const { supabase } = await import('../../lib/supabase');
         const { error } = await supabase.from('customers').insert({
             full_name: addForm.full_name,
             phone: addForm.phone,
@@ -645,7 +644,7 @@ const Customers = () => {
                             filtered.map((c: Customer) => {
                                 const custSales = getCustomerSales(c.id);
                                 return (
-                                    <tr key={c.id} onClick={() => openDetail(c)} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60 cursor-pointer transition-colors group">
+                                    <tr key={c.id} onClick={() => navigate(`/admin/customers/${c.id}`)} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60 cursor-pointer transition-colors group">
                                         <td className="px-5 py-3.5">
                                             <div className="flex items-center gap-2.5">
                                                 <div className="size-9 rounded-full bg-gradient-to-br from-primary to-primary-light text-white flex items-center justify-center text-sm font-bold shrink-0">
@@ -676,7 +675,10 @@ const Customers = () => {
                                         </td>
                                         <td className="px-5 py-3.5 text-xs text-slate-500 whitespace-nowrap">{formatDate(c.created_at)}</td>
                                         <td className="px-5 py-3.5">
-                                            <div className="flex gap-1">
+                                            <div className="flex items-center gap-1.5">
+                                                <Link to={`/admin/customers/${c.id}`} onClick={e => e.stopPropagation()} className="px-2.5 py-1 bg-primary/10 hover:bg-primary text-primary hover:text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1">
+                                                    <span className="material-symbols-outlined text-xs">account_box</span> 360 Hub
+                                                </Link>
                                                 <a href={`tel:${c.phone}`} className="p-1.5 hover:bg-green-50 rounded-lg" title="Call" onClick={e => e.stopPropagation()}>
                                                     <span className="material-symbols-outlined text-green-500 text-base">call</span>
                                                 </a>
