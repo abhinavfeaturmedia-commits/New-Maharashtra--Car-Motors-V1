@@ -91,24 +91,26 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 { data: clubTransactionsData },
                 { data: financeServicesData }
             ] = await Promise.all([
-                safeFetchAll(() => supabase.from('leads').select('*').order('created_at', { ascending: false })),
+                safeFetchAll(() => supabase.from('leads').select('*, assigned_profile:profiles!leads_assigned_to_fkey(full_name, avatar_url)').order('created_at', { ascending: false })),
                 safeFetchAll(() => supabase.from('customers').select('*').order('created_at', { ascending: false })),
                 safeFetchAll(() => supabase.from('inventory').select('*').order('created_at', { ascending: false })),
-                safeFetchAll(() => supabase.from('sales').select('*, customer:customers(*), car:inventory(*)').order('sale_date', { ascending: false })),
-                safeFetchAll(() => supabase.from('bookings').select('*, lead:leads(*), car:inventory(*)').order('booking_date', { ascending: false })),
-                safeFetchAll(() => supabase.from('lead_activities').select('*').order('created_at', { ascending: false })),
+                safeFetchAll(() => supabase.from('sales').select('*, customer:customers(id,full_name,phone,email), car:inventory(id,make,model,year,registration_no)').order('sale_date', { ascending: false })),
+                safeFetchAll(() => supabase.from('bookings').select('*, lead:leads(id,full_name,phone), car:inventory(id,make,model,year)').order('booking_date', { ascending: false })),
+                // Fetch lead_activities — join profiles on created_by (new) with fallback to performed_by (legacy)
+                safeFetchAll(() => supabase.from('lead_activities').select('*, creator:profiles!created_by(full_name, avatar_url)').order('created_at', { ascending: false })),
                 
-                // Keep these failsafe in case the user hasn't run the migration yet, it won't crash the app globally
-                safeFetchAll(() => supabase.from('tasks').select('*, lead:leads(*)').order('due_date', { ascending: true })),
-                safeFetchAll(() => supabase.from('follow_ups').select('*, lead:leads(*)').order('next_followup_date', { ascending: true })),
-                safeFetchAll(() => supabase.from('vehicle_expenses').select('*, car:inventory(*)').order('expense_date', { ascending: false })),
-                safeFetchAll(() => supabase.from('inspections').select('*, car:inventory(*)').order('inspection_date', { ascending: false })),
-                safeFetchAll(() => supabase.from('visits').select('*, staff:profiles!staff_id(full_name), lead:leads(*), customer:customers(*)').order('created_at', { ascending: false })),
+                // Graceful fallbacks in case of migration gaps
+                safeFetchAll(() => supabase.from('tasks').select('*, lead:leads(id,full_name,phone), assignee:profiles!assigned_to(full_name)').order('due_date', { ascending: true })),
+                safeFetchAll(() => supabase.from('follow_ups').select('*, lead:leads(id,full_name,phone)').order('created_at', { ascending: false })),
+                safeFetchAll(() => supabase.from('vehicle_expenses').select('*, car:inventory(id,make,model,year,registration_no)').order('expense_date', { ascending: false })),
+                safeFetchAll(() => supabase.from('inspections').select('*, car:inventory(id,make,model,year,registration_no)').order('inspection_date', { ascending: false })),
+                safeFetchAll(() => supabase.from('visits').select('*, staff:profiles!staff_id(full_name,avatar_url), lead:leads(id,full_name,phone), customer:customers(id,full_name,phone)').order('created_at', { ascending: false })),
                 safeFetchAll(() => supabase.from('dealership_settings').select('*')),
-                safeFetchAll(() => supabase.from('club_members').select('*, customer:customers(*)').order('created_at', { ascending: false })),
+                safeFetchAll(() => supabase.from('club_members').select('*, customer:customers(id,full_name,phone)').order('created_at', { ascending: false })),
                 safeFetchAll(() => supabase.from('club_service_exchanges').select('*, added_by_profile:profiles!added_by(full_name)').order('transaction_date', { ascending: false })),
-                safeFetchAll(() => supabase.from('finance_services').select('*, customer:customers(*), car:inventory(*)').order('created_at', { ascending: false }))
+                safeFetchAll(() => supabase.from('finance_services').select('*, customer:customers(id,full_name,phone), car:inventory(id,make,model,year)').order('created_at', { ascending: false }))
             ]);
+
 
             setLeads(leadsData || []);
             setCustomers(customersData || []);
@@ -148,13 +150,22 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useEffect(() => {
         refreshData();
 
-        // Subscribe to real-time updates for leads and bookings
+        // Subscribe to real-time updates for all critical tables
         const channel = supabase
             .channel('realtime:global_updates')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, () => {
                 refreshData();
             })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'sales' }, () => {
+                refreshData();
+            })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => {
+                refreshData();
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, () => {
+                refreshData();
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, () => {
                 refreshData();
             })
             .subscribe();

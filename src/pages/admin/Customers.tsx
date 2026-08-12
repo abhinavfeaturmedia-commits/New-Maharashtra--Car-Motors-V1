@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
 import { useNotifications } from '../../contexts/NotificationContext';
@@ -55,6 +55,7 @@ const Customers = () => {
     const { isAdmin, profile } = useAuth();
     const { addNotification } = useNotifications();
     const { customers, sales, loading, refreshData } = useData();
+    const navigate = useNavigate();
     const [search, setSearch] = useState('');
     const [detail, setDetail] = useState<Customer | null>(null);
     const [isAdding, setIsAdding] = useState(false);
@@ -514,6 +515,9 @@ const Customers = () => {
                     <p className="text-slate-500 text-sm">{loading ? '...' : customers.length} verified customers in your database.</p>
                 </div>
                 <div className="flex gap-2">
+                    <Link to="/admin/customer-alerts" className="h-10 px-4 bg-red-50 text-red-600 font-bold rounded-xl text-sm flex items-center justify-center gap-2 hover:bg-red-100 transition-colors border border-red-200">
+                        <span className="material-symbols-outlined text-lg">warning</span> Expiry Alerts
+                    </Link>
                     <button onClick={() => setIsAdding(true)} className="h-10 px-5 bg-primary text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 hover:bg-primary-light transition-colors shadow-sm">
                         <span className="material-symbols-outlined text-lg">person_add</span> Add Customer
                     </button>
@@ -559,7 +563,7 @@ const Customers = () => {
                             filtered.map((c: Customer) => {
                                 const custSales = getCustomerSales(c.id);
                                 return (
-                                    <tr key={c.id} onClick={() => openDetail(c)} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60 cursor-pointer transition-colors">
+                                    <tr key={c.id} onClick={() => navigate(`/admin/customers/${c.id}`)} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60 cursor-pointer transition-colors">
                                         <td className="px-5 py-3.5">
                                             <div className="flex items-center gap-2.5">
                                                 <div className="size-9 rounded-full bg-gradient-to-br from-primary to-primary-light text-white flex items-center justify-center text-sm font-bold shrink-0">

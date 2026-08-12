@@ -916,10 +916,14 @@ const LeadDetail = () => {
             // ── 4. Insert Sale (atomic — car NOT marked sold yet) ────────────────
             const { error: saleErr } = await supabase.from('sales').insert({
                 customer_id: customerId,
+                customer_name: lead?.full_name || '',
+                customer_phone: lead?.phone || '',
+                customer_email: lead?.email || null,
                 inventory_id: convertForm.inventory_id,
                 lead_id: lead?.id,
                 sold_by: profile?.id,
                 sale_date: new Date().toISOString().split('T')[0],
+                sale_price: salePrice,
                 final_price: salePrice,
                 sale_type: saleType,
                 profit: profit,
@@ -931,7 +935,7 @@ const LeadDetail = () => {
                     ? `Consignment sale — buyer paid ${carData.consignment_owner_name || 'owner'} directly. Swami fee: ₹${profit.toLocaleString('en-IN')}`
                     : 'Converted from lead workflow'
             });
-            if (saleErr) throw new Error('Failed to log sale record.');
+            if (saleErr) throw new Error('Failed to log sale record. ' + saleErr.message);
 
             // ── 5. Now mark car as sold (only after sale record confirmed) ───────
             await supabase.from('inventory').update({ status: 'sold' }).eq('id', convertForm.inventory_id);

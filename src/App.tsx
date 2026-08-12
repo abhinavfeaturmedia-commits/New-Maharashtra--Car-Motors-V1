@@ -42,6 +42,8 @@ import StaffAccountabilityDashboard from './pages/admin/StaffAccountabilityDashb
 
 // Admin — CRM
 import Customers from './pages/admin/Customers';
+import CustomerDetail from './pages/admin/CustomerDetail';
+import CustomerAlerts from './pages/admin/CustomerAlerts';
 import FollowUps from './pages/admin/FollowUps';
 import LeadSources from './pages/admin/LeadSources';
 
@@ -130,6 +132,8 @@ const App: React.FC = () => {
 
                             {/* CRM */}
                             <Route path="customers" element={<ModuleRoute module="crm"><Customers /></ModuleRoute>} />
+                            <Route path="customers/:id" element={<ModuleRoute module="crm"><CustomerDetail /></ModuleRoute>} />
+                            <Route path="customer-alerts" element={<ModuleRoute module="crm"><CustomerAlerts /></ModuleRoute>} />
                             <Route path="follow-ups" element={<ModuleRoute module="crm"><FollowUps /></ModuleRoute>} />
                             <Route path="lead-sources" element={<ModuleRoute module="crm"><LeadSources /></ModuleRoute>} />
 
