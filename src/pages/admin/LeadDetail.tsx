@@ -748,6 +748,25 @@ const LeadDetail = () => {
         }
     };
 
+    // ─── Linked Sales State ───────────────────────────────────────────────────
+    const [linkedSales, setLinkedSales] = useState<any[]>([]);
+
+    const fetchSales = useCallback(async () => {
+        if (!id) return;
+        try {
+            const { data, error } = await supabase
+                .from('sales')
+                .select('*, car:inventory!sales_inventory_id_fkey(*)')
+                .or(`lead_id.eq.${id}`);
+
+            if (!error && data) {
+                setLinkedSales(data);
+            }
+        } catch (err) {
+            console.error("Error fetching sales for lead:", err);
+        }
+    }, [id]);
+
     useEffect(() => {
         const fetchLinkedItems = async () => {
             try {
@@ -782,8 +801,9 @@ const LeadDetail = () => {
             fetchStaff();
             fetchVisits();
             fetchLinkedItems();
+            fetchSales();
         }
-    }, [id, fetchFollowUps, fetchCarInterests, fetchStaff, fetchVisits]);
+    }, [id, fetchFollowUps, fetchCarInterests, fetchStaff, fetchVisits, fetchSales]);
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -1540,6 +1560,75 @@ const LeadDetail = () => {
                             </div>
                         </div>
 
+                        {/* ── Vehicle Purchased Banner Card ── */}
+                        {linkedSales.length > 0 && (
+                            <div className="bg-gradient-to-br from-emerald-900 via-primary to-emerald-950 text-white rounded-2xl p-6 shadow-xl relative overflow-hidden border border-emerald-500/30 animate-fadeIn">
+                                <div className="absolute -right-8 -bottom-8 opacity-10 pointer-events-none">
+                                    <span className="material-symbols-outlined text-[180px]">verified</span>
+                                </div>
+                                <div className="flex items-center justify-between mb-4 flex-wrap gap-2 relative z-10">
+                                    <div className="flex items-center gap-2">
+                                        <span className="py-1 px-3 bg-emerald-400/20 text-emerald-300 font-bold text-xs rounded-full border border-emerald-400/30 uppercase tracking-wider flex items-center gap-1.5 shadow-xs">
+                                            <span className="material-symbols-outlined text-sm">verified</span> Vehicle Purchased & Deal Closed
+                                        </span>
+                                        <span className="text-xs font-semibold text-emerald-200/80">
+                                            Purchased on {new Date(linkedSales[0].sale_date || linkedSales[0].created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Link to="/admin/sales" className="text-xs font-bold bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-xl border border-white/20 flex items-center gap-1 transition-all">
+                                            <span className="material-symbols-outlined text-sm">point_of_sale</span> View Sale Ledger
+                                        </Link>
+                                        <Link to="/admin/customers" className="text-xs font-bold bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 px-3 py-1.5 rounded-xl border border-emerald-400/30 flex items-center gap-1 transition-all">
+                                            <span className="material-symbols-outlined text-sm">person</span> Customer 360 CRM
+                                        </Link>
+                                    </div>
+                                </div>
+
+                                <div className="grid md:grid-cols-3 gap-4 bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/10 relative z-10">
+                                    {/* Vehicle Details */}
+                                    <div className="md:col-span-2 flex items-start gap-4">
+                                        {linkedSales[0].car?.thumbnail ? (
+                                            <img src={linkedSales[0].car.thumbnail} alt="" className="size-20 rounded-xl object-cover border border-white/20 shrink-0 shadow-md" />
+                                        ) : (
+                                            <div className="size-20 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0">
+                                                <span className="material-symbols-outlined text-white text-3xl">directions_car</span>
+                                            </div>
+                                        )}
+                                        <div className="space-y-1">
+                                            <h3 className="text-lg font-black text-white font-display">
+                                                {linkedSales[0].car?.year || ''} {linkedSales[0].car?.make} {linkedSales[0].car?.model} {linkedSales[0].car?.variant || ''}
+                                            </h3>
+                                            <div className="flex flex-wrap items-center gap-2 text-xs text-emerald-100">
+                                                {linkedSales[0].car?.fuel_type && <span className="bg-white/10 px-2 py-0.5 rounded-md font-medium">{linkedSales[0].car.fuel_type}</span>}
+                                                {linkedSales[0].car?.transmission && <span className="bg-white/10 px-2 py-0.5 rounded-md font-medium">{linkedSales[0].car.transmission}</span>}
+                                                {linkedSales[0].car?.color && <span className="bg-white/10 px-2 py-0.5 rounded-md font-medium">{linkedSales[0].car.color}</span>}
+                                                {linkedSales[0].car?.registration_no && (
+                                                    <span className="bg-emerald-400/20 text-emerald-200 font-mono font-bold px-2 py-0.5 rounded-md border border-emerald-400/30">
+                                                        Reg: {linkedSales[0].car.registration_no}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {linkedSales[0].notes && (
+                                                <p className="text-[11px] text-emerald-200/80 italic mt-1 line-clamp-1">"{linkedSales[0].notes}"</p>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Financial Breakdown */}
+                                    <div className="flex flex-col justify-center items-start md:items-end border-t md:border-t-0 md:border-l border-white/10 pt-3 md:pt-0 md:pl-4">
+                                        <p className="text-[10px] uppercase tracking-wider text-emerald-300 font-bold">Final Sale Price</p>
+                                        <p className="text-2xl font-black text-white font-display">
+                                            ₹{((Number(linkedSales[0].sale_price ?? linkedSales[0].final_price) || 0) / 100000).toFixed(2)} Lakh
+                                        </p>
+                                        <span className="mt-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-400/30 text-emerald-200 uppercase tracking-wider border border-emerald-400/40 flex items-center gap-1">
+                                            <span className="material-symbols-outlined text-xs">check_circle</span> Payment: {linkedSales[0].payment_status || 'Paid'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Vehicle/Inquiry Info */}
                         <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[var(--shadow-card)]">
                             <h3 className="font-bold text-primary font-display mb-4 flex items-center gap-2">
@@ -2219,7 +2308,6 @@ const LeadDetail = () => {
                                 </form>
                             )}
 
-
                             {/* Interests List */}
                             <div className="divide-y divide-slate-50 max-h-[320px] overflow-y-auto">
                                 {carInterestsLoading ? (
@@ -2230,58 +2318,67 @@ const LeadDetail = () => {
                                         <p className="text-xs text-slate-400">No car interests tracked yet.</p>
                                         <p className="text-[10px] text-slate-300 mt-0.5">Click "Add Car" to record interest.</p>
                                     </div>
-                                ) : carInterests.map(interest => (
-                                    <div key={interest.id} className="px-4 py-3 flex items-start gap-3 hover:bg-slate-50/60 transition-colors">
-                                        <div className={`size-12 rounded-xl overflow-hidden shrink-0 flex items-center justify-center ${interest.is_wishlist ? 'bg-purple-100' : 'bg-slate-100'}`}>
-                                            {!interest.is_wishlist && interest.car?.thumbnail ? (
-                                                <img src={interest.car.thumbnail} alt="" className="w-full h-full object-cover" />
-                                            ) : (
-                                                <span className={`material-symbols-outlined text-xl ${interest.is_wishlist ? 'text-purple-400' : 'text-slate-300'}`}>{interest.is_wishlist ? 'search' : 'directions_car'}</span>
-                                            )}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                                                <p className="text-xs font-bold text-primary truncate">
-                                                    {interest.is_wishlist
-                                                        ? `${interest.custom_year ? interest.custom_year + ' ' : ''}${interest.custom_make} ${interest.custom_model}${interest.custom_variant ? ' ' + interest.custom_variant : ''}`
-                                                        : `${interest.car?.year} ${interest.car?.make} ${interest.car?.model}`
-                                                    }
-                                                </p>
-                                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
-                                                    interest.interest_level === 'hot' ? 'bg-red-100 text-red-600' :
-                                                    interest.interest_level === 'warm' ? 'bg-amber-100 text-amber-700' :
-                                                    'bg-slate-100 text-slate-500'
-                                                }`}>
-                                                    {interest.interest_level === 'hot' ? '🔥' : interest.interest_level === 'warm' ? '⭐' : '❄️'} {interest.interest_level}
-                                                </span>
-                                                {interest.is_wishlist && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-600">🔍 Sourcing</span>}
+                                ) : carInterests.map(interest => {
+                                    const isPurchased = linkedSales.some(s => s.inventory_id === interest.inventory_id || s.car_id === interest.inventory_id);
+                                    return (
+                                        <div key={interest.id} className={`px-4 py-3 flex items-start gap-3 transition-colors ${isPurchased ? 'bg-emerald-50/70 border-l-4 border-emerald-500' : 'hover:bg-slate-50/60'}`}>
+                                            <div className={`size-12 rounded-xl overflow-hidden shrink-0 flex items-center justify-center ${interest.is_wishlist ? 'bg-purple-100' : 'bg-slate-100'}`}>
+                                                {!interest.is_wishlist && interest.car?.thumbnail ? (
+                                                    <img src={interest.car.thumbnail} alt="" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <span className={`material-symbols-outlined text-xl ${interest.is_wishlist ? 'text-purple-400' : 'text-slate-300'}`}>{interest.is_wishlist ? 'search' : 'directions_car'}</span>
+                                                )}
                                             </div>
-                                            {interest.is_wishlist ? (
-                                                <p className="text-[11px] text-purple-600 font-medium">{[interest.custom_color, 'Not in stock'].filter(Boolean).join(' · ')}</p>
-                                            ) : (
-                                                <p className="text-[11px] font-semibold text-green-700">₹{interest.car?.price?.toLocaleString('en-IN')}</p>
-                                            )}
-                                            {interest.notes && (<p className="text-[10px] text-slate-500 mt-0.5 truncate">{interest.notes}</p>)}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                                                    <p className="text-xs font-bold text-primary truncate">
+                                                        {interest.is_wishlist
+                                                            ? `${interest.custom_year ? interest.custom_year + ' ' : ''}${interest.custom_make} ${interest.custom_model}${interest.custom_variant ? ' ' + interest.custom_variant : ''}`
+                                                            : `${interest.car?.year} ${interest.car?.make} ${interest.car?.model}`
+                                                        }
+                                                    </p>
+                                                    {isPurchased ? (
+                                                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 bg-emerald-600 text-white border border-emerald-700 flex items-center gap-0.5 shadow-xs">
+                                                            <span className="material-symbols-outlined text-[11px]">verified</span> 🎉 PURCHASED
+                                                        </span>
+                                                    ) : (
+                                                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
+                                                            interest.interest_level === 'hot' ? 'bg-red-100 text-red-600' :
+                                                            interest.interest_level === 'warm' ? 'bg-amber-100 text-amber-700' :
+                                                            'bg-slate-100 text-slate-500'
+                                                        }`}>
+                                                            {interest.interest_level === 'hot' ? '🔥' : interest.interest_level === 'warm' ? '⭐' : '❄️'} {interest.interest_level}
+                                                        </span>
+                                                    )}
+                                                    {interest.is_wishlist && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-600">🔍 Sourcing</span>}
+                                                </div>
+                                                {interest.is_wishlist ? (
+                                                    <p className="text-[11px] text-purple-600 font-medium">{[interest.custom_color, 'Not in stock'].filter(Boolean).join(' · ')}</p>
+                                                ) : (
+                                                    <p className="text-[11px] font-semibold text-green-700">₹{interest.car?.price?.toLocaleString('en-IN')}</p>
+                                                )}
+                                                {interest.notes && (<p className="text-[10px] text-slate-500 mt-0.5 truncate">{interest.notes}</p>)}
+                                            </div>
+                                            <div className="flex items-center gap-1 shrink-0">
+                                                {interest.is_wishlist && (
+                                                    <Link
+                                                        to={`/admin/inventory?makes=${encodeURIComponent(interest.custom_make || '')}&models=${encodeURIComponent(interest.custom_model || '')}`}
+                                                        className="size-7 flex items-center justify-center rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 hover:text-purple-700 transition-colors"
+                                                        title="Find matches in current inventory"
+                                                    >
+                                                        <span className="material-symbols-outlined text-[16px]">search</span>
+                                                    </Link>
+                                                )}
+                                                {canEdit && (
+                                                    <button onClick={() => handleRemoveCarInterest(interest.id)} title="Remove"
+                                                        className="size-7 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-red-100 hover:text-red-500 text-slate-400 transition-colors">
+                                                        <span className="material-symbols-outlined text-[14px]">close</span>
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-1 shrink-0">
-                                            {interest.is_wishlist && (
-                                                <Link
-                                                    to={`/admin/inventory?makes=${encodeURIComponent(interest.custom_make || '')}&models=${encodeURIComponent(interest.custom_model || '')}`}
-                                                    className="size-7 flex items-center justify-center rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 hover:text-purple-700 transition-colors"
-                                                    title="Find matches in current inventory"
-                                                >
-                                                    <span className="material-symbols-outlined text-[16px]">search</span>
-                                                </Link>
-                                            )}
-                                            {canEdit && (
-                                                <button onClick={() => handleRemoveCarInterest(interest.id)} title="Remove"
-                                                    className="size-7 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-red-100 hover:text-red-500 text-slate-400 transition-colors">
-                                                    <span className="material-symbols-outlined text-[14px]">close</span>
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
 

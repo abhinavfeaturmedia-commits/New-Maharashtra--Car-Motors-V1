@@ -373,17 +373,39 @@ const Customers = () => {
         return map;
     }, [sales]);
 
+    // ─── Filter Tabs & Summary KPIs ──────────────────────────────────────────
+    const [tabFilter, setTabFilter] = useState<'all' | 'buyers' | 'prospects'>('all');
+
+    const totalPurchasesVolume = useMemo(() => {
+        return sales.reduce((sum, s) => sum + (Number(s.sale_price ?? s.final_price) || 0), 0);
+    }, [sales]);
+
+    const activeBuyersCount = useMemo(() => {
+        const buyerIds = new Set(sales.map(s => s.customer_id).filter(Boolean));
+        return customers.filter(c => buyerIds.has(c.id)).length;
+    }, [customers, sales]);
+
     const filtered = useMemo(() => {
         const q = search.toLowerCase().trim();
-        if (!q) return customers;
+        let list = customers;
+
+        if (tabFilter === 'buyers') {
+            const buyerIds = new Set(sales.map(s => s.customer_id).filter(Boolean));
+            list = list.filter(c => buyerIds.has(c.id));
+        } else if (tabFilter === 'prospects') {
+            const buyerIds = new Set(sales.map(s => s.customer_id).filter(Boolean));
+            list = list.filter(c => !buyerIds.has(c.id));
+        }
+
+        if (!q) return list;
 
         // If RPC results are ready, use them as primary filter (searches relations deeply)
         if (rpcMatchIds !== null) {
-            return customers.filter(c => rpcMatchIds.has(c.id));
+            return list.filter(c => rpcMatchIds.has(c.id));
         }
 
         // Instant local filter while RPC loads (covers all direct customer fields + car lookup maps)
-        return customers.filter(c => {
+        return list.filter(c => {
             // 1. Standard personal fields (expanded)
             if ([
                 c.full_name, c.phone, c.email, c.city,
@@ -410,7 +432,7 @@ const Customers = () => {
                 `${car.make} ${car.model}`.includes(q)
             );
         });
-    }, [customers, search, rpcMatchIds, customerCarMap, customerCarInterestMap]);
+    }, [customers, sales, tabFilter, search, rpcMatchIds, customerCarMap, customerCarInterestMap]);
 
     const formatDate = (dateStr: string | null) => {
         if (!dateStr) return '—';
@@ -509,29 +531,89 @@ const Customers = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-black text-primary font-display">Customer Directory</h1>
                     <p className="text-slate-500 text-sm">{loading ? '...' : customers.length} verified customers in your database.</p>
                 </div>
-                <div className="flex gap-2">
-                    <Link to="/admin/customer-alerts" className="h-10 px-4 bg-red-50 text-red-600 font-bold rounded-xl text-sm flex items-center justify-center gap-2 hover:bg-red-100 transition-colors border border-red-200">
-                        <span className="material-symbols-outlined text-lg">warning</span> Expiry Alerts
+                <div className="flex flex-wrap gap-2">
+                    <Link to="/admin/sales" className="h-10 px-3.5 bg-green-50 text-green-700 font-bold rounded-xl text-xs flex items-center gap-1.5 hover:bg-green-100 transition-colors border border-green-200">
+                        <span className="material-symbols-outlined text-base">point_of_sale</span> Sales
                     </Link>
-                    <button onClick={() => setIsAdding(true)} className="h-10 px-5 bg-primary text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 hover:bg-primary-light transition-colors shadow-sm">
-                        <span className="material-symbols-outlined text-lg">person_add</span> Add Customer
+                    <Link to="/admin/leads" className="h-10 px-3.5 bg-purple-50 text-purple-700 font-bold rounded-xl text-xs flex items-center gap-1.5 hover:bg-purple-100 transition-colors border border-purple-200">
+                        <span className="material-symbols-outlined text-base">person_search</span> Leads
+                    </Link>
+                    <Link to="/admin/customer-alerts" className="h-10 px-3.5 bg-red-50 text-red-600 font-bold rounded-xl text-xs flex items-center gap-1.5 hover:bg-red-100 transition-colors border border-red-200">
+                        <span className="material-symbols-outlined text-base">warning</span> Expiry Alerts
+                    </Link>
+                    <button onClick={() => setIsAdding(true)} className="h-10 px-4 bg-primary text-white font-bold rounded-xl text-xs flex items-center gap-1.5 hover:bg-primary-light transition-colors shadow-sm">
+                        <span className="material-symbols-outlined text-base">person_add</span> Add Customer
                     </button>
                     <button onClick={refreshData} className="h-10 w-10 flex items-center justify-center border border-slate-200 rounded-xl text-slate-500 hover:bg-slate-50 transition-colors" title="Refresh">
-                        <span className="material-symbols-outlined text-lg">refresh</span>
+                        <span className="material-symbols-outlined text-base">refresh</span>
                     </button>
                 </div>
             </div>
 
-            {/* Search */}
-            <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 h-10 w-full max-w-lg">
-                <span className="material-symbols-outlined text-slate-400 text-lg">search</span>
-                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, phone, email, city, car brand or reg. no…" className="bg-transparent text-sm text-primary outline-none w-full" />
-                {search && <button onClick={() => setSearch('')} className="material-symbols-outlined text-slate-300 text-base hover:text-slate-500">close</button>}
+            {/* CRM Summary KPI Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-[var(--shadow-card)]">
+                    <div className="size-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-2">
+                        <span className="material-symbols-outlined text-lg">groups</span>
+                    </div>
+                    <p className="text-xl font-black text-primary font-display">{customers.length}</p>
+                    <p className="text-xs text-slate-400 font-medium">Total Directory</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-[var(--shadow-card)]">
+                    <div className="size-9 rounded-xl bg-green-50 text-green-600 flex items-center justify-center mb-2">
+                        <span className="material-symbols-outlined text-lg">verified</span>
+                    </div>
+                    <p className="text-xl font-black text-primary font-display">{activeBuyersCount}</p>
+                    <p className="text-xs text-slate-400 font-medium">Verified Buyers</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-[var(--shadow-card)]">
+                    <div className="size-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-2">
+                        <span className="material-symbols-outlined text-lg">payments</span>
+                    </div>
+                    <p className="text-xl font-black text-primary font-display">{formatCurrency(totalPurchasesVolume)}</p>
+                    <p className="text-xs text-slate-400 font-medium">Lifetime LTV Volume</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-[var(--shadow-card)]">
+                    <div className="size-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center mb-2">
+                        <span className="material-symbols-outlined text-lg">person_search</span>
+                    </div>
+                    <p className="text-xl font-black text-primary font-display">{customers.length - activeBuyersCount}</p>
+                    <p className="text-xs text-slate-400 font-medium">Active Prospects</p>
+                </div>
+            </div>
+
+            {/* Filter Tabs & Search */}
+            <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+                <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
+                    {[
+                        { id: 'all', label: 'All Customers', count: customers.length },
+                        { id: 'buyers', label: 'Buyers Only', count: activeBuyersCount },
+                        { id: 'prospects', label: 'Prospects', count: customers.length - activeBuyersCount },
+                    ].map(t => (
+                        <button
+                            key={t.id}
+                            onClick={() => setTabFilter(t.id as any)}
+                            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                tabFilter === t.id
+                                    ? 'bg-white text-primary shadow-xs'
+                                    : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                        >
+                            {t.label} ({t.count})
+                        </button>
+                    ))}
+                </div>
+
+                <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 h-10 w-full max-w-md">
+                    <span className="material-symbols-outlined text-slate-400 text-lg">search</span>
+                    <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, phone, email, city, car brand or reg. no…" className="bg-transparent text-sm text-primary outline-none w-full" />
+                    {search && <button onClick={() => setSearch('')} className="material-symbols-outlined text-slate-300 text-base hover:text-slate-500">close</button>}
+                </div>
             </div>
 
             {/* Table */}
@@ -563,14 +645,17 @@ const Customers = () => {
                             filtered.map((c: Customer) => {
                                 const custSales = getCustomerSales(c.id);
                                 return (
-                                    <tr key={c.id} onClick={() => navigate(`/admin/customers/${c.id}`)} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60 cursor-pointer transition-colors">
+                                    <tr key={c.id} onClick={() => openDetail(c)} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60 cursor-pointer transition-colors group">
                                         <td className="px-5 py-3.5">
                                             <div className="flex items-center gap-2.5">
                                                 <div className="size-9 rounded-full bg-gradient-to-br from-primary to-primary-light text-white flex items-center justify-center text-sm font-bold shrink-0">
                                                     {c.full_name?.charAt(0).toUpperCase() || 'U'}
                                                 </div>
                                                 <div>
-                                                    <p className="text-sm font-semibold text-primary"><HighlightText text={c.full_name} highlight={search} /></p>
+                                                    <p className="text-sm font-semibold text-primary group-hover:text-accent transition-colors flex items-center gap-1">
+                                                        <HighlightText text={c.full_name} highlight={search} />
+                                                        <span className="material-symbols-outlined text-xs opacity-0 group-hover:opacity-100 transition-opacity">open_in_new</span>
+                                                    </p>
                                                     {c.occupation && <p className="text-[10px] text-slate-400">{c.occupation}</p>}
                                                 </div>
                                             </div>
@@ -579,7 +664,7 @@ const Customers = () => {
                                             <p className="text-sm font-medium text-slate-700"><HighlightText text={c.phone} highlight={search} /></p>
                                             {c.email && <p className="text-[10px] text-slate-400 truncate max-w-[160px]"><HighlightText text={c.email} highlight={search} /></p>}
                                         </td>
-                                        <td className="px-5 py-3.5 text-sm text-slate-600"><HighlightText text={c.city || '—'} highlight={search} /></td>
+                                        <td className="px-5 py-3.5 text-sm text-slate-600"><HighlightText text={c.city || 'Kolhapur'} highlight={search} /></td>
                                         <td className="px-5 py-3.5">
                                             {custSales.length > 0 ? (
                                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-green-50 text-green-700 uppercase tracking-wide">
@@ -595,7 +680,7 @@ const Customers = () => {
                                                 <a href={`tel:${c.phone}`} className="p-1.5 hover:bg-green-50 rounded-lg" title="Call" onClick={e => e.stopPropagation()}>
                                                     <span className="material-symbols-outlined text-green-500 text-base">call</span>
                                                 </a>
-                                        <a href={`https://wa.me/91${(c.whatsapp_number || c.phone).replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="p-1.5 hover:bg-slate-100 rounded-lg" title="WhatsApp" onClick={e => e.stopPropagation()}>
+                                                <a href={`https://wa.me/91${(c.whatsapp_number || c.phone).replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="p-1.5 hover:bg-slate-100 rounded-lg" title="WhatsApp" onClick={e => e.stopPropagation()}>
                                                     <span className="material-symbols-outlined text-slate-400 text-base">chat</span>
                                                 </a>
                                             </div>
