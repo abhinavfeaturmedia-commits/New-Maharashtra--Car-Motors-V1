@@ -53,16 +53,12 @@ const NAV_GROUPS: NavGroup[] = [
         items: [
             { name: 'Customers', href: '/admin/customers', icon: 'contacts', module: 'crm' },
             { name: 'Follow-Ups', href: '/admin/follow-ups', icon: 'notifications_active', module: 'crm' },
-            { name: 'Visits', href: '/admin/visits', icon: 'directions_walk', module: 'crm' },
-            { name: 'Club Members', href: '/admin/club-members', icon: 'card_membership', module: 'crm' },
             { name: 'Lead Sources', href: '/admin/lead-sources', icon: 'hub', module: 'crm' },
         ],
     },
     {
         label: 'Operations',
         items: [
-            { name: 'Inspections', href: '/admin/inspections', icon: 'checklist', module: 'operations' },
-            { name: 'Price History', href: '/admin/price-history', icon: 'trending_up', module: 'operations' },
             { name: 'Expenses', href: '/admin/expenses', icon: 'receipt_long', module: 'operations' },
             { name: 'Share Logs', href: '/admin/share-logs', icon: 'share', module: 'operations' },
             { name: 'Shared Catalogs', href: '/admin/shared-catalogs', icon: 'folder_shared', module: 'operations' },
