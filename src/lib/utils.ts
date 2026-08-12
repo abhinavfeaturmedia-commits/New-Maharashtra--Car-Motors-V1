@@ -33,7 +33,7 @@ export const getPrimaryImage = (images: string[] | null | undefined): string => 
 export const resolveImage = (img: string | null | undefined): string => {
     if (!img) return 'https://placehold.co/800x500/e2e8f0/94a3b8?text=No+Photo';
     if (img.startsWith('http')) return img;
-    const base = (import.meta.env.VITE_SUPABASE_URL as string) || 'https://missing-url.supabase.co';
+    const base = (import.meta.env.VITE_SUPABASE_URL as string) || 'https://sxshzxbkjsrruqmrwkfb.supabase.co';
     return `${base}/storage/v1/object/public/car-images/${img}`;
 };
 
