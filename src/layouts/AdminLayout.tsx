@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, useLocation, Link, useNavigate } from 'react-router-dom';
-import { Menu, X, Bell, Plus, ChevronDown, LogOut, Home, Target, Phone, TrendingUp, BarChart2 } from 'lucide-react';
+import { Menu, X, Bell, Plus, ChevronDown, LogOut, Home, Target, Phone, TrendingUp, BarChart2, Users, Car } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '../contexts/AuthContext';
 import { DataProvider, useData } from '../contexts/DataContext';
@@ -97,6 +97,21 @@ const NAV_GROUPS: NavGroup[] = [
             { name: 'Settings', href: '/admin/settings', icon: 'settings', module: 'settings' },
         ],
     },
+];
+
+// ─── Owner Mode: Simplified 5-item flat nav ──────────────────────────────────
+interface OwnerNavItem {
+    name: string;
+    href: string;
+    icon: string;
+    desc: string;
+}
+const OWNER_NAV: OwnerNavItem[] = [
+    { name: 'Home',           href: '/admin',           icon: 'home',           desc: 'Overview of your business' },
+    { name: 'My Cars',        href: '/admin/inventory', icon: 'directions_car', desc: 'Add & manage vehicles' },
+    { name: 'My Customers',   href: '/admin/people',    icon: 'people',         desc: 'Buyers, sellers & history' },
+    { name: 'Sales & Income', href: '/admin/sales',     icon: 'payments',       desc: 'Deals closed & earnings' },
+    { name: 'Settings',       href: '/admin/settings',  icon: 'settings',       desc: 'Preferences & account' },
 ];
 
 // ─── Notification Bell Dropdown ──────────────────────────────────────────────
@@ -321,7 +336,7 @@ const AdminLayout: React.FC = () => {
     const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
     const location = useLocation();
     const navigate = useNavigate();
-    const { profile, signOut, isAdmin, hasPermission } = useAuth();
+    const { profile, signOut, isAdmin, isOwner, hasPermission } = useAuth();
 
     // Filter nav groups based on permissions for staff users
     const visibleNavGroups = NAV_GROUPS.map(group => ({
@@ -379,8 +394,8 @@ const AdminLayout: React.FC = () => {
                             <span className="material-symbols-outlined text-lg">directions_car</span>
                         </div>
                         <div>
-                            <p className="text-sm font-bold text-primary font-display">Maharashtra Motors <span className="font-serif-italic font-normal text-amber-600">Admin</span></p>
-                            <p className="text-[10px] text-slate-400">Pune Hub</p>
+                            <p className="text-sm font-bold text-primary font-display">Maharashtra Motors <span className="font-serif-italic font-normal text-amber-600">{isOwner ? 'Owner' : 'Admin'}</span></p>
+                            <p className="text-[10px] text-slate-400">{isOwner ? 'Business Dashboard' : 'Pune Hub'}</p>
                         </div>
                     </Link>
                     <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-slate-400 hover:text-slate-600">
@@ -391,62 +406,117 @@ const AdminLayout: React.FC = () => {
                 {/* Navigation */}
                 <nav className="flex-1 py-3 px-3 overflow-y-auto flex flex-col min-h-0">
                     <div className="flex-1">
-                        {visibleNavGroups.map(group => {
-                            const isOpen = !collapsed[group.label] || (activeGroup?.label === group.label);
-                            const hasActive = group.items.some(i => isNavActive(i.href));
+                        {isOwner ? (
+                            /* ── OWNER MODE: flat, large, plain-language nav ── */
+                            <div className="space-y-1 pt-2">
+                                {OWNER_NAV.map(item => {
+                                    const active = item.href === '/admin'
+                                        ? location.pathname === '/admin'
+                                        : location.pathname.startsWith(item.href);
+                                    return (
+                                        <Link
+                                            key={item.href}
+                                            to={item.href}
+                                            onClick={() => setSidebarOpen(false)}
+                                            className={clsx(
+                                                'flex items-center gap-3 px-3 py-3 rounded-2xl transition-all duration-200',
+                                                active
+                                                    ? 'bg-primary text-white shadow-md shadow-primary/20'
+                                                    : 'text-slate-600 hover:bg-slate-50 hover:text-primary'
+                                            )}
+                                        >
+                                            <div className={clsx(
+                                                'size-9 rounded-xl flex items-center justify-center shrink-0',
+                                                active ? 'bg-white/20' : 'bg-slate-100'
+                                            )}>
+                                                <span className={clsx('material-symbols-outlined text-[20px]', active ? 'text-white' : 'text-slate-500')}>{item.icon}</span>
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className={clsx('text-sm font-bold', active ? 'text-white' : 'text-primary')}>{item.name}</p>
+                                                <p className={clsx('text-[10px] truncate', active ? 'text-white/70' : 'text-slate-400')}>{item.desc}</p>
+                                            </div>
+                                        </Link>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            /* ── STAFF/ADMIN MODE: grouped nav ── */
+                            visibleNavGroups.map(group => {
+                                const isOpen = !collapsed[group.label] || (activeGroup?.label === group.label);
+                                const hasActive = group.items.some(i => isNavActive(i.href));
 
-                            return (
-                                <div key={group.label} className="mb-1">
-                                    <button
-                                        onClick={() => toggleGroup(group.label)}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider hover:text-slate-600 transition-colors"
-                                    >
-                                        <span className={hasActive ? 'text-primary' : ''}>{group.label}</span>
-                                        <ChevronDown size={12} className={clsx('transition-transform', isOpen ? '' : '-rotate-90')} />
-                                    </button>
+                                return (
+                                    <div key={group.label} className="mb-1">
+                                        <button
+                                            onClick={() => toggleGroup(group.label)}
+                                            className="w-full flex items-center justify-between px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider hover:text-slate-600 transition-colors"
+                                        >
+                                            <span className={hasActive ? 'text-primary' : ''}>{group.label}</span>
+                                            <ChevronDown size={12} className={clsx('transition-transform', isOpen ? '' : '-rotate-90')} />
+                                        </button>
 
-                                    {isOpen && (
-                                        <div className="space-y-0.5">
-                                            {group.items.map(item => {
-                                                const active = isNavActive(item.href);
-                                                return (
-                                                    <Link
-                                                        key={item.href}
-                                                        to={item.href}
-                                                        onClick={() => setSidebarOpen(false)}
-                                                        className={clsx(
-                                                            "flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-medium transition-all duration-200",
-                                                            active
-                                                                ? "bg-primary text-white shadow-sm shadow-primary/20"
-                                                                : "text-slate-600 hover:bg-slate-50 hover:text-primary"
-                                                        )}
-                                                    >
-                                                        <span className={clsx("material-symbols-outlined text-[18px]", active ? "text-white" : "text-slate-400")}>{item.icon}</span>
-                                                        {item.name}
-                                                    </Link>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })}
+                                        {isOpen && (
+                                            <div className="space-y-0.5">
+                                                {group.items.map(item => {
+                                                    const active = isNavActive(item.href);
+                                                    return (
+                                                        <Link
+                                                            key={item.href}
+                                                            to={item.href}
+                                                            onClick={() => setSidebarOpen(false)}
+                                                            className={clsx(
+                                                                "flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-medium transition-all duration-200",
+                                                                active
+                                                                    ? "bg-primary text-white shadow-sm shadow-primary/20"
+                                                                    : "text-slate-600 hover:bg-slate-50 hover:text-primary"
+                                                            )}
+                                                        >
+                                                            <span className={clsx("material-symbols-outlined text-[18px]", active ? "text-white" : "text-slate-400")}>{item.icon}</span>
+                                                            {item.name}
+                                                        </Link>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })
+                        )}
                     </div>
 
                     {/* Bottom Actions */}
                     <div className="mt-auto px-1 pb-4 shrink-0 space-y-2 border-t border-slate-100 pt-5">
-                        <Link
-                            to="/admin/inventory/new"
-                            className="flex items-center justify-center gap-2 w-full h-10 bg-primary text-white rounded-xl text-sm font-semibold hover:bg-primary-light transition-colors shadow-sm"
-                        >
-                            <Plus size={16} /> New Listing
-                        </Link>
-                        <Link
-                            to="/"
-                            className="flex items-center justify-center gap-2 w-full h-10 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold hover:bg-slate-100 hover:text-primary transition-colors"
-                        >
-                            <Home size={15} /> View Website
-                        </Link>
+                        {isOwner ? (
+                            <>
+                                <Link
+                                    to="/admin/inventory/new"
+                                    className="flex items-center justify-center gap-2 w-full h-11 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary-light transition-colors shadow-sm"
+                                >
+                                    <span className="material-symbols-outlined text-lg">add</span> Add a Car
+                                </Link>
+                                <Link
+                                    to="/admin/people"
+                                    className="flex items-center justify-center gap-2 w-full h-10 bg-amber-50 border border-amber-200 text-amber-700 rounded-xl text-sm font-semibold hover:bg-amber-100 transition-colors"
+                                >
+                                    <span className="material-symbols-outlined text-base">person_add</span> Add Customer
+                                </Link>
+                            </>
+                        ) : (
+                            <>
+                                <Link
+                                    to="/admin/inventory/new"
+                                    className="flex items-center justify-center gap-2 w-full h-10 bg-primary text-white rounded-xl text-sm font-semibold hover:bg-primary-light transition-colors shadow-sm"
+                                >
+                                    <Plus size={16} /> New Listing
+                                </Link>
+                                <Link
+                                    to="/"
+                                    className="flex items-center justify-center gap-2 w-full h-10 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold hover:bg-slate-100 hover:text-primary transition-colors"
+                                >
+                                    <Home size={15} /> View Website
+                                </Link>
+                            </>
+                        )}
                         <button
                             onClick={handleLogout}
                             className="flex items-center justify-center gap-2 w-full h-10 bg-red-50 border border-red-100 text-red-600 rounded-xl text-sm font-semibold hover:bg-red-100 hover:text-red-700 transition-colors"
@@ -491,7 +561,7 @@ const AdminLayout: React.FC = () => {
                             </div>
                             <div className="hidden md:block">
                                 <p className="text-sm font-semibold text-primary">{profile?.full_name ?? 'Admin'}</p>
-                                <p className="text-[11px] text-slate-400 uppercase tracking-wide font-medium">Administrator</p>
+                                <p className="text-[11px] text-slate-400 uppercase tracking-wide font-medium">{isOwner ? 'Business Owner' : 'Administrator'}</p>
                             </div>
                         </div>
                         <button

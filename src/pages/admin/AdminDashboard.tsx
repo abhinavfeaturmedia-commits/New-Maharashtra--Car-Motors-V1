@@ -49,14 +49,19 @@ const AdminDashboard = () => {
 
                 // Sales this month — net income
                 const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
-                const { data: salesMonth } = await supabase
-                    .from('sales')
-                    .select('profit, consignment_fee_collected, sale_type')
-                    .gte('sale_date', monthStart);
-                const netIncomeThisMonth = (salesMonth || []).reduce((a: number, s: any) => a + (Number(s.profit) || 0), 0);
+                const monthStartDate = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-01`;
+                const [{ data: salesMonth }, { data: manualTxMonth }] = await Promise.all([
+                    supabase.from('sales').select('profit, consignment_fee_collected, sale_type').gte('sale_date', monthStart),
+                    supabase.from('manual_transactions').select('amount, type').eq('status', 'Completed').gte('transaction_date', monthStartDate),
+                ]);
+                const salesProfit = (salesMonth || []).reduce((a: number, s: any) => a + (Number(s.profit) || 0), 0);
+                const manualIncome = (manualTxMonth || []).filter((t: any) => t.type === 'income').reduce((a: number, t: any) => a + (Number(t.amount) || 0), 0);
+                const manualExpense = (manualTxMonth || []).filter((t: any) => t.type === 'expense').reduce((a: number, t: any) => a + (Number(t.amount) || 0), 0);
+                const netIncomeThisMonth = salesProfit + manualIncome - manualExpense;
                 const consignmentFeesMonth = (salesMonth || [])
                     .filter((s: any) => s.sale_type === 'consignment')
                     .reduce((a: number, s: any) => a + (Number(s.consignment_fee_collected) || 0), 0);
+
 
                 // Leads
                 const { count: activeCount } = await supabase

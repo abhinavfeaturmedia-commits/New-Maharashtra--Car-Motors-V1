@@ -914,7 +914,7 @@ const LeadDetail = () => {
             }
 
             // ── 4. Insert Sale (atomic — car NOT marked sold yet) ────────────────
-            const { error: saleErr } = await supabase.from('sales').insert({
+            const { data: saleData, error: saleErr } = await supabase.from('sales').insert({
                 customer_id: customerId,
                 customer_name: lead?.full_name || '',
                 customer_phone: lead?.phone || '',
@@ -934,8 +934,58 @@ const LeadDetail = () => {
                 notes: source === 'consignment'
                     ? `Consignment sale — buyer paid ${carData.consignment_owner_name || 'owner'} directly. Swami fee: ₹${profit.toLocaleString('en-IN')}`
                     : 'Converted from lead workflow'
-            });
+            }).select('id').single();
             if (saleErr) throw new Error('Failed to log sale record. ' + saleErr.message);
+
+            // ── 4b. Insert Customer Deal (populates Customer 360 Deals tab) ─────────
+            try {
+                await supabase.from('customer_deals').insert({
+                    customer_id: customerId,
+                    inventory_id: convertForm.inventory_id,
+                    lead_id: lead?.id || null,
+                    sale_id: saleData?.id || null,
+                    deal_type: source === 'consignment' ? 'consignment' : 'purchase',
+                    deal_status: 'completed',
+                    inquiry_date: lead?.created_at ? new Date(lead.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+                    deal_date: new Date().toISOString().split('T')[0],
+                    handover_date: new Date().toISOString().split('T')[0],
+                    total_amount: salePrice,
+                    advance_paid: salePrice,
+                    balance_due: 0,
+                    payment_mode: 'Paid',
+                    notes: source === 'consignment'
+                        ? `Consignment deal closed from lead. Fee earned: ₹${profit.toLocaleString('en-IN')}`
+                        : `Purchased vehicle: ${carData.year || ''} ${carData.make} ${carData.model}`,
+                    created_by: profile?.id ?? null,
+                });
+            } catch (dealErr) {
+                console.warn('Could not auto-create customer deal row:', dealErr);
+            }
+
+            // ── 4c. Insert Customer Note (populates Owner/Admin Note timeline) ─────
+            try {
+                await supabase.from('customer_notes').insert({
+                    customer_id: customerId,
+                    note_type: 'general',
+                    content: `🎉 Deal Closed & Vehicle Delivered: ${carData.year || ''} ${carData.make} ${carData.model} for ₹${salePrice.toLocaleString('en-IN')}.`,
+                    created_by: profile?.id ?? null,
+                });
+            } catch (noteErr) {
+                console.warn('Could not auto-create customer note:', noteErr);
+            }
+
+            // ── 4d. Audit Log ──────────────────────────────────────────────────────
+            try {
+                await supabase.from('audit_logs').insert({
+                    user_id: profile?.id ?? null,
+                    action: 'Lead Converted to Sale',
+                    target_type: 'Customer',
+                    target_name: lead?.full_name || 'Customer',
+                    details: `Lead #${lead?.id?.slice(0, 8)} converted to sale for ${carData.make} ${carData.model}. Total: ₹${salePrice.toLocaleString('en-IN')}`,
+                });
+            } catch (auditErr) {
+                console.warn('Could not write audit log:', auditErr);
+            }
 
             // ── 5. Now mark car as sold (only after sale record confirmed) ───────
             await supabase.from('inventory').update({ status: 'sold' }).eq('id', convertForm.inventory_id);
@@ -948,7 +998,7 @@ const LeadDetail = () => {
             // ── 7. Update Lead status ────────────────────────────────────────────
             await supabase.from('leads').update({ status: 'closed_won' }).eq('id', lead?.id);
 
-            // ── 8. Log Activity (use profile.id, not name) ────────────────────────
+            // ── 8. Log Activity ──────────────────────────────────────────────────
             await supabase.from('lead_activities').insert({
                 lead_id: lead?.id,
                 activity_type: 'meeting',

@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { InquiryCartProvider } from './contexts/InquiryCartContext';
 import { AdminRoute, UserRoute, ModuleRoute } from './components/ProtectedRoute';
 import PublicLayout from './layouts/PublicLayout';
@@ -33,6 +33,11 @@ import InventoryForm from './pages/admin/InventoryForm';
 import LeadDetail from './pages/admin/LeadDetail';
 import DailyPlanner from './pages/admin/DailyPlanner';
 import AdminLogin from './pages/admin/AdminLogin';
+
+// Admin — Owner Mode
+import OwnerDashboard from './pages/admin/OwnerDashboard';
+import People from './pages/admin/People';
+import PersonDetail from './pages/admin/PersonDetail';
 
 // Admin — Analytics
 import Analytics from './pages/admin/Analytics';
@@ -78,6 +83,12 @@ import StaffIncentivesView from './pages/admin/StaffIncentivesView';
 // Admin — Attendance
 import Attendance from './pages/admin/Attendance';
 
+// ─── DashboardRouter: Shows Owner or Admin dashboard based on role ───────────────
+const DashboardRouter: React.FC = () => {
+    const { isOwner } = useAuth();
+    return isOwner ? <OwnerDashboard /> : <AdminDashboard />;
+};
+
 const App: React.FC = () => {
     return (
         <AuthProvider>
@@ -114,7 +125,7 @@ const App: React.FC = () => {
                             <AdminRoute><AdminLayout /></AdminRoute>
                         }>
                             {/* Main */}
-                            <Route index element={<AdminDashboard />} />
+                            <Route index element={<DashboardRouter />} />
                             <Route path="inventory" element={<ModuleRoute module="inventory"><AdminInventory /></ModuleRoute>} />
                             <Route path="inventory/new" element={<ModuleRoute module="inventory"><InventoryForm /></ModuleRoute>} />
                             <Route path="inventory/:id/edit" element={<ModuleRoute module="inventory"><InventoryForm /></ModuleRoute>} />
@@ -123,6 +134,10 @@ const App: React.FC = () => {
                             <Route path="sales" element={<ModuleRoute module="sales"><AdminSales /></ModuleRoute>} />
                             <Route path="bookings" element={<ModuleRoute module="bookings"><AdminBookings /></ModuleRoute>} />
                             <Route path="planner" element={<ModuleRoute module="bookings"><DailyPlanner /></ModuleRoute>} />
+
+                            {/* Owner Mode Routes */}
+                            <Route path="people" element={<People />} />
+                            <Route path="people/:id" element={<PersonDetail />} />
 
                             {/* Analytics */}
                             <Route path="analytics" element={<ModuleRoute module="analytics"><Analytics /></ModuleRoute>} />

@@ -9,7 +9,7 @@ interface Profile {
     full_name: string | null;
     email: string | null;
     phone: string | null;
-    role: 'admin' | 'customer' | 'staff';
+    role: 'admin' | 'customer' | 'staff' | 'owner';
     avatar_url: string | null;
     department: string | null;
     is_active: boolean;
@@ -28,6 +28,7 @@ interface AuthContextValue {
     loading: boolean;
     isAdmin: boolean;
     isStaff: boolean;
+    isOwner: boolean;
     permissions: Record<string, UserPermission>;
     hasPermission: (module: string, action: 'view' | 'manage') => boolean;
     signOut: () => Promise<void>;
@@ -42,6 +43,7 @@ const AuthContext = createContext<AuthContextValue>({
     loading: true,
     isAdmin: false,
     isStaff: false,
+    isOwner: false,
     permissions: {},
     hasPermission: () => false,
     signOut: async () => {},
@@ -65,12 +67,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (!error && data) {
             setProfile(data as Profile);
-            // Fetch permissions for non-admin users
-            if (data.role !== 'admin') {
-                await fetchPermissions(userId);
-            } else {
-                // Admins have all permissions implicitly — empty map, hasPermission always returns true
+            // Admins and Owners have all permissions implicitly
+            if (data.role === 'admin' || data.role === 'owner') {
                 setPermissions({});
+            } else {
+                await fetchPermissions(userId);
             }
         } else {
             setProfile(null);
@@ -132,6 +133,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const isAdmin = profile?.role === 'admin';
     const isStaff = profile?.role === 'staff';
+    const isOwner = profile?.role === 'owner';
 
     /**
      * Check if the current user has a given permission.
@@ -139,7 +141,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
      * Staff users check their user_permissions record.
      */
     const hasPermission = (module: string, action: 'view' | 'manage'): boolean => {
-        if (isAdmin) return true;
+        if (isAdmin || isOwner) return true;
         const perm = permissions[module];
         if (!perm) return false;
         if (action === 'view') return perm.can_view;
@@ -155,6 +157,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             loading,
             isAdmin,
             isStaff,
+            isOwner,
             permissions,
             hasPermission,
             signOut,

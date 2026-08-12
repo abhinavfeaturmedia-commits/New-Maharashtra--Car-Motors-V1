@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useNotifications } from '../../contexts/NotificationContext';
@@ -57,7 +57,7 @@ const FILTER_RANGE_OPTIONS = [
 ];
 
 const CustomerAlerts = () => {
-    const { isAdmin } = useAuth();
+    const { isAdmin, user } = useAuth();
     const { addNotification } = useNotifications();
 
     const [documents, setDocuments] = useState<ExpiringDocument[]>([]);
@@ -67,6 +67,45 @@ const CustomerAlerts = () => {
     const [roleFilter, setRoleFilter] = useState('all');
     const [search, setSearch] = useState('');
     const [notifSent, setNotifSent] = useState(false);
+    const [configSaving, setConfigSaving] = useState(false);
+    const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // ─── Load saved alert config from Supabase ────────────────────────────────
+    useEffect(() => {
+        if (!user?.id) return;
+        supabase
+            .from('customer_alert_configs')
+            .select('days_threshold')
+            .eq('user_id', user.id)
+            .eq('alert_type', 'expiring_docs')
+            .limit(1)
+            .then(({ data }) => {
+                if (data && data.length > 0 && data[0].days_threshold) {
+                    setDaysAhead(data[0].days_threshold);
+                }
+            });
+    }, [user?.id]);
+
+    // ─── Persist daysAhead preference with debounce ───────────────────────────
+    const saveDaysAhead = useCallback((days: number) => {
+        if (!user?.id) return;
+        if (saveTimer.current) clearTimeout(saveTimer.current);
+        setConfigSaving(true);
+        saveTimer.current = setTimeout(async () => {
+            await supabase
+                .from('customer_alert_configs')
+                .upsert(
+                    { user_id: user.id, alert_type: 'expiring_docs', days_threshold: days, is_enabled: true },
+                    { onConflict: 'user_id,alert_type' }
+                );
+            setConfigSaving(false);
+        }, 800);
+    }, [user?.id]);
+
+    const handleRangeChange = (days: number) => {
+        setDaysAhead(days);
+        saveDaysAhead(days);
+    };
 
     // ─── Fetch expiring docs via RPC ──────────────────────────────────────────
 
@@ -124,7 +163,7 @@ const CustomerAlerts = () => {
         }
     }, [daysAhead, isAdmin, notifSent, addNotification]);
 
-    useEffect(() => { fetchExpiring(); }, [daysAhead]);
+    useEffect(() => { fetchExpiring(); }, [daysAhead]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ─── Filtering ────────────────────────────────────────────────────────────
 
@@ -314,12 +353,22 @@ const CustomerAlerts = () => {
                     {FILTER_RANGE_OPTIONS.map(opt => (
                         <button
                             key={opt.value}
-                            onClick={() => setDaysAhead(opt.value)}
+                            onClick={() => handleRangeChange(opt.value)}
                             className={`h-8 px-3 text-xs font-bold rounded-lg transition-colors ${daysAhead === opt.value ? 'bg-primary text-white' : 'bg-white border border-slate-200 text-slate-500 hover:border-primary'}`}
                         >
                             {opt.label}
                         </button>
                     ))}
+                    {configSaving && (
+                        <span className="text-[10px] text-slate-400 animate-pulse flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[12px]">sync</span> Saving…
+                        </span>
+                    )}
+                    {!configSaving && user?.id && (
+                        <span className="text-[10px] text-emerald-500 flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[12px]">cloud_done</span> Saved
+                        </span>
+                    )}
                 </div>
 
                 <div className="h-5 w-px bg-slate-200" />

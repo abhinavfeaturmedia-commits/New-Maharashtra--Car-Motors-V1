@@ -110,6 +110,30 @@ const ConsignmentTracker = () => {
             if (car.consignment_fee_type === 'fixed') fee = car.consignment_fee_value || 0;
             else if (car.consignment_fee_type === 'percentage' && car.consignment_fee_value) fee = Math.round(salePrice * car.consignment_fee_value / 100);
 
+            // Resolve buyer customer
+            let buyerCustomerId: string | null = null;
+            if (saleForm.buyer_phone) {
+                const { data: existingBuyer } = await supabase
+                    .from('customers')
+                    .select('id')
+                    .eq('phone', saleForm.buyer_phone)
+                    .maybeSingle();
+
+                if (existingBuyer) {
+                    buyerCustomerId = existingBuyer.id;
+                } else if (saleForm.buyer_name) {
+                    const { data: newBuyer } = await supabase
+                        .from('customers')
+                        .insert({
+                            full_name: saleForm.buyer_name,
+                            phone: saleForm.buyer_phone,
+                        })
+                        .select('id')
+                        .single();
+                    if (newBuyer) buyerCustomerId = newBuyer.id;
+                }
+            }
+
             // Record sale atomically via stored procedure (or fallback)
             const { error: rpcErr } = await supabase.rpc('complete_vehicle_sale', {
                 p_inventory_id: car.id,
@@ -123,7 +147,8 @@ const ConsignmentTracker = () => {
             if (rpcErr) {
                 console.warn('RPC complete_vehicle_sale unavailable, falling back to manual insert:', rpcErr);
                 // Fallback to manual insert & update
-                const { error: saleErr } = await supabase.from('sales').insert({
+                const { data: fallbackSale, error: saleErr } = await supabase.from('sales').insert({
+                    customer_id: buyerCustomerId,
                     inventory_id: car.id,
                     customer_name: saleForm.buyer_name || 'Consignment Buyer',
                     customer_phone: saleForm.buyer_phone || '0000000000',
@@ -136,8 +161,35 @@ const ConsignmentTracker = () => {
                     status: 'completed',
                     payment_status: 'paid',
                     notes: `Consignment sale — buyer: ${saleForm.buyer_name}. Owner: ${car.consignment_owner_name || 'Unknown'}. Swami fee: ₹${fee.toLocaleString('en-IN')}`,
-                });
+                }).select('id').single();
                 if (saleErr) throw saleErr;
+
+                if (buyerCustomerId) {
+                    try {
+                        await supabase.from('customer_deals').insert({
+                            customer_id: buyerCustomerId,
+                            inventory_id: car.id,
+                            sale_id: fallbackSale?.id || null,
+                            deal_type: 'consignment',
+                            deal_status: 'completed',
+                            deal_date: new Date().toISOString().split('T')[0],
+                            handover_date: new Date().toISOString().split('T')[0],
+                            total_amount: salePrice,
+                            advance_paid: salePrice,
+                            balance_due: 0,
+                            payment_mode: 'Paid',
+                            notes: `Consignment sale of ${car.make} ${car.model}. Fee earned: ₹${fee.toLocaleString('en-IN')}`,
+                        });
+                    } catch (e) { console.warn('Consignment deal record error:', e); }
+
+                    try {
+                        await supabase.from('customer_notes').insert({
+                            customer_id: buyerCustomerId,
+                            note_type: 'general',
+                            content: `🤝 Consignment Vehicle Purchased: ${car.year || ''} ${car.make} ${car.model} for ₹${salePrice.toLocaleString('en-IN')}.`,
+                        });
+                    } catch (e) { console.warn('Consignment note record error:', e); }
+                }
 
                 // Mark car sold
                 await supabase.from('inventory').update({ status: 'sold' }).eq('id', car.id);
