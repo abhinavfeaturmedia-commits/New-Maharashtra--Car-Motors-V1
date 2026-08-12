@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
 const Auth = () => {
@@ -30,6 +30,12 @@ const Auth = () => {
         setSuccessMsg('');
         setLoading(true);
 
+        if (!isSupabaseConfigured) {
+            setError('Authentication backend is unconfigured. Please ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in Netlify Environment Variables.');
+            setLoading(false);
+            return;
+        }
+
         try {
             if (isLogin) {
                 // ── Sign In ──────────────────────────────────────────
@@ -38,7 +44,12 @@ const Auth = () => {
                     password,
                 });
                 if (signInError) {
-                    setError('Invalid email or password. Please try again.');
+                    const isFetchError = signInError.message?.toLowerCase().includes('failed to fetch') || signInError.message?.toLowerCase().includes('fetch');
+                    if (isFetchError) {
+                        setError('Unable to connect to authentication server. Please check your internet connection or verify VITE_SUPABASE_URL setting.');
+                    } else {
+                        setError(signInError.message || 'Invalid email or password. Please try again.');
+                    }
                     return;
                 }
                 const from = (location.state as any)?.from?.pathname ?? '/dashboard';
@@ -54,7 +65,12 @@ const Auth = () => {
                     },
                 });
                 if (signUpError) {
-                    setError(signUpError.message);
+                    const isFetchError = signUpError.message?.toLowerCase().includes('failed to fetch') || signUpError.message?.toLowerCase().includes('fetch');
+                    if (isFetchError) {
+                        setError('Unable to connect to authentication server. Please check your connection.');
+                    } else {
+                        setError(signUpError.message);
+                    }
                     return;
                 }
                 setSuccessMsg('Account created! Please check your email to verify your account, then sign in.');
@@ -62,7 +78,7 @@ const Auth = () => {
                 setPassword('');
             }
         } catch {
-            setError('An unexpected error occurred. Please try again.');
+            setError('An unexpected connection error occurred. Please check network connection and try again.');
         } finally {
             setLoading(false);
         }

@@ -721,6 +721,7 @@ const CustomerDetail = () => {
             setIsAddingDoc(false);
             setDocForm(emptyDocForm);
             fetchDocuments();
+            fetchDeals();
             if (profile) {
                 await supabase.from('audit_logs').insert({
                     user_id: profile.id,
@@ -736,7 +737,10 @@ const CustomerDetail = () => {
     const handleDeleteDoc = async (docId: string) => {
         if (!window.confirm('Delete this document?')) return;
         const { error } = await supabase.from('customer_documents').delete().eq('id', docId);
-        if (!error) fetchDocuments();
+        if (!error) {
+            fetchDocuments();
+            fetchDeals();
+        }
     };
 
     const handleDeleteDeal = async (dealId: string) => {
@@ -1376,6 +1380,98 @@ const CustomerDetail = () => {
                                                     {deal.payment_mode && <p className="text-[10px] text-slate-400 mt-2 text-center">Payment: {deal.payment_mode}</p>}
                                                 </div>
                                             )}
+
+                                            {/* ── Deal Document Vault & Quick Upload ── */}
+                                            <div className="px-5 pb-4 border-t border-slate-50 pt-3">
+                                                <div className="flex items-center justify-between mb-2.5">
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                                                        <span className="material-symbols-outlined text-xs">folder_open</span>
+                                                        Attached Deal Documents ({dealDocs.length})
+                                                    </p>
+                                                    <button
+                                                        onClick={() => {
+                                                            setIsAddingDoc(true);
+                                                            setDocForm({ ...emptyDocForm, deal_id: deal.id });
+                                                        }}
+                                                        className="text-[11px] font-bold text-primary hover:text-primary-light bg-primary/5 hover:bg-primary/10 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors"
+                                                    >
+                                                        <span className="material-symbols-outlined text-xs">note_add</span>
+                                                        + Attach Document to Deal
+                                                    </button>
+                                                </div>
+
+                                                {dealDocs.length === 0 ? (
+                                                    <div className="bg-slate-50/70 border border-dashed border-slate-200 rounded-xl p-3.5 text-center">
+                                                        <p className="text-xs text-slate-400 font-medium mb-1.5">No documents attached to this deal yet</p>
+                                                        <button
+                                                            onClick={() => {
+                                                                setIsAddingDoc(true);
+                                                                setDocForm({ ...emptyDocForm, deal_id: deal.id });
+                                                            }}
+                                                            className="text-xs font-bold text-primary hover:underline inline-flex items-center gap-1"
+                                                        >
+                                                            <span className="material-symbols-outlined text-xs">upload_file</span>
+                                                            Attach Buyer/Seller/RTO Document
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                        {dealDocs.map(doc => {
+                                                            const badge = getExpiryBadge(doc.expiry_date);
+                                                            const roleConfig = {
+                                                                buyer: { label: '👤 Buyer', color: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
+                                                                seller: { label: '🏷️ Seller', color: 'bg-amber-50 text-amber-700 border-amber-100' },
+                                                                general: { label: '🗂️ General', color: 'bg-slate-50 text-slate-600 border-slate-100' },
+                                                            }[doc.party_role || 'general'];
+                                                            return (
+                                                                <div key={doc.id} className="bg-slate-50 border border-slate-100 rounded-xl p-2.5 flex items-center justify-between gap-2 hover:border-slate-200 transition-colors">
+                                                                    <div className="min-w-0 flex-1">
+                                                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                                                            <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${roleConfig.color}`}>
+                                                                                {roleConfig.label}
+                                                                            </span>
+                                                                            <span className="text-xs font-bold text-slate-800 truncate">
+                                                                                {doc.doc_label || getDocLabel(doc.doc_type)}
+                                                                            </span>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                                                            {doc.issue_date && <span className="text-[10px] text-slate-400">Issued: {formatDate(doc.issue_date)}</span>}
+                                                                            {badge && (
+                                                                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border flex items-center gap-0.5 ${badge.cls} ${badge.pulse ? 'animate-pulse' : ''}`}>
+                                                                                    <span className="material-symbols-outlined text-[10px]">{badge.icon}</span>
+                                                                                    {badge.label}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-1 shrink-0">
+                                                                        {doc.file_url && (
+                                                                            <a
+                                                                                href={doc.file_url}
+                                                                                target="_blank"
+                                                                                rel="noreferrer"
+                                                                                className="size-7 rounded-lg bg-white border border-slate-200 hover:bg-primary hover:text-white hover:border-primary text-slate-500 flex items-center justify-center transition-all"
+                                                                                title="View / Download Document"
+                                                                            >
+                                                                                <span className="material-symbols-outlined text-xs">open_in_new</span>
+                                                                            </a>
+                                                                        )}
+                                                                        {isAdmin && (
+                                                                            <button
+                                                                                onClick={() => handleDeleteDoc(doc.id)}
+                                                                                className="size-7 rounded-lg bg-white border border-slate-200 hover:bg-red-50 hover:text-red-500 hover:border-red-200 text-slate-400 flex items-center justify-center transition-colors"
+                                                                                title="Delete Document"
+                                                                            >
+                                                                                <span className="material-symbols-outlined text-xs">delete</span>
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </div>
 
                                             {deal.notes && <div className="px-5 pb-4 text-xs text-slate-500 italic border-t border-slate-50 pt-3">{deal.notes}</div>}
                                         </div>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { supabase } from '../../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
 const AdminLogin = () => {
@@ -15,7 +15,7 @@ const AdminLogin = () => {
 
     // If already logged in as admin or staff, skip login page
     React.useEffect(() => {
-        if (profile?.role === 'admin' || profile?.role === 'staff') {
+        if (profile?.role === 'admin' || profile?.role === 'staff' || profile?.role === 'owner') {
             const from = (location.state as any)?.from?.pathname ?? '/admin';
             navigate(from, { replace: true });
         }
@@ -26,6 +26,12 @@ const AdminLogin = () => {
         setError('');
         setLoading(true);
 
+        if (!isSupabaseConfigured) {
+            setError('Authentication backend is unconfigured. Please ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in Netlify Environment Variables.');
+            setLoading(false);
+            return;
+        }
+
         try {
             const { data, error: signInError } = await supabase.auth.signInWithPassword({
                 email: email.trim(),
@@ -33,7 +39,12 @@ const AdminLogin = () => {
             });
 
             if (signInError) {
-                setError(`Login Error: ${signInError.message || 'Invalid email or password'}`);
+                const isFetchError = signInError.message?.toLowerCase().includes('failed to fetch') || signInError.message?.toLowerCase().includes('fetch');
+                if (isFetchError) {
+                    setError('Unable to connect to authentication server. Please check your internet connection or verify VITE_SUPABASE_URL setting on Netlify.');
+                } else {
+                    setError(signInError.message || 'Invalid email or password');
+                }
                 return;
             }
 
@@ -42,20 +53,23 @@ const AdminLogin = () => {
                 return;
             }
 
-            // Verify the user is an admin or staff
-            const { data: profileData, error: profileError } = await supabase
+            // Verify the user is an admin, owner, or staff
+            const { data: profileData } = await supabase
                 .from('profiles')
                 .select('role, is_active')
                 .eq('id', data.user.id)
                 .single();
 
-            if (profileError || !['admin', 'staff'].includes(profileData?.role)) {
+            const userRole = profileData?.role || data.user.user_metadata?.role;
+            const isActive = profileData ? profileData.is_active : true;
+
+            if (!userRole || !['admin', 'staff', 'owner'].includes(userRole)) {
                 await supabase.auth.signOut();
-                setError('Access denied. This portal is for staff and admin users only.');
+                setError('Access denied. This portal is for staff, admin, and owner users only.');
                 return;
             }
 
-            if (profileData?.is_active === false) {
+            if (isActive === false) {
                 await supabase.auth.signOut();
                 setError('Your account has been deactivated. Contact the administrator.');
                 return;
@@ -65,8 +79,9 @@ const AdminLogin = () => {
             const from = (location.state as any)?.from?.pathname ?? '/admin';
             navigate(from, { replace: true });
 
-        } catch {
-            setError('An unexpected error occurred. Please try again.');
+        } catch (err: any) {
+            console.error('Admin login error:', err);
+            setError('An unexpected connection error occurred. Please check network connection and try again.');
         } finally {
             setLoading(false);
         }
