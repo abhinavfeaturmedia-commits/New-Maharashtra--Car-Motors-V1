@@ -251,7 +251,7 @@ const ConsignmentTracker = () => {
                     <button onClick={fetchCars} className="h-10 w-10 flex items-center justify-center border border-slate-200 rounded-xl text-slate-500 hover:bg-slate-50 transition-colors" title="Refresh">
                         <span className="material-symbols-outlined text-lg">refresh</span>
                     </button>
-                    <Link to="/admin/inventory/new" className="h-10 px-5 bg-purple-600 text-white font-bold rounded-xl text-sm flex items-center gap-2 hover:bg-purple-700 transition-colors shadow-sm">
+                    <Link to="/admin/inventory/new?source=consignment" className="h-10 px-5 bg-purple-600 text-white font-bold rounded-xl text-sm flex items-center gap-2 hover:bg-purple-700 transition-colors shadow-sm">
                         <span className="material-symbols-outlined text-lg">add</span> Add Park &amp; Sell
                     </Link>
                 </div>
@@ -326,7 +326,7 @@ const ConsignmentTracker = () => {
                                         <p className="text-slate-400 font-medium text-sm">
                                             {searchQuery ? `No results for "${searchQuery}"` : 'No Park & Sell cars found'}
                                         </p>
-                                        <Link to="/admin/inventory/new" className="inline-flex items-center gap-1 mt-3 text-sm font-semibold text-purple-600 hover:underline">
+                                        <Link to="/admin/inventory/new?source=consignment" className="inline-flex items-center gap-1 mt-3 text-sm font-semibold text-purple-600 hover:underline">
                                             <span className="material-symbols-outlined text-base">add</span> Add first Park &amp; Sell listing
                                         </Link>
                                     </td>

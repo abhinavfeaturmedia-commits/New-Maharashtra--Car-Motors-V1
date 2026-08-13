@@ -1080,7 +1080,7 @@ const DealerManagement = () => {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-bold text-slate-700 mb-1">City</label>
-                                    <input value={dealerForm.city} onChange={e => setDealerForm(f => ({ ...f, city: e.target.value }))} className="w-full h-11 border border-slate-200 rounded-xl px-4 text-sm outline-none focus:ring-2 focus:ring-primary/10" placeholder="Kolhapur" />
+                                    <input value={dealerForm.city} onChange={e => setDealerForm(f => ({ ...f, city: e.target.value }))} className="w-full h-11 border border-slate-200 rounded-xl px-4 text-sm outline-none focus:ring-2 focus:ring-primary/10" placeholder="Pune" />
                                 </div>
                             </div>
 

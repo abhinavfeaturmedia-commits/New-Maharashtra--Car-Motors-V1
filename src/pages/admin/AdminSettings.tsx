@@ -348,7 +348,7 @@ const AdminSettings: React.FC = () => {
                             <TextInput
                                 value={businessProfile.city}
                                 onChange={e => patchProfile('city', e.target.value)}
-                                placeholder="e.g. Kolhapur"
+                                placeholder="e.g. Pune"
                             />
                         </div>
                         <div>
@@ -374,7 +374,7 @@ const AdminSettings: React.FC = () => {
                             <TextInput
                                 value={businessProfile.address}
                                 onChange={e => patchProfile('address', e.target.value)}
-                                placeholder="e.g. Kasaba Bawada Main Rd, Kasaba Bawada, Kolhapur - 416006"
+                                placeholder="e.g. Sr.no 515/1, near Shankar mandir, Kasarwadi, Pimpri-Chinchwad, Maharashtra 411034"
                             />
                         </div>
                         <div>

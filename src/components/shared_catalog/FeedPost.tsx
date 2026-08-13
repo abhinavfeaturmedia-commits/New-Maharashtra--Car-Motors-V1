@@ -186,7 +186,7 @@ export const FeedPost: React.FC<FeedPostProps> = ({
                             {advisor?.full_name || 'New Maharashtra Motors'}
                             <span className="material-symbols-outlined text-blue-500 text-sm" title="Verified Advisor">verified</span>
                         </h4>
-                        <p className="text-[10px] sm:text-xs text-slate-400 font-medium">Kolhapur, Maharashtra</p>
+                        <p className="text-[10px] sm:text-xs text-slate-400 font-medium">Pune, Maharashtra</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-1">

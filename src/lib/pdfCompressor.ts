@@ -14,6 +14,7 @@ export interface PdfCompressionOptions {
     targetMaxMb?: number; // e.g. 1.5 MB
     quality?: number;     // 0.5 to 0.95 (default 0.75)
     maxDimension?: number;// Max width or height in px (default 1800)
+    forceCompress?: boolean; // Force compression regardless of targetMaxMb
     onProgress?: (percent: number, statusText: string) => void;
 }
 
@@ -37,13 +38,14 @@ export async function compressPdf(
         targetMaxMb = 1.8,
         quality = 0.75,
         maxDimension = 1800,
+        forceCompress = false,
         onProgress
     } = options;
 
     const originalSizeMb = parseFloat((file.size / (1024 * 1024)).toFixed(2));
 
-    // If file is already smaller than target, return original immediately
-    if (file.size <= targetMaxMb * 1024 * 1024) {
+    // If file is already smaller than target (and forceCompress is false), return original immediately
+    if (!forceCompress && file.size <= targetMaxMb * 1024 * 1024) {
         onProgress?.(100, 'File already under target size');
         return {
             file,
@@ -175,3 +177,29 @@ export async function compressPdf(
         };
     }
 }
+
+/**
+ * Automatically applies high-quality compression to any PDF file prior to upload.
+ * Non-PDF files or files already optimized are returned as-is safely.
+ */
+export async function autoCompressPdf(
+    file: File,
+    onProgress?: (pct: number, statusText: string) => void
+): Promise<File> {
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    if (!isPdf) return file;
+
+    try {
+        const result = await compressPdf(file, {
+            quality: 0.85,
+            maxDimension: 1800,
+            forceCompress: true,
+            onProgress
+        });
+        return result.file;
+    } catch (e) {
+        console.warn('Auto PDF compression fallback to original:', e);
+        return file;
+    }
+}
+

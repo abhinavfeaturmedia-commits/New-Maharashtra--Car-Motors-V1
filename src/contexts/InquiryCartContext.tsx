@@ -34,7 +34,7 @@ export const InquiryCartProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
     // Load cart from LocalStorage on mount
     useEffect(() => {
-        const storedCart = localStorage.getItem('nmm_inquiry_cart') || localStorage.getItem('swami_inquiry_cart');
+        const storedCart = localStorage.getItem('nmm_inquiry_cart') || localStorage.getItem('maharashtra_inquiry_cart');
         if (storedCart) {
             try {
                 setCartItems(JSON.parse(storedCart));

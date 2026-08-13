@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
 import { generateOpenRouterCompletion } from '../../lib/openrouter';
-import imageCompression from 'browser-image-compression';
+import { autoCompressImage } from '../../lib/imageCompressor';
 import VideoPlayer from '../../components/ui/VideoPlayer';
 
 const MAKES = [
@@ -26,6 +26,7 @@ const InventoryForm = () => {
     const { id } = useParams<{ id: string }>();
     const isEditMode = Boolean(id);
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const { user, hasPermission } = useAuth();
     const { settings, refreshData } = (useData() as any) || {};
     const canManage = hasPermission('inventory', 'manage');
@@ -47,7 +48,22 @@ const InventoryForm = () => {
     const [generatingError, setGeneratingError] = useState<string | null>(null);
 
     // ─── Source state ─────────────────────────────────────────────────────────
-    const [source, setSource] = useState<'purchased' | 'consignment' | 'dealer'>('purchased');
+    const initialSourceParam = searchParams.get('source') || searchParams.get('type');
+    const defaultSource: 'purchased' | 'consignment' | 'dealer' = 
+        (initialSourceParam === 'consignment' || initialSourceParam === 'park_and_sell' || initialSourceParam === 'park-and-sell') 
+            ? 'consignment' 
+            : (initialSourceParam === 'dealer' ? 'dealer' : 'purchased');
+
+    const [source, setSource] = useState<'purchased' | 'consignment' | 'dealer'>(defaultSource);
+
+    useEffect(() => {
+        const param = searchParams.get('source') || searchParams.get('type');
+        if (param === 'consignment' || param === 'park_and_sell' || param === 'park-and-sell') {
+            setSource('consignment');
+        } else if (param === 'dealer') {
+            setSource('dealer');
+        }
+    }, [searchParams]);
     const [purchaseCost, setPurchaseCost] = useState('');
     
     // Consignment state
@@ -111,7 +127,7 @@ const InventoryForm = () => {
         setGeneratingError(null);
 
         try {
-            const systemPrompt = `You are a professional automotive copywriter at "New Maharashtra Motors", a premier automotive dealership and service provider in Kolhapur, Maharashtra, India.
+            const systemPrompt = `You are a professional automotive copywriter at "New Maharashtra Motors", a premier automotive dealership and service provider in Pune, Maharashtra, India.
 Your goal is to write a premium, compelling marketing description (100-150 words) for a vehicle listing.
 Focus on key benefits, drive quality, condition, pre-owned value, and sign off professionally.
 Do NOT use placeholders like "[Dealer Name]" or "[Your Name]" - refer to us as "New Maharashtra Motors".
@@ -217,25 +233,9 @@ Condition: ${form.condition}`;
 
         setUploading(true);
         try {
-            const options = {
-                maxSizeMB: 0.5, // Target max size 500KB
-                maxWidthOrHeight: 1920,
-                useWebWorker: true,
-                initialQuality: 0.8
-            };
-
             const compressedFiles = await Promise.all(
                 files.map(async (file) => {
-                    try {
-                        const compressedBlob = await imageCompression(file, options);
-                        return new File([compressedBlob], file.name, {
-                            type: compressedBlob.type,
-                            lastModified: Date.now(),
-                        });
-                    } catch (err) {
-                        console.error('Image compression failed for', file.name, err);
-                        return file; // use original if compression fails
-                    }
+                    return await autoCompressImage(file);
                 })
             );
 
@@ -591,11 +591,14 @@ Condition: ${form.condition}`;
         const failed: string[] = [];
 
         for (const file of selectedFiles) {
-            const ext = file.name.split('.').pop() || 'jpg';
+            // High-quality client-side image compression (< 600 KB, 1920px max dimension)
+            const compressedFile = await autoCompressImage(file);
+
+            const ext = compressedFile.name.split('.').pop() || 'jpg';
             const path = `cars/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
             const { error: uploadError } = await supabase.storage
                 .from('car-images')
-                .upload(path, file, { cacheControl: '3600', upsert: false });
+                .upload(path, compressedFile, { cacheControl: '3600', upsert: false });
 
             if (uploadError) {
                 console.error('Upload error for', file.name, uploadError.message);

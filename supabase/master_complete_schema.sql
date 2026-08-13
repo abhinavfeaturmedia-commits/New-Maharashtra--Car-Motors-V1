@@ -1,5 +1,5 @@
 -- ============================================================
--- MAHARASHTRA MOTORS (SWAMI MOTORS) — MASTER SUPABASE SETUP
+-- MAHARASHTRA MOTORS — MASTER SUPABASE SETUP
 -- Consolidated Database Schema, Tables, RPC Functions, Triggers, RLS Policies & Storage
 -- ============================================================
 

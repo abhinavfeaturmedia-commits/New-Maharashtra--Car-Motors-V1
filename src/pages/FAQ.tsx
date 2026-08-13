@@ -6,8 +6,8 @@ const CATEGORIES = ['All Questions', 'Buying', 'Selling', 'Services', 'Finance']
 const FAQ_DATA = [
     {
         category: 'Buying', section: 'Buying & Registration', items: [
-            { q: 'What documents are needed for purchase?', a: 'You will need a valid ID proof (Aadhar/PAN), address proof, and income proof for loan processing. Our team will guide you through the RTO Kolhapur registration process seamlessly to ensure your vehicle is road-legal immediately upon delivery.' },
-            { q: 'How do I book a test drive in Kolhapur?', a: 'You can book a test drive through our website, by calling us at 098232 37975, or by visiting our Kasaba Bawada showroom directly. We also offer doorstep test drives within Kolhapur city limits.' },
+            { q: 'What documents are needed for purchase?', a: 'You will need a valid ID proof (Aadhar/PAN), address proof, and income proof for loan processing. Our team will guide you through the RTO Pune registration process seamlessly to ensure your vehicle is road-legal immediately upon delivery.' },
+            { q: 'How do I book a test drive in Pune?', a: 'You can book a test drive through our website, by calling us at 098232 37975, or by visiting our showroom directly. We also offer doorstep test drives within Pune city limits.' },
         ]
     },
     {
@@ -18,7 +18,7 @@ const FAQ_DATA = [
     },
     {
         category: 'Finance', section: 'Finance & Loans', items: [
-            { q: 'Do you partner with local Kolhapur banks?', a: 'Yes, we partner with all major banks including HDFC, ICICI, SBI, and local cooperative banks in Kolhapur. We help you get the best interest rates and flexible EMI options.' },
+            { q: 'Do you partner with local Pune banks?', a: 'Yes, we partner with all major banks including HDFC, ICICI, SBI, and local cooperative banks in Pune. We help you get the best interest rates and flexible EMI options.' },
         ]
     },
 ];
@@ -39,7 +39,7 @@ const FAQ = () => {
                 <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuA1XK2L7EpsFR7K_eosnwu-nObzshJ1Ty2a8myYaJLGxNfVRumnjS7qbstQgmr0orhubbj2qWZONaSEPe_N7kcPM_1QfK25z_ISQyqhepk7R2dKxgZkvCaLxu1sknYBEuc8ql5XtjjvTxpkgGtcvcz9YskEEhJWegVcLP20ML2BowuulsKcxPJys4ux6Vi6vSqWwbUnsgtemZ2KMzcaeJsz8ZDBvA8U6qYDVmNQ5ksSaho1Svizzl2FUtSrad_4n_fgXjaKl4oo-CEH" alt="" className="absolute inset-0 w-full h-full object-cover opacity-20" />
                 <div className="relative z-10 container-main py-16 text-center">
                     <h1 className="text-3xl lg:text-4xl font-black text-white font-display mb-3">Hello! How can we help you today?</h1>
-                    <p className="text-slate-400 mb-8 max-w-lg mx-auto">Find answers to common questions about buying, selling, and servicing your car in Kolhapur.</p>
+                    <p className="text-slate-400 mb-8 max-w-lg mx-auto">Find answers to common questions about buying, selling, and servicing your car in Pune.</p>
                     <div className="flex items-center gap-2 bg-white rounded-xl px-5 h-12 max-w-lg mx-auto shadow-lg">
                         <Search size={18} className="text-slate-400" />
                         <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="flex-1 bg-transparent border-none text-sm outline-none text-primary placeholder:text-slate-400" placeholder="Search for issues, car models, or services..." />

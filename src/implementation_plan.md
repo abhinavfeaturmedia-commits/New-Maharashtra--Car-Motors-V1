@@ -15,11 +15,11 @@ This Phase 9 Implementation Plan addresses wiring up all remaining frontend inse
 
 *Currently, when a user books a test drive or service, the UI only logs a Lead, leaving the Admin Bookings calendar desolate.*
 
-#### [MODIFY] [BookTestDrive.tsx](file:///c:/Users/Abhinav/Documents/Antigravity Files/swami-motors-Vol1/src/pages/BookTestDrive.tsx)
+#### [MODIFY] [BookTestDrive.tsx](file:///c:/Users/Abhinav/Documents/Antigravity%20Files/New-Maharashtra-%20Car-Motors-V1/src/pages/BookTestDrive.tsx)
 *   Update `handleSubmit`. After creating a Lead inside `leads`, capture that inserted `lead.id`.
 *   Pass the `lead.id` and user-selected date/time into a `supabase.from('bookings').insert()` sequence, categorizing it as `booking_type: 'test_drive'`.
 
-#### [MODIFY] [ServiceBooking.tsx](file:///c:/Users/Abhinav/Documents/Antigravity Files/swami-motors-Vol1/src/pages/ServiceBooking.tsx)
+#### [MODIFY] [ServiceBooking.tsx](file:///c:/Users/Abhinav/Documents/Antigravity%20Files/New-Maharashtra-%20Car-Motors-V1/src/pages/ServiceBooking.tsx)
 *   Perform the exact same dual-insert orchestration. Log the lead, then grab the ID and submit to `bookings` with `booking_type: 'service'`.
 
 ---
@@ -28,11 +28,11 @@ This Phase 9 Implementation Plan addresses wiring up all remaining frontend inse
 
 *Currently, tasks are read-only. Admins cannot create follow-up tasks from the CRM.*
 
-#### [MODIFY] [LeadDetail.tsx](file:///c:/Users/Abhinav/Documents/Antigravity Files/swami-motors-Vol1/src/pages/admin/LeadDetail.tsx)
+#### [MODIFY] [LeadDetail.tsx](file:///c:/Users/Abhinav/Documents/Antigravity%20Files/New-Maharashtra-%20Car-Motors-V1/src/pages/admin/LeadDetail.tsx)
 *   Add a "New Schedule Task" modal alongside the internal notes block. 
 *   Generate an insert mutation mapping `lead_id`, `title`, `due_date`, and `priority` directly to the `tasks` table.
 
-#### [MODIFY] [FollowUps.tsx](file:///c:/Users/Abhinav/Documents/Antigravity Files/swami-motors-Vol1/src/pages/admin/FollowUps.tsx)
+#### [MODIFY] [FollowUps.tsx](file:///c:/Users/Abhinav/Documents/Antigravity%20Files/New-Maharashtra-%20Car-Motors-V1/src/pages/admin/FollowUps.tsx)
 *   Introduce a global "Add Reminder" floating action button. This will let GMs schedule global operational tasks across the dealership without tying them exclusively to a specific Lead.
 
 ---
@@ -41,7 +41,7 @@ This Phase 9 Implementation Plan addresses wiring up all remaining frontend inse
 
 *Customers are successfully vaulted when a deal is Marked as Won, but there's no way to type in a customer who bypassed the Lead pipe.*
 
-#### [MODIFY] [Customers.tsx](file:///c:/Users/Abhinav/Documents/Antigravity Files/swami-motors-Vol1/src/pages/admin/Customers.tsx)
+#### [MODIFY] [Customers.tsx](file:///c:/Users/Abhinav/Documents/Antigravity%20Files/New-Maharashtra-%20Car-Motors-V1/src/pages/admin/Customers.tsx)
 *   Integrate a generic "Add Manual Customer Profile" slide-out form allowing administrators to insert rows straight to the `customers` model (Full Name, Contact, Address, Loyalty Value).
 
 ---

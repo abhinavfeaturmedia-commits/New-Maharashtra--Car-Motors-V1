@@ -650,7 +650,7 @@ const CarDetails = () => {
                                 <span className="w-1 h-1 rounded-full bg-slate-300" />
                                 <span>{car.transmission}</span>
                                 <span className="w-1 h-1 rounded-full bg-slate-300" />
-                                <span>Kolhapur</span>
+                                <span>Pune</span>
                                 {car.source === 'dealer' && car.dealer?.dealer_code && (
                                     <>
                                         <span className="w-1 h-1 rounded-full bg-slate-300" />
@@ -977,7 +977,7 @@ const CarDetails = () => {
                                 <p className="text-sm font-bold text-primary">New Maharashtra Motors</p>
                                 <p className="text-xs text-slate-500 flex items-start gap-1 mt-0.5">
                                     <span className="material-symbols-outlined text-xs text-accent shrink-0 mt-0.5">location_on</span>
-                                    <span>Shiroli (P), Kolhapur, Maharashtra 416122</span>
+                                    <span>Sr.no 515/1, Kasarwadi, Pimpri-Chinchwad, Maharashtra 411034</span>
                                 </p>
                             </div>
                         </div>
@@ -1220,7 +1220,7 @@ const CarDetails = () => {
                                     <p className="text-xs font-bold text-primary">New Maharashtra Motors</p>
                                     <p className="text-[10px] text-slate-400 flex items-start gap-1 mt-0.5">
                                         <span className="material-symbols-outlined text-xs text-accent shrink-0 mt-0.5">location_on</span>
-                                        <span className="truncate">Shiroli (P), Kolhapur, Maharashtra 416122</span>
+                                        <span className="truncate">Kasarwadi, Pimpri-Chinchwad, Maharashtra 411034</span>
                                     </p>
                                 </div>
                             </div>

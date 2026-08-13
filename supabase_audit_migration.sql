@@ -1,5 +1,5 @@
 -- ============================================================
--- Swami Motors — Audit Fix Migration
+-- Maharashtra Motors — Audit Fix Migration
 -- Run this in the Supabase SQL Editor
 -- ============================================================
 

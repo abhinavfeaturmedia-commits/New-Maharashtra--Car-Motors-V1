@@ -1,5 +1,5 @@
 -- ============================================================
--- SWAMI MOTORS — SUPABASE STORAGE SETUP
+-- MAHARASHTRA MOTORS — SUPABASE STORAGE SETUP
 -- Run this script in: Supabase → SQL Editor → New Query
 -- ============================================================
 

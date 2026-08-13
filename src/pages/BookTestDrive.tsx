@@ -420,9 +420,9 @@ const BookTestDrive = () => {
 
                         <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 mt-4">
                             <h4 className="text-sm font-bold text-primary mb-2">📌 Showroom Location</h4>
-                            <p className="text-xs text-slate-500">New Maharashtra Motors, Shiroli (P), Kolhapur, Maharashtra 416122</p>
+                            <p className="text-xs text-slate-500">Sr.no 515/1, near Shankar mandir, Kasarwadi, Pimpri-Chinchwad, Maharashtra 411034</p>
                             <a
-                                href="https://share.google/Wzyb6tEjrHeTi0J0n"
+                                href="https://share.google/al67v4PD0nUK20g5x"
                                 target="_blank"
                                 rel="noreferrer"
                                 className="text-xs font-semibold text-accent hover:underline mt-2 inline-block"

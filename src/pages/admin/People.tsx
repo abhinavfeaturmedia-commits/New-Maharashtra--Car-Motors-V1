@@ -27,7 +27,7 @@ const emptyForm = {
     full_name: '',
     phone: '',
     email: '',
-    city: 'Kolhapur',
+    city: 'Pune',
     notes: '',
 };
 
@@ -97,7 +97,7 @@ const AddCustomerModal: React.FC<{ onClose: () => void; onSaved: () => void }> =
                     {field('Full Name', 'full_name', 'text', true, 'e.g. Ramesh Patil')}
                     {field('Phone Number', 'phone', 'tel', true, 'e.g. 9876543210')}
                     {field('Email (Optional)', 'email', 'email', false, 'e.g. ramesh@gmail.com')}
-                    {field('City', 'city', 'text', false, 'e.g. Kolhapur')}
+                    {field('City', 'city', 'text', false, 'e.g. Pune')}
                     <div className="space-y-1">
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Notes (Optional)</label>
                         <textarea

@@ -5,7 +5,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
 import { useNotifications } from '../../contexts/NotificationContext';
 import { toWhatsAppUrl } from '../../lib/utils';
-import { compressPdf } from '../../lib/pdfCompressor';
+import { compressPdf, autoCompressPdf } from '../../lib/pdfCompressor';
+import { autoCompressImage } from '../../lib/imageCompressor';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -279,7 +280,7 @@ const CustomerDetail = () => {
                 email: data.email || '',
                 address: data.address || '',
                 office_address: data.office_address || '',
-                city: data.city || 'Kolhapur',
+                city: data.city || 'Pune',
                 occupation: data.occupation || '',
                 date_of_birth: data.date_of_birth || '',
                 notes: data.notes || '',
@@ -693,15 +694,15 @@ const CustomerDetail = () => {
 
         let fileToUpload = file;
         if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
-            if (file.size > 2 * 1024 * 1024) {
-                setUploadStatusText('Compressing PDF (>2MB)…');
-                const compResult = await compressPdf(file, {
-                    targetMaxMb: 1.5,
-                    quality: 0.75,
-                    onProgress: (pct, text) => setUploadStatusText(`Compressing: ${text}`)
-                });
-                fileToUpload = compResult.file;
-            }
+            setUploadStatusText('Optimizing PDF (High Quality)…');
+            fileToUpload = await autoCompressPdf(file, (pct, text) => {
+                setUploadStatusText(`Compressing PDF: ${text}`);
+            });
+        } else if (file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp)$/i.test(file.name)) {
+            setUploadStatusText('Optimizing Photo (< 600 KB)…');
+            fileToUpload = await autoCompressImage(file, (pct, text) => {
+                setUploadStatusText(`Compressing Photo: ${text}`);
+            });
         }
 
         setUploadStatusText('Uploading to storage…');

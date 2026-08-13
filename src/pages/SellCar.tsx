@@ -72,14 +72,14 @@ const SellCar = () => {
                 <div className="relative z-10 container-main py-16 lg:py-24">
                     <span className="inline-flex items-center gap-2 bg-accent text-primary text-xs font-bold px-3 py-1.5 rounded-lg mb-6 uppercase"><span className="material-symbols-outlined text-sm">verified</span> Best Price Guaranteed</span>
                     <h1 className="text-4xl lg:text-6xl font-black text-white font-display leading-tight mb-4">Sell your car in <span className="text-accent">30 minutes</span></h1>
-                    <p className="text-slate-400 text-lg max-w-lg mb-8">New Maharashtra Motors: Kolhapur's most trusted vehicle sales & service. Instant payment, free RC transfer.</p>
+                    <p className="text-slate-400 text-lg max-w-lg mb-8">New Maharashtra Motors: Pune's most trusted vehicle sales & service. Instant payment, free RC transfer.</p>
                     <div className="flex gap-3 max-w-lg">
                         <input type="text" value={heroReg} onChange={e => setHeroReg(e.target.value)} placeholder="MH09 AB 1234" className="flex-1 h-12 bg-white/10 border border-white/20 text-white placeholder:text-white/50 rounded-xl px-5 text-sm outline-none backdrop-blur focus:ring-2 focus:ring-accent/30" />
                         <button onClick={() => {
                             document.getElementById('sell-form')?.scrollIntoView({ behavior: 'smooth' });
                         }} className="h-12 flex items-center justify-center px-6 bg-accent text-primary font-bold rounded-xl hover:bg-accent-hover transition-all text-sm whitespace-nowrap border-0">Get Instant Quote</button>
                     </div>
-                    <p className="text-xs text-slate-500 mt-3 flex items-center gap-1"><span className="material-symbols-outlined text-xs text-green-400">check_circle</span> 10,000+ Happy Customers in Kolhapur</p>
+                    <p className="text-xs text-slate-500 mt-3 flex items-center gap-1"><span className="material-symbols-outlined text-xs text-green-400">check_circle</span> 10,000+ Happy Customers in Pune</p>
                 </div>
             </section>
 
@@ -91,7 +91,7 @@ const SellCar = () => {
                     {[
                         { icon: 'payments', title: 'Instant Payment', desc: "Don't wait. Bank transfer NEFT/IMPS on the spot, within minutes of deal finalization." },
                         { icon: 'description', title: 'RC Transfer Free', desc: 'We handle all the legal paperwork and RC transfer process at zero cost to you.' },
-                        { icon: 'home', title: 'Doorstep Inspection', desc: 'Our experts come to your home or office anywhere in Kolhapur for a free evaluation.' },
+                        { icon: 'home', title: 'Doorstep Inspection', desc: 'Our experts come to your home or office anywhere in Pune for a free evaluation.' },
                     ].map(b => (
                         <div key={b.title} className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[var(--shadow-card)] text-center">
                             <div className="size-14 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto mb-4">
@@ -117,7 +117,7 @@ const SellCar = () => {
                         <div className="space-y-6">
                             {[
                                 { icon: 'computer', title: 'Instant Online Quote', desc: 'Get an AI-driven estimated price range in seconds by entering your car details.' },
-                                { icon: 'home', title: 'Free Home Evaluation', desc: 'We visit you in Kolhapur to inspect the car condition. It takes just 30 minutes.' },
+                                { icon: 'home', title: 'Free Home Evaluation', desc: 'We visit you in Pune to inspect the car condition. It takes just 30 minutes.' },
                                 { icon: 'payments', title: 'Same-Day Payment', desc: "Agree on the price? Money is transferred to your bank instantly." },
                             ].map((step, i) => (
                                 <div key={i} className="flex items-start gap-4 bg-slate-50 rounded-2xl p-5">
@@ -209,8 +209,8 @@ const SellCar = () => {
                                     {form.car_make.trim() && form.car_model.trim() && (
                                         <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-center justify-between">
                                             <div>
-                                                <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider block">Estimated Kolhapur Trade-in Value</span>
-                                                <span className="text-xs text-slate-500">Based on recent market sales in Kolhapur</span>
+                                                <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider block">Estimated Pune Trade-in Value</span>
+                                                <span className="text-xs text-slate-500">Based on recent market sales in Pune</span>
                                             </div>
                                             <div className="text-right">
                                                 <span className="text-lg font-black text-primary font-display tabular-nums">

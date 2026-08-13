@@ -1,5 +1,5 @@
 -- ==============================================================================
--- FIX ALL SCHEMA CONSTRAINTS & COLUMNS FOR SWAMI MOTORS / NEW MAHARASHTRA MOTORS
+-- FIX ALL SCHEMA CONSTRAINTS & COLUMNS FOR MAHARASHTRA MOTORS
 -- Run this in Supabase Dashboard → SQL Editor → New Query
 -- ==============================================================================
 

@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { compressPdf } from '../../lib/pdfCompressor';
+import { compressPdf, autoCompressPdf } from '../../lib/pdfCompressor';
+import { autoCompressImage } from '../../lib/imageCompressor';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -213,15 +214,15 @@ const UploadDocModal: React.FC<{ customerId: string; onClose: () => void; onSave
         try {
             let fileToUpload = file;
             if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
-                if (file.size > 2 * 1024 * 1024) {
-                    setStatusText('Compressing PDF (>2MB)…');
-                    const compResult = await compressPdf(file, {
-                        targetMaxMb: 1.5,
-                        quality: 0.75,
-                        onProgress: (pct, text) => setStatusText(`Compressing: ${text}`)
-                    });
-                    fileToUpload = compResult.file;
-                }
+                setStatusText('Optimizing PDF (High Quality)…');
+                fileToUpload = await autoCompressPdf(file, (pct, text) => {
+                    setStatusText(`Compressing PDF: ${text}`);
+                });
+            } else if (file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp)$/i.test(file.name)) {
+                setStatusText('Optimizing Photo (< 600 KB)…');
+                fileToUpload = await autoCompressImage(file, (pct, text) => {
+                    setStatusText(`Compressing Photo: ${text}`);
+                });
             }
 
             setStatusText('Uploading to storage…');

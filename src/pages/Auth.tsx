@@ -102,7 +102,7 @@ const Auth = () => {
                         Experience the premium journey.
                     </h1>
                     <p className="text-slate-600 text-lg leading-relaxed mb-8">
-                        Access your garage, schedule services, and explore our exclusive inventory. Join thousands of satisfied customers in Kolhapur.
+                        Access your garage, schedule services, and explore our exclusive inventory. Join thousands of satisfied customers in Pune.
                     </p>
                     <div className="flex items-center gap-6 text-sm text-slate-500">
                         <span className="flex items-center gap-2">

@@ -1,5 +1,5 @@
 -- ==============================================================================
--- ATTENDANCE MODULE MIGRATION — SWAMI MOTORS
+-- ATTENDANCE MODULE MIGRATION — MAHARASHTRA MOTORS
 -- Run this in: Supabase → SQL Editor → New Query
 -- ==============================================================================
 

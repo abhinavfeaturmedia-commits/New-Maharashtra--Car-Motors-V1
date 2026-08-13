@@ -37,13 +37,13 @@ const About = () => {
                     </nav>
                     <div className="max-w-2xl">
                         <span className="inline-flex items-center gap-2 text-xs font-bold tracking-widest uppercase text-accent mb-4">
-                            <span className="material-symbols-outlined text-sm">stars</span> Kolhapur's Trusted Dealership
+                            <span className="material-symbols-outlined text-sm">stars</span> Pune's Trusted Dealership
                         </span>
                         <h1 className="text-4xl md:text-5xl font-black font-display leading-tight mb-6">
                             Built on Trust,<br />Driven by Passion
                         </h1>
                         <p className="text-white/70 text-lg leading-relaxed max-w-xl">
-                            Since 2001, New Maharashtra Motors has been Kolhapur's go-to destination for quality pre-owned vehicles, genuine spare parts, and comprehensive automotive services. We combine honest dealing with expert vehicle knowledge.
+                            Since 2001, New Maharashtra Motors has been Pune's go-to destination for quality pre-owned vehicles, genuine spare parts, and comprehensive automotive services. We combine honest dealing with expert vehicle knowledge.
                         </p>
                     </div>
                 </div>
@@ -72,13 +72,13 @@ const About = () => {
                             <span className="text-xs font-bold text-accent uppercase tracking-widest flex items-center gap-2 mb-3">
                                 <span className="material-symbols-outlined text-sm">history</span> Our Story
                             </span>
-                            <h2 className="text-3xl font-black text-primary font-display mb-6">From a Small Lot to Kolhapur's Most Trusted Name</h2>
+                            <h2 className="text-3xl font-black text-primary font-display mb-6">From a Small Lot to Pune's Most Trusted Name</h2>
                             <div className="space-y-4 text-slate-600 leading-relaxed">
                                 <p>
                                     New Maharashtra Motors was founded in 2001 with a simple mission: to make buying and servicing vehicles as trustworthy and transparent as buying a new one.
                                 </p>
                                 <p>
-                                    In our early years, we expanded from genuine automotive spare parts distribution into full-scale pre-owned vehicle sales and servicing. Today, we're proud to serve thousands of satisfied customers across Shiroli, Kolhapur, Sangli, and the surrounding region.
+                                    In our early years, we expanded from genuine automotive spare parts distribution into full-scale pre-owned vehicle sales and servicing. Today, we're proud to serve thousands of satisfied customers across Pune and the surrounding region.
                                 </p>
                                 <p>
                                     Every car in our inventory undergoes a rigorous 120-point inspection. We never sell cars or parts we wouldn't feel comfortable providing to our own family members. That's the New Maharashtra Motors promise.
@@ -147,7 +147,7 @@ const About = () => {
                             <span className="material-symbols-outlined text-sm">group</span> The People Behind the Brand
                         </span>
                         <h2 className="text-3xl font-black text-primary font-display">Meet Our Founder</h2>
-                        <p className="text-slate-500 mt-3">The visionary leader who built Kolhapur's most trusted used car dealership from the ground up.</p>
+                        <p className="text-slate-500 mt-3">The visionary leader who built Pune's most trusted used car dealership from the ground up.</p>
                     </div>
 
                     {/* Single founder card — centered, premium */}
@@ -189,7 +189,7 @@ const About = () => {
                                     </div>
                                     <div>
                                         <p className="font-semibold mb-1">Address</p>
-                                        <p className="text-white/70 text-sm">Chatrapati Shivaji Nagar, Behind Mahadik Bungalow,<br />Shiroli (P), Kolhapur, Maharashtra 416122</p>
+                                        <p className="text-white/70 text-sm">Sr.no 515/1, near Shankar mandir, Kasarwadi,<br />Pimpri-Chinchwad, Maharashtra 411034, India</p>
                                     </div>
                                 </div>
                                 <div className="flex items-start gap-4">

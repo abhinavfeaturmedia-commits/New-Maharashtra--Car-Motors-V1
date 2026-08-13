@@ -132,7 +132,7 @@ Your goals:
 
 Dealership Details:
 - Name: New Maharashtra Motors
-- Showroom Location: ${profile.address || 'Chatrapati Shivaji Nagar, Behind Mahadik Bungalow, Shiroli (P), Pune, Maharashtra'}
+- Showroom Location: ${profile.address || 'Sr.no 515/1, near Shankar mandir, Kasarwadi, Pimpri-Chinchwad, Maharashtra 411034'}
 - City: ${profile.city || 'Pune'}
 - Phone: ${profile.phone || '+91 93737 21705'}
 - Email: ${profile.email || 'sales@newmaharashtramotors.com'}
@@ -186,8 +186,8 @@ Conversation Guideline:
                             availableCars.slice(0, 3).map(c => `🚗 *${c.year} ${c.make} ${c.model}* (${c.transmission}, ${c.fuel_type}) - *${formatCurrencyLakh(c.price)}*`).join('\n') +
                             `\n\nWould you like our sales team to contact you with our complete catalog, photos, and best deals? Click *Request Callback* below to leave your details!`;
                     } else if (lowerText.includes('location') || lowerText.includes('address') || lowerText.includes('where')) {
-                        const addr = settings?.business_profile?.address || 'Kasaba Bawada Main Rd, Kasaba Bawada, Kolhapur, Maharashtra - 416006';
-                        reply = `📍 *Showroom Address:*\n${addr}\n\nWe are situated in Kolhapur. You are welcome to visit us to inspect any vehicle or take a test drive!`;
+                        const addr = settings?.business_profile?.address || 'Sr.no 515/1, near Shankar mandir, Kasarwadi, Pimpri-Chinchwad, Maharashtra 411034';
+                        reply = `📍 *Showroom Address:*\n${addr}\n\nWe are situated in Pune. You are welcome to visit us to inspect any vehicle or take a test drive!`;
                     } else if (lowerText.includes('timing') || lowerText.includes('hour') || lowerText.includes('open') || lowerText.includes('sunday')) {
                         reply = `⏰ *Operating Hours:*\n- Monday to Friday: 9:30 AM - 7:30 PM\n- Saturday: 9:30 AM - 2:00 PM\n- Sunday: Closed`;
                     } else if (lowerText.includes('sell')) {

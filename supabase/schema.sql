@@ -1,5 +1,5 @@
 -- ============================================================
--- SWAMI MOTORS — SUPABASE DATABASE SCHEMA
+-- MAHARASHTRA MOTORS — SUPABASE DATABASE SCHEMA
 -- Run this entire script in: Supabase → SQL Editor → New Query
 -- ============================================================
 

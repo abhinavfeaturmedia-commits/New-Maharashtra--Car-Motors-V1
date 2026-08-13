@@ -244,7 +244,7 @@ const ShareCarModal: React.FC<Props> = ({ car, onClose }) => {
 
         return `${greet}
 
-This is *New Maharashtra Motors*, Kolhapur.
+This is *New Maharashtra Motors*, Pune.
 
 We have the perfect car for you:
 
@@ -266,7 +266,7 @@ We also offer:
 - Thorough inspection report
 
 *New Maharashtra Motors*
-Kolhapur, Maharashtra
+Pune, Maharashtra
 
 Feel free to call or WhatsApp us anytime.`;
     };
@@ -501,7 +501,7 @@ Feel free to call or WhatsApp us anytime.`;
                         <div className="bg-gradient-to-r from-[#1a2744] to-[#243356] px-5 py-3 flex items-center justify-between">
                             <div>
                                 <p className="text-xs font-bold text-amber-400 uppercase tracking-widest">New Maharashtra Motors</p>
-                                <p className="text-[10px] text-white/60 mt-0.5">Kolhapur · Trusted Pre-Owned Cars</p>
+                                <p className="text-[10px] text-white/60 mt-0.5">Pune · Trusted Pre-Owned Cars</p>
                             </div>
                             <div className="size-9 rounded-full bg-amber-400/20 border border-amber-400/30 flex items-center justify-center">
                                 <span className="material-symbols-outlined text-amber-400 text-lg">directions_car</span>
@@ -592,7 +592,7 @@ Feel free to call or WhatsApp us anytime.`;
 
                             {/* CTA row */}
                             <div className="flex items-center justify-between pt-2 border-t border-slate-100 mt-2">
-                                <p className="text-[11px] text-slate-400">📍 Kolhapur · Book Test Drive Available</p>
+                                <p className="text-[11px] text-slate-400">📍 Pune · Book Test Drive Available</p>
                                 <a
                                     href={carLink}
                                     target="_blank"

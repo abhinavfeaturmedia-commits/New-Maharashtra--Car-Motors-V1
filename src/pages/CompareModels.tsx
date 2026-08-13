@@ -189,7 +189,7 @@ const CompareModels = () => {
             {/* Confused */}
             <div className="bg-slate-50 rounded-2xl p-8 text-center mb-8">
                 <h3 className="text-xl font-bold text-primary font-display mb-2">Still confused?</h3>
-                <p className="text-slate-500 mb-6">Let our experts in Kolhapur help you choose the right car for your needs.</p>
+                <p className="text-slate-500 mb-6">Let our experts in Pune help you choose the right car for your needs.</p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                     <Link to="/contact" className="h-11 px-6 flex items-center gap-2 bg-primary text-white font-semibold rounded-xl hover:bg-primary-light transition-colors text-sm">Contact Us</Link>
                     <Link to="/contact" className="h-11 px-6 flex items-center gap-2 border-2 border-primary text-primary font-semibold rounded-xl hover:bg-primary hover:text-white transition-all text-sm">Visit Showroom</Link>

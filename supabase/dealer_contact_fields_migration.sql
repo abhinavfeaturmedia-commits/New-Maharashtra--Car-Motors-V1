@@ -1,5 +1,5 @@
 -- ============================================================
--- Swami Motors — Dealer Contact Fields Migration
+-- Maharashtra Motors — Dealer Contact Fields Migration
 -- Run this in the Supabase SQL Editor
 -- ============================================================
 

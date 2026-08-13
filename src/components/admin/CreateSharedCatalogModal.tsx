@@ -383,7 +383,7 @@ const CreateSharedCatalogModal: React.FC<CreateSharedCatalogModalProps> = ({
                             {generatedPhone && (() => {
                                 const p = generatedPhone.replace(/\D/g, '');
                                 const formattedPhone = p.startsWith('91') ? p : `91${p}`;
-                                const waText = `Hello ${activeCustomerName}, here is your personalized car catalog from *New Maharashtra Motors*, Kolhapur:\n\n${generatedLink}\n\nFeel free to browse the selected vehicles and reach out if you'd like a test drive or have any questions!`;
+                                const waText = `Hello ${activeCustomerName}, here is your personalized car catalog from *New Maharashtra Motors*, Pune:\n\n${generatedLink}\n\nFeel free to browse the selected vehicles and reach out if you'd like a test drive or have any questions!`;
                                 return (
                                     <a
                                         href={`https://wa.me/${formattedPhone}?text=${encodeURIComponent(waText)}`}

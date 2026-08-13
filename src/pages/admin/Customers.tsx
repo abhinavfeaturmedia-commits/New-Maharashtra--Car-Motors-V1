@@ -45,7 +45,7 @@ const emptyForm = {
     email: '',
     address: '',
     office_address: '',
-    city: 'Kolhapur',
+    city: 'Pune',
     occupation: '',
     date_of_birth: '',
     notes: '',
@@ -458,7 +458,7 @@ const Customers = () => {
             email: c.email || '',
             address: c.address || '',
             office_address: c.office_address || '',
-            city: c.city || 'Kolhapur',
+            city: c.city || 'Pune',
             occupation: c.occupation || '',
             date_of_birth: c.date_of_birth || '',
             notes: c.notes || '',
@@ -477,7 +477,7 @@ const Customers = () => {
             email: editForm.email || null,
             address: editForm.address || null,
             office_address: editForm.office_address || null,
-            city: editForm.city || 'Kolhapur',
+            city: editForm.city || 'Pune',
             occupation: editForm.occupation || null,
             date_of_birth: editForm.date_of_birth || null,
             notes: editForm.notes || null,
@@ -512,7 +512,7 @@ const Customers = () => {
             email: addForm.email || null,
             address: addForm.address || null,
             office_address: addForm.office_address || null,
-            city: addForm.city || 'Kolhapur',
+            city: addForm.city || 'Pune',
             occupation: addForm.occupation || null,
             date_of_birth: addForm.date_of_birth || null,
             notes: addForm.notes || null,
@@ -663,7 +663,7 @@ const Customers = () => {
                                             <p className="text-sm font-medium text-slate-700"><HighlightText text={c.phone} highlight={search} /></p>
                                             {c.email && <p className="text-[10px] text-slate-400 truncate max-w-[160px]"><HighlightText text={c.email} highlight={search} /></p>}
                                         </td>
-                                        <td className="px-5 py-3.5 text-sm text-slate-600"><HighlightText text={c.city || 'Kolhapur'} highlight={search} /></td>
+                                        <td className="px-5 py-3.5 text-sm text-slate-600"><HighlightText text={c.city || 'Pune'} highlight={search} /></td>
                                         <td className="px-5 py-3.5">
                                             {custSales.length > 0 ? (
                                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-green-50 text-green-700 uppercase tracking-wide">
@@ -1185,7 +1185,7 @@ const Customers = () => {
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
                                     <label className="block text-xs font-bold text-slate-600 mb-1.5">City</label>
-                                    <input type="text" value={addForm.city} onChange={e => setAddForm({ ...addForm, city: e.target.value })} placeholder="Kolhapur" className="w-full h-11 border border-slate-200 rounded-xl px-4 text-sm outline-none focus:ring-2 focus:ring-primary/10" />
+                                    <input type="text" value={addForm.city} onChange={e => setAddForm({ ...addForm, city: e.target.value })} placeholder="Pune" className="w-full h-11 border border-slate-200 rounded-xl px-4 text-sm outline-none focus:ring-2 focus:ring-primary/10" />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-slate-600 mb-1.5">Date of Birth <span className="text-xs text-slate-400 font-normal">(optional)</span></label>

@@ -72,7 +72,7 @@ const NEEDED = [
         console.log('\n⚠️  Cannot query information_schema via REST. Generating full migration SQL instead...');
         const missing = NEEDED;
         const sql = [
-            '-- Swami Motors Audit Migration',
+            '-- Maharashtra Motors Audit Migration',
             '-- Run in: Supabase Dashboard → SQL Editor → New Query',
             '',
             ...missing.map(([tbl, col, def]) =>
@@ -112,7 +112,7 @@ const NEEDED = [
 
     // Generate minimal SQL
     const sql = [
-        '-- Swami Motors Audit Migration — MINIMAL (only missing columns)',
+        '-- Maharashtra Motors Audit Migration — MINIMAL (only missing columns)',
         '-- Run this in: Supabase Dashboard → SQL Editor → New Query',
         '',
         ...missing.map(([tbl, col, def]) =>

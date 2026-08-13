@@ -167,7 +167,7 @@ const ServiceBooking = () => {
             </nav>
 
             <h1 className="text-3xl font-black text-primary font-display mb-2">Schedule Your Service</h1>
-            <p className="text-slate-500 text-lg mb-10">Expert care for your vehicle at Kolhapur's most trusted service center.</p>
+            <p className="text-slate-500 text-lg mb-10">Expert care for your vehicle at Pune's most trusted service center.</p>
 
             <div className="grid lg:grid-cols-3 gap-8">
                 {/* Services */}
@@ -203,7 +203,7 @@ const ServiceBooking = () => {
                         <div className="grid md:grid-cols-3 gap-6">
                             {[
                                 { icon: 'verified', title: 'Genuine Parts', desc: 'Only OEM and company-approved spare parts.' },
-                                { icon: 'engineering', title: 'Expert Mechanics', desc: '20+ years combined experience in Kolhapur.' },
+                                { icon: 'engineering', title: 'Expert Mechanics', desc: '20+ years combined experience in Pune.' },
                                 { icon: 'schedule', title: 'On-Time Delivery', desc: 'We value your time—strict pickup/delivery.' },
                             ].map(w => (
                                 <div key={w.title} className="flex flex-col items-center text-center">

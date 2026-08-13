@@ -153,11 +153,11 @@ const AiResponseWidget: React.FC<{ lead: any; linkedCars: any[]; openRouterSetti
         setDraft('');
         
         try {
-            const systemPrompt = `You are a professional sales assistant at "New Maharashtra Motors", a premier automotive dealership and service provider in Kolhapur, Maharashtra, India.
+            const systemPrompt = `You are a professional sales assistant at "New Maharashtra Motors", a premier automotive dealership and service provider in Pune, Maharashtra, India.
 Your goal is to draft a helpful, professional, and persuasive response to a customer enquiry.
 Keep the message concise, friendly, and structured for WhatsApp/email.
 Do NOT use generic placeholders like "[Your Name]" or "[Dealer Name]" - sign off as "Sales Team, New Maharashtra Motors".
-Provide real Indian context (e.g. Kolhapur, prices in Lakhs if mentioned). 
+Provide real Indian context (e.g. Pune, prices in Lakhs if mentioned). 
 Write the draft directly without any introductory conversational wrapper (like "Here is the draft:").`;
 
             let carDetailsText = 'any suitable vehicle in our catalog';
@@ -181,7 +181,7 @@ Interested Vehicle(s): ${carDetailsText}
 Budget: ${lead.budget || 'Not specified'}
 
 The tone should be: ${toneDescription}.
-Format the response clearly with line breaks suitable for WhatsApp. Include a call to action asking them to schedule a showroom visit at Kasaba Bawada, Kolhapur or book a test drive.`;
+Format the response clearly with line breaks suitable for WhatsApp. Include a call to action asking them to schedule a showroom visit in Pune or book a test drive.`;
 
             const apiKey = openRouterSettings.api_key;
             const model = openRouterSettings.default_model === 'custom' 

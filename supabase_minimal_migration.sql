@@ -1,4 +1,4 @@
--- Swami Motors Audit Migration
+-- Maharashtra Motors Audit Migration
 -- Run in: Supabase Dashboard → SQL Editor → New Query
 
 ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS lead_id UUID REFERENCES public.leads(id) ON DELETE SET NULL;

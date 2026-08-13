@@ -56,7 +56,7 @@ const Insurance = () => {
                 <div className="container-main py-16 lg:py-20">
                     <div className="grid lg:grid-cols-2 gap-12 items-center">
                         <div className="relative z-10">
-                            <span className="inline-flex items-center gap-2 text-xs font-bold text-accent mb-4"><span className="material-symbols-outlined text-sm">verified</span> Trusted in Kolhapur</span>
+                            <span className="inline-flex items-center gap-2 text-xs font-bold text-accent mb-4"><span className="material-symbols-outlined text-sm">verified</span> Trusted in Pune</span>
                             <h1 className="text-4xl lg:text-5xl font-black text-white font-display leading-tight mb-4">Secure Your Drive with Confidence</h1>
                             <p className="text-slate-400 text-lg mb-6 max-w-lg">Comprehensive car insurance solutions tailored for you. Get instant quotes, enjoy hassle-free claims, and drive with peace of mind.</p>
                             <div className="flex flex-wrap gap-4 text-sm text-white/80">
@@ -138,7 +138,7 @@ const Insurance = () => {
                     {[
                         { icon: 'shield', title: 'Buy New Policy', desc: 'Purchasing a new car? Get comprehensive coverage immediately with zero paperwork and instant policy issuance.', cta: 'Check Plans' },
                         { icon: 'autorenew', title: 'Policy Renewal', desc: 'Existing policy expiring? Renew it in minutes. Compare quotes from top insurers and save on premiums.', cta: 'Renew Now' },
-                        { icon: 'support_agent', title: 'Claims Assistance', desc: 'Need to make a claim? Our dedicated support team in Kolhapur ensures quick settlement and cashless repairs.', cta: 'Get Support' },
+                        { icon: 'support_agent', title: 'Claims Assistance', desc: 'Need to make a claim? Our dedicated support team in Pune ensures quick settlement and cashless repairs.', cta: 'Get Support' },
                     ].map(s => (
                         <div key={s.title} className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-all">
                             <div className="size-12 rounded-xl bg-primary/5 flex items-center justify-center mb-4">

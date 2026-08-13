@@ -1,4 +1,4 @@
-# Database & Supabase Guide — Maharashtra Motors (Swami Motors)
+# Database & Supabase Guide — Maharashtra Motors
 
 This folder contains all the database schemas, SQL queries, migration scripts, and Supabase integration files for the Maharashtra Motors application.
 

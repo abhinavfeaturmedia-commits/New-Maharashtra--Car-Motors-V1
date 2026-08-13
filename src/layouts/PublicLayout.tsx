@@ -270,11 +270,11 @@ const PublicLayout: React.FC = () => {
                             <ul className="space-y-4 text-sm text-slate-400">
                                 <li className="flex items-start gap-3">
                                     <MapPin size={16} className="text-accent shrink-0 mt-0.5" />
-                                    <span>Chatrapati Shivaji Nagar, Behind Mahadik Bungalow, Shiroli (P), Pune, Maharashtra</span>
+                                    <span>Sr.no 515/1, near Shankar mandir, Kasarwadi, Pimpri-Chinchwad, Maharashtra 411034, India</span>
                                 </li>
                                 <li className="flex items-center gap-3">
                                     <Phone size={16} className="text-accent shrink-0" />
-                                    <span>+91 93737 21705</span>
+                                    <span>+91 93737 21705 / +91 98232 37975</span>
                                 </li>
                                 <li className="flex items-center gap-3">
                                     <Mail size={16} className="text-accent shrink-0" />

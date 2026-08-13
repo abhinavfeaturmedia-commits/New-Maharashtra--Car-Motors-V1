@@ -59,7 +59,7 @@ const Contact = () => {
     return (
         <div className="container-main py-12">
             <h1 className="text-4xl font-black text-primary font-display mb-2">Get in Touch</h1>
-            <p className="text-slate-500 text-lg mb-10">Visit our showroom or send us a message to experience premium service in Kolhapur.</p>
+            <p className="text-slate-500 text-lg mb-10">Visit our showroom or send us a message to experience premium service in Pune.</p>
 
             <div className="grid lg:grid-cols-2 gap-10">
                 {/* Left: Map + Contact Info */}
@@ -67,11 +67,11 @@ const Contact = () => {
                     <div className="rounded-2xl overflow-hidden border border-slate-100 shadow-[var(--shadow-card)] bg-white">
                         <div className="aspect-[4/3] bg-slate-100 relative">
                             <iframe
-                                src="https://maps.google.com/maps?q=New%20Maharashtra%20Motors,%20Shiroli,%20Kolhapur&t=&z=15&ie=UTF8&iwloc=&output=embed"
+                                src="https://maps.google.com/maps?q=New%20Maharashtra%20Motors,%20Kasarwadi,%20Pimpri-Chinchwad,%20Maharashtra%20411034&t=&z=15&ie=UTF8&iwloc=&output=embed"
                                 className="w-full h-full border-0" allowFullScreen loading="lazy" title="Location Map"
                             />
                             <a 
-                                href="https://share.google/Wzyb6tEjrHeTi0J0n"
+                                href="https://share.google/al67v4PD0nUK20g5x"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="absolute bottom-4 right-4 bg-white shadow-md rounded-xl px-4 py-2 text-sm font-semibold text-primary flex items-center gap-2 hover:shadow-lg transition-shadow"
@@ -84,8 +84,8 @@ const Contact = () => {
                     <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-[var(--shadow-card)] space-y-5">
                         <h3 className="text-xl font-bold text-primary font-display">Contact Information</h3>
                         {[
-                            { icon: <MapPin size={18} className="text-primary" />, label: 'Address', value: 'Chatrapati Shivaji Nagar, Behind Mahadik Bungalow, Shiroli (P), Kolhapur, Maharashtra 416122' },
-                            { icon: <Phone size={18} className="text-primary" />, label: 'Phone', value: '+91 93737 21705 / +91-231-242550', sub: 'Mon-Sat: 9AM - 8PM' },
+                            { icon: <MapPin size={18} className="text-primary" />, label: 'Address', value: 'Sr.no 515/1, near Shankar mandir, Kasarwadi, Pimpri-Chinchwad, Maharashtra 411034, India' },
+                            { icon: <Phone size={18} className="text-primary" />, label: 'Phone', value: '+91 93737 21705 / +91 98232 37975', sub: 'Mon-Sat: 9AM - 8PM' },
                             { icon: <Mail size={18} className="text-primary" />, label: 'Email', value: 'sales@newmaharashtramotors.com' },
                         ].map(item => (
                             <div key={item.label} className="flex items-start gap-4">

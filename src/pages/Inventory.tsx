@@ -334,7 +334,7 @@ const Inventory = () => {
                     <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
                             <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-primary font-display mb-1.5 leading-tight uppercase tracking-tight">Used Car Inventory</h1>
-                            <p className="text-xs sm:text-sm text-slate-500 max-w-lg">Certified pre-owned vehicles in Kolhapur with 120+ points check.</p>
+                            <p className="text-xs sm:text-sm text-slate-500 max-w-lg">Certified pre-owned vehicles in Pune with 120+ points check.</p>
                         </div>
 
                         {/* Search Input Bar */}
