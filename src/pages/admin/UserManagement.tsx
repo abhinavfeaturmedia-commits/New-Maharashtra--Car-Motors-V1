@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Navigate } from 'react-router-dom';
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -111,42 +112,66 @@ const UserManagement = () => {
         setSaving(true);
 
         try {
-            // Always get a fresh session token directly from Supabase client
-            const { data: { session: freshSession } } = await supabase.auth.getSession();
-            if (!freshSession?.access_token) {
-                setCreateError('Session expired. Please refresh and try again.');
-                setSaving(false);
+            // Create a non-persisting secondary Supabase client so Admin session is preserved
+            const tempClient = createClient(
+                import.meta.env.VITE_SUPABASE_URL,
+                import.meta.env.VITE_SUPABASE_ANON_KEY,
+                { auth: { persistSession: false } }
+            );
+
+            // Register user in Supabase Auth
+            const { data: authData, error: authError } = await tempClient.auth.signUp({
+                email: form.email.trim(),
+                password: form.password,
+                options: {
+                    data: {
+                        full_name: form.full_name.trim(),
+                        role: form.role,
+                        department: form.department || null,
+                        phone: form.phone.trim() || null,
+                    }
+                }
+            });
+
+            if (authError) {
+                setCreateError(authError.message || 'Failed to create user account.');
                 return;
             }
 
-            const res = await fetch(
-                `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-staff-user`,
-                {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-                        Authorization: `Bearer ${freshSession.access_token}`,
-                    },
-                    body: JSON.stringify({
-                        email: form.email,
-                        password: form.password,
-                        full_name: form.full_name,
-                        phone: form.phone,
-                        role: form.role,
-                        department: form.department,
-                    }),
-                }
-            );
+            if (authData.user) {
+                const newUserId = authData.user.id;
 
-            const result = await res.json();
-            if (!res.ok || result.error) {
-                setCreateError(result.error || 'Failed to create user.');
-            } else {
+                // Upsert profile into public.profiles
+                const { error: profileError } = await supabase.from('profiles').upsert({
+                    id: newUserId,
+                    full_name: form.full_name.trim(),
+                    email: form.email.trim(),
+                    phone: form.phone.trim() || null,
+                    role: form.role,
+                    department: form.department || null,
+                    is_active: true,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'id' });
+
+                if (profileError) {
+                    console.error('Profile upsert warning:', profileError);
+                }
+
+                // Populate default module permissions for new user
+                const defaultPermRows = MODULES.map(m => ({
+                    user_id: newUserId,
+                    module: m.key,
+                    can_view: true,
+                    can_manage: form.role === 'admin' || form.role === 'staff',
+                    updated_at: new Date().toISOString()
+                }));
+
+                await supabase.from('user_permissions').upsert(defaultPermRows, { onConflict: 'user_id,module' });
+
                 setCreateSuccess(`✓ ${form.full_name} created successfully! Share the credentials with them.`);
                 setForm(emptyForm);
                 fetchUsers();
-                
+
                 // Audit log
                 if (currentUser) {
                     try {
@@ -162,8 +187,9 @@ const UserManagement = () => {
                     }
                 }
             }
-        } catch {
-            setCreateError('Network error. Please try again.');
+        } catch (err: any) {
+            console.error('User creation exception:', err);
+            setCreateError(err.message || 'Failed to create user. Please try again.');
         } finally {
             setSaving(false);
         }

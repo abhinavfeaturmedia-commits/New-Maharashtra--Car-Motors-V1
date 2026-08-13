@@ -939,7 +939,7 @@ const LeadDetail = () => {
 
             if (source === 'consignment') {
                 saleType = 'consignment';
-                // Swami earns only the fee; buyer pays owner directly
+                // Maharashtra Motors earns only the fee; buyer pays owner directly
                 if (carData.consignment_fee_type === 'fixed') {
                     consignmentFeeCollected = carData.consignment_fee_value || 0;
                 } else if (carData.consignment_fee_type === 'percentage' && carData.consignment_fee_value) {
@@ -1001,7 +1001,7 @@ const LeadDetail = () => {
                 status: 'completed',
                 payment_status: 'paid',
                 notes: source === 'consignment'
-                    ? `Park & Sell — buyer paid ${carData.consignment_owner_name || 'owner'} directly. Swami fee: ₹${profit.toLocaleString('en-IN')}`
+                    ? `Park & Sell — buyer paid ${carData.consignment_owner_name || 'owner'} directly. Maharashtra Motors fee: ₹${profit.toLocaleString('en-IN')}`
                     : 'Converted from lead workflow'
             }).select('id').single();
             if (saleErr) throw new Error('Failed to log sale record. ' + saleErr.message);
@@ -1069,7 +1069,7 @@ const LeadDetail = () => {
 
             // ── 8. Log Activity ──────────────────────────────────────────────────
             const saleNoteText = source === 'consignment'
-                ? `Park & Sell ₹${salePrice.toLocaleString('en-IN')} — Swami earned ₹${profit.toLocaleString('en-IN')} fee.`
+                ? `Park & Sell ₹${salePrice.toLocaleString('en-IN')} — Maharashtra Motors earned ₹${profit.toLocaleString('en-IN')} fee.`
                 : `Sale closed for ₹${salePrice.toLocaleString('en-IN')}. Profit: ₹${profit.toLocaleString('en-IN')}.`;
             await supabase.from('lead_activities').insert({
                 lead_id: lead?.id,
@@ -1091,7 +1091,7 @@ const LeadDetail = () => {
             const customerMsg = existingCustomer
                 ? `Linked to existing customer: ${existingCustomer.full_name}.`
                 : 'New customer record created.';
-            alert(`Sale recorded! ${customerMsg}\nSwami earnings: ₹${profit.toLocaleString('en-IN')}`);
+            alert(`Sale recorded! ${customerMsg}\nMaharashtra Motors earnings: ₹${profit.toLocaleString('en-IN')}`);
         } catch (error: any) {
             console.error('Error converting lead', error);
             alert(`Conversion failed: ${error.message}`);
@@ -2036,7 +2036,7 @@ const LeadDetail = () => {
                                                     : car.consignment_fee_type === 'percentage'
                                                         ? Math.round(price * (car.consignment_fee_value || 0) / 100)
                                                         : 0;
-                                                earningLabel = `🅿️ Park & Sell — Swami earns ₹${fee.toLocaleString('en-IN')} fee`;
+                                                earningLabel = `🤝 Consignment — Maharashtra Motors earns ₹${fee.toLocaleString('en-IN')} fee`;
                                             } else {
                                                 const profit = price - (car.purchase_cost || 0);
                                                 earningLabel = `💰 Est. profit: ₹${profit.toLocaleString('en-IN')}`;

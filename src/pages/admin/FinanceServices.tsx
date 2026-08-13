@@ -1104,7 +1104,7 @@ const FinanceServices = () => {
                                             type="number"
                                             value={formData.commission_earned}
                                             onChange={e => setFormData({ ...formData, commission_earned: e.target.value })}
-                                            placeholder="Swami Motors Profit"
+                                            placeholder="Maharashtra Motors Profit"
                                             className="w-full h-10 border border-slate-200 rounded-xl px-3 text-xs outline-none focus:border-primary font-bold text-green-600 bg-green-50/20"
                                         />
                                     </div>

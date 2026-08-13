@@ -27,7 +27,8 @@ const VehicleExpenses = () => {
                 car_id: form.car_id === 'general' ? null : form.car_id,
                 category: form.category,
                 amount: Number(form.amount),
-                description: form.description
+                description: form.description,
+                expense_date: new Date().toISOString().split('T')[0]
             };
             let queryError;
             

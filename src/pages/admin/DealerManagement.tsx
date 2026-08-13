@@ -181,7 +181,13 @@ const DealerManagement = () => {
             supabase.from('inventory').select('*').eq('source', 'dealer').order('created_at', { ascending: false }),
             supabase.from('dealer_settlements').select('*, car:inventory(make,model,year), dealer:dealers(name,dealer_code)').order('created_at', { ascending: false }),
         ]);
-        if (dealerData) setDealers(dealerData as Dealer[]);
+        if (dealerData) {
+            const mappedDealers = (dealerData as any[]).map(d => ({
+                ...d,
+                name: d.name || d.dealership_name || 'Dealer',
+            }));
+            setDealers(mappedDealers as Dealer[]);
+        }
         if (carData) setDealerCars(carData as DealerCar[]);
         if (settlementData) setSettlements(settlementData as Settlement[]);
         setLoading(false);
@@ -222,18 +228,20 @@ const DealerManagement = () => {
             return;
         }
         setSavingDealer(true);
+        const nameVal = dealerForm.name.trim();
         const payload = {
             dealer_code: dealerForm.dealer_code.toUpperCase(),
-            name: dealerForm.name.trim(),
-            contact_person: dealerForm.contact_person || null,
-            phone: dealerForm.phone || null,
-            alternate_phone: dealerForm.alternate_phone || null,
-            whatsapp_number: dealerForm.whatsapp_number || null,
-            email: dealerForm.email || null,
-            city: dealerForm.city || null,
-            address: dealerForm.address || null,
-            gst_number: dealerForm.gst_number || null,
-            notes: dealerForm.notes || null,
+            name: nameVal,
+            dealership_name: nameVal,
+            contact_person: dealerForm.contact_person ? dealerForm.contact_person.trim() : null,
+            phone: dealerForm.phone ? dealerForm.phone.trim() : null,
+            alternate_phone: dealerForm.alternate_phone ? dealerForm.alternate_phone.trim() : null,
+            whatsapp_number: dealerForm.whatsapp_number ? dealerForm.whatsapp_number.trim() : null,
+            email: dealerForm.email ? dealerForm.email.trim() : null,
+            city: dealerForm.city ? dealerForm.city.trim() : null,
+            address: dealerForm.address ? dealerForm.address.trim() : null,
+            gst_number: dealerForm.gst_number ? dealerForm.gst_number.trim() : null,
+            notes: dealerForm.notes ? dealerForm.notes.trim() : null,
             status: dealerForm.status,
             updated_at: new Date().toISOString(),
         };

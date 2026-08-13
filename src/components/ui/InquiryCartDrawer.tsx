@@ -32,40 +32,43 @@ export const InquiryCartDrawer: React.FC = () => {
                 .join('\n');
 
             const fullMessage = `Customer Inquired Catalog Cart containing:\n${vehicleListText}\n\nAdditional message:\n${message || 'No additional remarks.'}`;
+            const carIds = cartItems.map(c => c.id);
 
-            // 2. Insert into leads table
-            const { data: lead, error: leadError } = await supabase
-                .from('leads')
-                .insert({
-                    type: 'general',
-                    full_name: name,
-                    phone: phone,
-                    email: email || null,
-                    message: fullMessage,
-                    source: 'catalog_cart',
-                    status: 'new'
-                })
-                .select()
-                .single();
+            // 2. Call atomic RPC function submit_cart_inquiry to avoid RLS RETURNING policy issues
+            const { data: rpcResult, error: rpcError } = await supabase.rpc('submit_cart_inquiry', {
+                p_full_name: name,
+                p_phone: phone,
+                p_email: email || null,
+                p_message: fullMessage,
+                p_type: 'general',
+                p_source: 'catalog_cart',
+                p_inventory_ids: carIds
+            });
 
-            if (leadError) throw leadError;
+            if (rpcError) {
+                console.warn('RPC submit_cart_inquiry failed, attempting direct insert fallback:', rpcError);
+                
+                // Fallback: Direct insert into leads table without .select() (prevents RLS RETURNING error)
+                const { error: directError } = await supabase
+                    .from('leads')
+                    .insert({
+                        type: 'general',
+                        full_name: name,
+                        phone: phone,
+                        email: email || null,
+                        message: fullMessage,
+                        source: 'catalog_cart',
+                        status: 'new'
+                    });
 
-            // 3. Insert associations into lead_inventory_items table
-            const linkItems = cartItems.map(car => ({
-                lead_id: lead.id,
-                inventory_id: car.id
-            }));
-
-            const { error: linkError } = await supabase
-                .from('lead_inventory_items')
-                .insert(linkItems);
-
-            if (linkError) {
-                console.error('Failed to link inventory items, but lead was created', linkError);
+                if (directError) throw directError;
+            } else if (rpcResult && rpcResult.success === false) {
+                throw new Error(rpcResult.error || 'Failed to submit inquiry.');
+            } else if (rpcResult && rpcResult.lead_id) {
+                setCreatedLeadId(rpcResult.lead_id);
             }
 
             // Success state
-            setCreatedLeadId(lead.id);
             setSubmitted(true);
             clearCart();
         } catch (error: any) {

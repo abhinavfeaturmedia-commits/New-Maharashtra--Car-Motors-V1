@@ -23,20 +23,43 @@ const SellCar = () => {
         }
 
         setLoading(true);
-        const { error: err } = await supabase.from('leads').insert({
-            type: 'sell_car',
-            lead_type: 'sell',
-            full_name: form.full_name.trim(),
-            name: form.full_name.trim(),
-            phone: form.phone.trim(),
-            car_make: form.car_make.trim() || null,
-            car_model: form.car_model.trim() || null,
-            car_year: form.car_year ? Number(form.car_year) : null,
-            car_mileage: form.car_mileage ? Number(form.car_mileage) : null,
-            source: 'website_sell_car',
+
+        const { data: rpcResult, error: rpcError } = await supabase.rpc('submit_public_lead', {
+            p_full_name: form.full_name.trim(),
+            p_phone: form.phone.trim(),
+            p_type: 'sell_car',
+            p_source: 'website_sell_car',
+            p_car_make: form.car_make.trim() || null,
+            p_car_model: form.car_model.trim() || null,
+            p_car_year: form.car_year ? Number(form.car_year) : null,
+            p_car_mileage: form.car_mileage ? Number(form.car_mileage) : null
         });
-        if (err) setError('Something went wrong. Please call us directly.');
-        else setSubmitted(true);
+
+        if (rpcError) {
+            console.warn('RPC submit_public_lead failed on SellCar, using direct fallback:', rpcError);
+            const { error: directError } = await supabase.from('leads').insert({
+                type: 'sell_car',
+                full_name: form.full_name.trim(),
+                phone: form.phone.trim(),
+                car_make: form.car_make.trim() || null,
+                car_model: form.car_model.trim() || null,
+                car_year: form.car_year ? Number(form.car_year) : null,
+                car_mileage: form.car_mileage ? Number(form.car_mileage) : null,
+                source: 'website_sell_car',
+                status: 'new'
+            });
+
+            if (directError) {
+                console.error('SellCar direct insert error:', directError);
+                setError('Something went wrong. Please call us directly.');
+            } else {
+                setSubmitted(true);
+            }
+        } else if (rpcResult && rpcResult.success === false) {
+            setError(rpcResult.error || 'Something went wrong. Please call us directly.');
+        } else {
+            setSubmitted(true);
+        }
         setLoading(false);
     };
 

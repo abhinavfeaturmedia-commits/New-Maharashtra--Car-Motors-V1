@@ -141,7 +141,7 @@ const ConsignmentTracker = () => {
                 p_customer_phone: saleForm.buyer_phone || '0000000000',
                 p_sale_price: salePrice,
                 p_sale_type: 'consignment',
-                p_notes: `Park & Sell — buyer: ${saleForm.buyer_name}. Owner: ${car.consignment_owner_name || 'Unknown'}. Swami fee: ₹${fee.toLocaleString('en-IN')}`,
+                p_notes: `Park & Sell — buyer: ${saleForm.buyer_name}. Owner: ${car.consignment_owner_name || 'Unknown'}. Maharashtra Motors fee: ₹${fee.toLocaleString('en-IN')}`,
             });
 
             if (rpcErr) {
@@ -160,7 +160,7 @@ const ConsignmentTracker = () => {
                     purchase_cost_snapshot: 0,
                     status: 'completed',
                     payment_status: 'paid',
-                    notes: `Park & Sell — buyer: ${saleForm.buyer_name}. Owner: ${car.consignment_owner_name || 'Unknown'}. Swami fee: ₹${fee.toLocaleString('en-IN')}`,
+                    notes: `Park & Sell — buyer: ${saleForm.buyer_name}. Owner: ${car.consignment_owner_name || 'Unknown'}. Maharashtra Motors fee: ₹${fee.toLocaleString('en-IN')}`,
                 }).select('id').single();
                 if (saleErr) throw saleErr;
 
@@ -197,7 +197,7 @@ const ConsignmentTracker = () => {
 
             setCars(prev => prev.map(c => c.id === car.id ? { ...c, status: 'sold' } : c));
             setSaleModal(null);
-            showToast(`Sale recorded. Swami earned ₹${fee.toLocaleString('en-IN')} fee.`);
+            showToast(`Sale recorded. Maharashtra Motors earned ₹${fee.toLocaleString('en-IN')} fee.`);
         } catch (err) {
             showToast('Failed to record sale.', 'error');
         } finally {
@@ -475,8 +475,8 @@ const ConsignmentTracker = () => {
                 <div>
                     <p className="text-sm font-bold text-purple-800 mb-1">How Park &amp; Sell Works</p>
                     <p className="text-xs text-purple-700">
-                        The owner parks their car with us. The buyer pays the owner directly. Swami Motors earns only the agreed service fee (fixed amount or percentage of sale).
-                        No funds pass through Swami Motors for the car itself.
+                        The owner parks their car with us. The buyer pays the owner directly. Maharashtra Motors earns only the agreed service fee (fixed amount or percentage of sale).
+                        No funds pass through Maharashtra Motors for the car itself.
                     </p>
                 </div>
             </div>
@@ -510,7 +510,7 @@ const ConsignmentTracker = () => {
                                         ? Math.round(price * car.consignment_fee_value / 100) : 0;
                                 return fee > 0 ? (
                                     <div className="bg-purple-50 border border-purple-100 rounded-xl px-4 py-3 text-sm font-semibold text-purple-700">
-                                        🤝 Swami earns: ₹{fee.toLocaleString('en-IN')} ({car.consignment_fee_type === 'percentage' ? `${car.consignment_fee_value}%` : 'fixed'})
+                                        🤝 Maharashtra Motors earns: ₹{fee.toLocaleString('en-IN')} ({car.consignment_fee_type === 'percentage' ? `${car.consignment_fee_value}%` : 'fixed'})
                                     </div>
                                 ) : null;
                             })()}

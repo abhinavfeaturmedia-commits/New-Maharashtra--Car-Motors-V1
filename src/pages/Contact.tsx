@@ -21,19 +21,35 @@ const Contact = () => {
 
         setLoading(true);
 
-        const { error: insertError } = await supabase.from('leads').insert({
-            type: 'contact',
-            lead_type: 'general',
-            full_name: form.full_name.trim(),
-            name: form.full_name.trim(),
-            phone: form.phone.trim(),
-            email: form.email.trim() || null,
-            message: form.message.trim() || null,
-            source: 'website_contact',
+        const { data: rpcResult, error: rpcError } = await supabase.rpc('submit_public_lead', {
+            p_full_name: form.full_name.trim(),
+            p_phone: form.phone.trim(),
+            p_email: form.email.trim() || null,
+            p_message: form.message.trim() || null,
+            p_type: 'contact',
+            p_source: 'website_contact'
         });
 
-        if (insertError) {
-            setError('Something went wrong. Please call us directly or try again.');
+        if (rpcError) {
+            console.warn('RPC submit_public_lead failed on Contact page, using direct insert fallback:', rpcError);
+            const { error: directError } = await supabase.from('leads').insert({
+                type: 'contact',
+                full_name: form.full_name.trim(),
+                phone: form.phone.trim(),
+                email: form.email.trim() || null,
+                message: form.message.trim() || null,
+                source: 'website_contact',
+                status: 'new'
+            });
+
+            if (directError) {
+                console.error('Contact direct insert error:', directError);
+                setError('Something went wrong. Please call us directly or try again.');
+            } else {
+                setSubmitted(true);
+            }
+        } else if (rpcResult && rpcResult.success === false) {
+            setError(rpcResult.error || 'Something went wrong. Please call us directly or try again.');
         } else {
             setSubmitted(true);
         }

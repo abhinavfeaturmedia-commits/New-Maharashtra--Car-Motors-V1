@@ -112,29 +112,53 @@ const BookTestDrive = () => {
             ? `Test Drive requested for: ${car.year} ${car.make} ${car.model} on ${selectedDateLabel} at ${selectedTime}`
             : `Test Drive requested for: ${selectedDateLabel} at ${selectedTime}`;
 
-        const { data: leadData, error: err } = await supabase.from('leads').insert({
-            type: 'test_drive',
-            full_name: form.full_name.trim(),
-            phone: form.phone.trim(),
-            car_make: car?.make || null,
-            car_model: car?.model || null,
-            car_year: car?.year || null,
-            inventory_id: car?.id || null,
-            message: messageText,
-            source: 'website_test_drive',
-            status: 'new',
-        }).select().single();
+        let leadId: string | null = null;
 
-        if (err) {
-            console.error('Test drive lead creation error:', err);
-            setError('Something went wrong. Please call us directly.');
+        const { data: rpcResult, error: rpcError } = await supabase.rpc('submit_public_lead', {
+            p_full_name: form.full_name.trim(),
+            p_phone: form.phone.trim(),
+            p_message: messageText,
+            p_type: 'test_drive',
+            p_source: 'website_test_drive',
+            p_car_make: car?.make || null,
+            p_car_model: car?.model || null,
+            p_car_year: car?.year || null,
+            p_inventory_id: car?.id || null
+        });
+
+        if (rpcError) {
+            console.warn('RPC submit_public_lead failed on BookTestDrive, using direct fallback:', rpcError);
+            const { error: directError } = await supabase.from('leads').insert({
+                type: 'test_drive',
+                full_name: form.full_name.trim(),
+                phone: form.phone.trim(),
+                car_make: car?.make || null,
+                car_model: car?.model || null,
+                car_year: car?.year || null,
+                inventory_id: car?.id || null,
+                message: messageText,
+                source: 'website_test_drive',
+                status: 'new',
+            });
+
+            if (directError) {
+                console.error('Test drive lead direct creation error:', directError);
+                setError('Something went wrong. Please call us directly.');
+                setLoading(false);
+                return;
+            }
+        } else if (rpcResult && rpcResult.success === false) {
+            console.error('Test drive lead RPC error:', rpcResult.error);
+            setError(rpcResult.error || 'Something went wrong. Please call us directly.');
             setLoading(false);
             return;
+        } else if (rpcResult && rpcResult.lead_id) {
+            leadId = rpcResult.lead_id;
         }
 
-        if (leadData?.id) {
+        if (leadId) {
             const { error: bookingErr } = await supabase.from('bookings').insert({
-                lead_id: leadData.id,
+                lead_id: leadId,
                 inventory_id: car?.id || null,
                 customer_name: form.full_name.trim(),
                 customer_phone: form.phone.trim(),

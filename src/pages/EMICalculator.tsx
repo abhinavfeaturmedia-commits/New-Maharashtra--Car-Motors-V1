@@ -39,20 +39,40 @@ const EMICalculator = () => {
         setApplyError('');
         setApplyLoading(true);
 
-        const { error: err } = await supabase.from('leads').insert({
-            type: 'finance',
-            lead_type: 'finance',
-            full_name: applyForm.full_name.trim(),
-            name: applyForm.full_name.trim(),
-            phone: applyForm.phone.trim(),
-            email: applyForm.email.trim() || null,
-            budget: `₹${(loanAmount / 100000).toFixed(2)}L`,
-            message: `EMI Calculator Request: Loan of ₹${loanAmount.toLocaleString('en-IN')} over ${tenureYears} years at ${interestRate}%. Preferred Bank: ${applyForm.preferred_bank || 'No Preference'}. Estimated EMI: ₹${Math.round(emi).toLocaleString('en-IN')}/mo.`,
-            source: 'website_finance',
+        const emiMessage = `EMI Calculator Request: Loan of ₹${loanAmount.toLocaleString('en-IN')} over ${tenureYears} years at ${interestRate}%. Preferred Bank: ${applyForm.preferred_bank || 'No Preference'}. Estimated EMI: ₹${Math.round(emi).toLocaleString('en-IN')}/mo.`;
+        const budgetVal = `₹${(loanAmount / 100000).toFixed(2)}L`;
+
+        const { data: rpcResult, error: rpcError } = await supabase.rpc('submit_public_lead', {
+            p_full_name: applyForm.full_name.trim(),
+            p_phone: applyForm.phone.trim(),
+            p_email: applyForm.email.trim() || null,
+            p_message: emiMessage,
+            p_type: 'finance',
+            p_source: 'website_finance',
+            p_budget: budgetVal
         });
 
-        if (err) {
-            setApplyError('Failed to submit application. Please call us directly.');
+        if (rpcError) {
+            console.warn('RPC submit_public_lead failed on EMICalculator, using direct fallback:', rpcError);
+            const { error: directError } = await supabase.from('leads').insert({
+                type: 'finance',
+                full_name: applyForm.full_name.trim(),
+                phone: applyForm.phone.trim(),
+                email: applyForm.email.trim() || null,
+                budget: budgetVal,
+                message: emiMessage,
+                source: 'website_finance',
+                status: 'new'
+            });
+
+            if (directError) {
+                console.error('EMICalculator direct insert error:', directError);
+                setApplyError('Failed to submit application. Please call us directly.');
+            } else {
+                setApplySubmitted(true);
+            }
+        } else if (rpcResult && rpcResult.success === false) {
+            setApplyError(rpcResult.error || 'Failed to submit application. Please call us directly.');
         } else {
             setApplySubmitted(true);
         }

@@ -246,30 +246,37 @@ const SharedCatalog: React.FC = () => {
 
             const messagePayload = `Shared Catalog Bulk Inquiry (Catalog ID: ${id})\n\nInquired Cars:\n${carsText}\n${commentsText}\n\nCustomer remarks: ${clientMsg || 'No specific notes.'}`;
 
-            // Insert single consolidated lead
-            const { data: leadData, error: leadError } = await supabase
-                .from('leads')
-                .insert({
-                    type: 'general',
-                    full_name: clientName,
-                    phone: clientPhone,
-                    email: clientEmail || null,
-                    message: messagePayload,
-                    source: 'shared_catalog',
-                    status: 'new'
-                })
-                .select('id')
-                .single();
+            const carIds = inquiryTargetCars.map(c => c.id);
 
-            if (leadError) throw leadError;
+            // Call atomic RPC function submit_cart_inquiry to avoid RLS RETURNING policy issues
+            const { data: rpcResult, error: rpcError } = await supabase.rpc('submit_cart_inquiry', {
+                p_full_name: clientName,
+                p_phone: clientPhone,
+                p_email: clientEmail || null,
+                p_message: messagePayload,
+                p_type: 'general',
+                p_source: 'shared_catalog',
+                p_inventory_ids: carIds
+            });
 
-            // Link all inquired vehicles to the new lead
-            if (leadData && inquiryTargetCars.length > 0) {
-                const links = inquiryTargetCars.map(c => ({
-                    lead_id: leadData.id,
-                    inventory_id: c.id
-                }));
-                await supabase.from('lead_inventory_items').insert(links);
+            if (rpcError) {
+                console.warn('RPC submit_cart_inquiry failed in SharedCatalog, using direct insert fallback:', rpcError);
+
+                const { error: directError } = await supabase
+                    .from('leads')
+                    .insert({
+                        type: 'general',
+                        full_name: clientName,
+                        phone: clientPhone,
+                        email: clientEmail || null,
+                        message: messagePayload,
+                        source: 'shared_catalog',
+                        status: 'new'
+                    });
+
+                if (directError) throw directError;
+            } else if (rpcResult && rpcResult.success === false) {
+                throw new Error(rpcResult.error || 'Failed to submit inquiry.');
             }
 
             setSuccess(true);

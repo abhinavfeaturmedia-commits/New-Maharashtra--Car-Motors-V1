@@ -16,18 +16,36 @@ const Insurance = () => {
         setError('');
         setLoading(true);
 
-        const { error: err } = await supabase.from('leads').insert({
-            type: 'insurance',
-            lead_type: 'insurance',
-            full_name: form.full_name.trim(),
-            name: form.full_name.trim(),
-            phone: form.phone.trim(),
-            car_model: form.car_model.trim() || null,
-            source: 'website_insurance',
+        const { data: rpcResult, error: rpcError } = await supabase.rpc('submit_public_lead', {
+            p_full_name: form.full_name.trim(),
+            p_phone: form.phone.trim(),
+            p_type: 'insurance',
+            p_source: 'website_insurance',
+            p_car_model: form.car_model.trim() || null
         });
 
-        if (err) setError('Something went wrong. Please call us directly.');
-        else setSubmitted(true);
+        if (rpcError) {
+            console.warn('RPC submit_public_lead failed on Insurance, using direct fallback:', rpcError);
+            const { error: directError } = await supabase.from('leads').insert({
+                type: 'insurance',
+                full_name: form.full_name.trim(),
+                phone: form.phone.trim(),
+                car_model: form.car_model.trim() || null,
+                source: 'website_insurance',
+                status: 'new'
+            });
+
+            if (directError) {
+                console.error('Insurance direct insert error:', directError);
+                setError('Something went wrong. Please call us directly.');
+            } else {
+                setSubmitted(true);
+            }
+        } else if (rpcResult && rpcResult.success === false) {
+            setError(rpcResult.error || 'Something went wrong. Please call us directly.');
+        } else {
+            setSubmitted(true);
+        }
         setLoading(false);
     };
 

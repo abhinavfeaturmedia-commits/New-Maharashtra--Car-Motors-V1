@@ -391,24 +391,45 @@ const Home = () => {
         setReserveError('');
 
         try {
-            const { error: err } = await supabase.from('leads').insert({
-                type: 'reservation',
-                lead_type: 'buy',
-                full_name: reserveForm.full_name,
-                name: reserveForm.full_name,
-                phone: reserveForm.phone,
-                email: reserveForm.email || null,
-                car_make: dealCar?.make || null,
-                car_model: dealCar?.model || null,
-                car_year: dealCar?.year || null,
-                message: `Reservation inquiry with ₹10,000 deposit intent for Deal of the Week: ${dealCar?.year} ${dealCar?.make} ${dealCar?.model}.`,
-                source: 'website_home_deal',
-                status: 'new'
+            const reserveMsg = `Reservation inquiry with ₹10,000 deposit intent for Deal of the Week: ${dealCar?.year} ${dealCar?.make} ${dealCar?.model}.`;
+
+            const { data: rpcResult, error: rpcError } = await supabase.rpc('submit_public_lead', {
+                p_full_name: reserveForm.full_name.trim(),
+                p_phone: reserveForm.phone.trim(),
+                p_email: reserveForm.email?.trim() || null,
+                p_message: reserveMsg,
+                p_type: 'reservation',
+                p_source: 'website_home_deal',
+                p_car_make: dealCar?.make || null,
+                p_car_model: dealCar?.model || null,
+                p_car_year: dealCar?.year || null,
+                p_inventory_id: dealCar?.id || null
             });
 
-            if (err) throw err;
+            if (rpcError) {
+                console.warn('RPC submit_public_lead failed on Home page, using direct fallback:', rpcError);
+                const { error: directError } = await supabase.from('leads').insert({
+                    type: 'reservation',
+                    full_name: reserveForm.full_name.trim(),
+                    phone: reserveForm.phone.trim(),
+                    email: reserveForm.email?.trim() || null,
+                    car_make: dealCar?.make || null,
+                    car_model: dealCar?.model || null,
+                    car_year: dealCar?.year || null,
+                    inventory_id: dealCar?.id || null,
+                    message: reserveMsg,
+                    source: 'website_home_deal',
+                    status: 'new'
+                });
+
+                if (directError) throw directError;
+            } else if (rpcResult && rpcResult.success === false) {
+                throw new Error(rpcResult.error || 'Failed to submit reservation.');
+            }
+
             setReserveSuccess(true);
         } catch (err: any) {
+            console.error('Home reservation error:', err);
             setReserveError(err.message || 'Failed to submit reservation. Please try again.');
         } finally {
             setReserveLoading(false);

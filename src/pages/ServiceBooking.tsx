@@ -59,29 +59,53 @@ const ServiceBooking = () => {
 
         const messageText = `Services: ${selectedServiceTitles} | Vehicle: ${vehicleDesc || 'Not specified'} | Date: ${selectedDate} | Time: ${selectedTime}${personalAddress ? ` | Address: ${personalAddress}` : ''}${whatsappNumber ? ` | WhatsApp: ${whatsappNumber}` : ''}`;
 
-        const { data: leadData, error } = await supabase.from('leads').insert({
-            full_name: name.trim(),
-            phone: phone.trim(),
-            email: email.trim() || null,
-            secondary_phone: secondaryPhone.trim() || null,
-            whatsapp_number: whatsappNumber.trim() || null,
-            personal_address: personalAddress.trim() || null,
-            type: 'service',
-            source: 'website_service',
-            status: 'new',
-            message: messageText,
-        }).select().single();
+        let leadId: string | null = null;
 
-        if (error) {
-            console.error('Service lead creation error:', error);
+        const { data: rpcResult, error: rpcError } = await supabase.rpc('submit_public_lead', {
+            p_full_name: name.trim(),
+            p_phone: phone.trim(),
+            p_email: email.trim() || null,
+            p_message: messageText,
+            p_type: 'service',
+            p_source: 'website_service',
+            p_secondary_phone: secondaryPhone.trim() || null,
+            p_whatsapp_number: whatsappNumber.trim() || null,
+            p_personal_address: personalAddress.trim() || null
+        });
+
+        if (rpcError) {
+            console.warn('RPC submit_public_lead failed on ServiceBooking, using direct fallback:', rpcError);
+            const { error: directError } = await supabase.from('leads').insert({
+                full_name: name.trim(),
+                phone: phone.trim(),
+                email: email.trim() || null,
+                secondary_phone: secondaryPhone.trim() || null,
+                whatsapp_number: whatsappNumber.trim() || null,
+                personal_address: personalAddress.trim() || null,
+                type: 'service',
+                source: 'website_service',
+                status: 'new',
+                message: messageText,
+            });
+
+            if (directError) {
+                console.error('Service lead direct creation error:', directError);
+                setSubmitting(false);
+                setErrors({ submit: 'Something went wrong. Please call us directly at 098232 37975.' });
+                return;
+            }
+        } else if (rpcResult && rpcResult.success === false) {
+            console.error('Service lead RPC error:', rpcResult.error);
             setSubmitting(false);
-            setErrors({ submit: 'Something went wrong. Please call us directly at 098232 37975.' });
+            setErrors({ submit: rpcResult.error || 'Something went wrong. Please call us directly at 098232 37975.' });
             return;
+        } else if (rpcResult && rpcResult.lead_id) {
+            leadId = rpcResult.lead_id;
         }
 
-        if (leadData?.id) {
+        if (leadId) {
             const { error: bookingErr } = await supabase.from('bookings').insert({
-                lead_id: leadData.id,
+                lead_id: leadId,
                 customer_name: name.trim(),
                 customer_phone: phone.trim(),
                 booking_type: 'service',
@@ -93,20 +117,21 @@ const ServiceBooking = () => {
             if (bookingErr) {
                 console.error('Service booking schedule creation error:', bookingErr);
             }
-        }
 
-        const { error: sbErr } = await supabase.from('service_bookings').insert({
-            customer_name: name.trim(),
-            phone: phone.trim(),
-            email: email.trim() || null,
-            service_type: selectedServiceTitles,
-            preferred_date: selectedDate,
-            preferred_time: selectedTime,
-            description: vehicleDesc || messageText,
-            status: 'scheduled'
-        });
-        if (sbErr) {
-            console.error('Service booking history creation error:', sbErr);
+            const { error: sbErr } = await supabase.from('service_bookings').insert({
+                lead_id: leadId,
+                customer_name: name.trim(),
+                phone: phone.trim(),
+                email: email.trim() || null,
+                service_type: selectedServiceTitles,
+                preferred_date: selectedDate,
+                preferred_time: selectedTime,
+                description: vehicleDesc || messageText,
+                status: 'scheduled'
+            });
+            if (sbErr) {
+                console.error('Service booking history creation error:', sbErr);
+            }
         }
 
         setSubmitting(false);
