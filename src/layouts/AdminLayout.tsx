@@ -31,7 +31,7 @@ const NAV_GROUPS: NavGroup[] = [
         items: [
             { name: 'Dashboard', href: '/admin', icon: 'dashboard', module: 'dashboard' },
             { name: 'Inventory', href: '/admin/inventory', icon: 'directions_car', module: 'inventory' },
-            { name: 'Consignments', href: '/admin/consignments', icon: 'handshake', module: 'inventory' },
+            { name: 'Park & Sell', href: '/admin/consignments', icon: 'handshake', module: 'inventory' },
             { name: 'Leads', href: '/admin/leads', icon: 'people', module: 'leads' },
             { name: 'Sales', href: '/admin/sales', icon: 'point_of_sale', module: 'sales' },
             { name: 'Bookings', href: '/admin/bookings', icon: 'event', module: 'bookings' },

@@ -468,7 +468,7 @@ const AdminInventory = () => {
                                         const options: Array<{ id: string; label: string; type: string; code?: string; name?: string }> = [
                                             { id: 'all', label: 'All Sources', type: 'base' },
                                             { id: 'purchased', label: 'Purchased', type: 'base' },
-                                            { id: 'consignment', label: 'Consignment', type: 'base' },
+                                            { id: 'consignment', label: 'Park & Sell', type: 'base' },
                                             { id: 'dealer', label: 'All Dealer Cars', type: 'base' },
                                             ...dealers.map(d => ({ id: d.id, label: `${d.dealer_code} — ${d.name}`, code: d.dealer_code, name: d.name, type: 'dealer' }))
                                         ];

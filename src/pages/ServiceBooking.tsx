@@ -57,34 +57,60 @@ const ServiceBooking = () => {
             .filter(Boolean)
             .join(', ');
 
+        const messageText = `Services: ${selectedServiceTitles} | Vehicle: ${vehicleDesc || 'Not specified'} | Date: ${selectedDate} | Time: ${selectedTime}${personalAddress ? ` | Address: ${personalAddress}` : ''}${whatsappNumber ? ` | WhatsApp: ${whatsappNumber}` : ''}`;
+
         const { data: leadData, error } = await supabase.from('leads').insert({
             full_name: name.trim(),
-            name: name.trim(),
             phone: phone.trim(),
             email: email.trim() || null,
+            secondary_phone: secondaryPhone.trim() || null,
+            whatsapp_number: whatsappNumber.trim() || null,
+            personal_address: personalAddress.trim() || null,
             type: 'service',
-            lead_type: 'service',
-            source: 'website',
+            source: 'website_service',
             status: 'new',
-            message: `Services: ${selectedServiceTitles} | Vehicle: ${vehicleDesc || 'Not specified'} | Date: ${selectedDate} | Time: ${selectedTime}${personalAddress ? ` | Address: ${personalAddress}` : ''}${whatsappNumber ? ` | WhatsApp: ${whatsappNumber}` : ''}`,
+            message: messageText,
         }).select().single();
 
-        setSubmitting(false);
-        if (!error) {
-            if (leadData?.id) {
-                await supabase.from('bookings').insert({
-                    lead_id: leadData.id,
-                    booking_type: 'service',
-                    booking_date: selectedDate,
-                    booking_time: selectedTime,
-                    status: 'scheduled'
-                });
-            }
-            setSubmitted(true);
-        } else {
-            console.error('Service booking error:', error);
+        if (error) {
+            console.error('Service lead creation error:', error);
+            setSubmitting(false);
             setErrors({ submit: 'Something went wrong. Please call us directly at 098232 37975.' });
+            return;
         }
+
+        if (leadData?.id) {
+            const { error: bookingErr } = await supabase.from('bookings').insert({
+                lead_id: leadData.id,
+                customer_name: name.trim(),
+                customer_phone: phone.trim(),
+                booking_type: 'service',
+                booking_date: selectedDate,
+                booking_time: selectedTime,
+                status: 'scheduled',
+                notes: `Service Booking: ${selectedServiceTitles} for ${vehicleDesc || 'Vehicle'}`
+            });
+            if (bookingErr) {
+                console.error('Service booking schedule creation error:', bookingErr);
+            }
+        }
+
+        const { error: sbErr } = await supabase.from('service_bookings').insert({
+            customer_name: name.trim(),
+            phone: phone.trim(),
+            email: email.trim() || null,
+            service_type: selectedServiceTitles,
+            preferred_date: selectedDate,
+            preferred_time: selectedTime,
+            description: vehicleDesc || messageText,
+            status: 'scheduled'
+        });
+        if (sbErr) {
+            console.error('Service booking history creation error:', sbErr);
+        }
+
+        setSubmitting(false);
+        setSubmitted(true);
     };
 
     if (submitted) {

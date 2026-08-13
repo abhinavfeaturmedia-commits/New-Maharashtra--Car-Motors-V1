@@ -1001,7 +1001,7 @@ const LeadDetail = () => {
                 status: 'completed',
                 payment_status: 'paid',
                 notes: source === 'consignment'
-                    ? `Consignment sale — buyer paid ${carData.consignment_owner_name || 'owner'} directly. Swami fee: ₹${profit.toLocaleString('en-IN')}`
+                    ? `Park & Sell — buyer paid ${carData.consignment_owner_name || 'owner'} directly. Swami fee: ₹${profit.toLocaleString('en-IN')}`
                     : 'Converted from lead workflow'
             }).select('id').single();
             if (saleErr) throw new Error('Failed to log sale record. ' + saleErr.message);
@@ -1023,7 +1023,7 @@ const LeadDetail = () => {
                     balance_due: 0,
                     payment_mode: 'Paid',
                     notes: source === 'consignment'
-                        ? `Consignment deal closed from lead. Fee earned: ₹${profit.toLocaleString('en-IN')}`
+                        ? `Park & Sell deal closed from lead. Fee earned: ₹${profit.toLocaleString('en-IN')}`
                         : `Purchased vehicle: ${carData.year || ''} ${carData.make} ${carData.model}`,
                     created_by: profile?.id ?? null,
                 });
@@ -1069,7 +1069,7 @@ const LeadDetail = () => {
 
             // ── 8. Log Activity ──────────────────────────────────────────────────
             const saleNoteText = source === 'consignment'
-                ? `Consignment sale ₹${salePrice.toLocaleString('en-IN')} — Swami earned ₹${profit.toLocaleString('en-IN')} fee.`
+                ? `Park & Sell ₹${salePrice.toLocaleString('en-IN')} — Swami earned ₹${profit.toLocaleString('en-IN')} fee.`
                 : `Sale closed for ₹${salePrice.toLocaleString('en-IN')}. Profit: ₹${profit.toLocaleString('en-IN')}.`;
             await supabase.from('lead_activities').insert({
                 lead_id: lead?.id,
@@ -1961,7 +1961,7 @@ const LeadDetail = () => {
                                                                     </p>
                                                                     <p className="text-[10px] text-green-600 font-mono">
                                                                         {selectedCar.registration_no || 'No Reg'} · ₹{Number(selectedCar.price).toLocaleString('en-IN')}
-                                                                        {selectedCar.source === 'consignment' ? ' (Consignment)' : selectedCar.source === 'dealer' ? ' (Dealer)' : ' (Owned)'}
+                                                                        {selectedCar.source === 'consignment' ? ' (Park & Sell)' : selectedCar.source === 'dealer' ? ' (Dealer)' : ' (Owned)'}
                                                                     </p>
                                                                 </div>
                                                                 <span className="text-[9px] font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded uppercase tracking-wider shrink-0">Selected</span>
@@ -2004,7 +2004,7 @@ const LeadDetail = () => {
                                                                                         {car.year} {car.make} {car.model}
                                                                                     </p>
                                                                                     <p className="text-[10px] text-slate-400 font-mono">
-                                                                                        {car.registration_no || 'No Reg'} · {car.source === 'consignment' ? '🤝 Consignment' : car.source === 'dealer' ? '🏪 Dealer' : '🏠 Owned'}
+                                                                                        {car.registration_no || 'No Reg'} · {car.source === 'consignment' ? '🅿️ Park & Sell' : car.source === 'dealer' ? '🏪 Dealer' : '🏠 Owned'}
                                                                                     </p>
                                                                                 </div>
                                                                                 <div className="text-right shrink-0">
@@ -2036,7 +2036,7 @@ const LeadDetail = () => {
                                                     : car.consignment_fee_type === 'percentage'
                                                         ? Math.round(price * (car.consignment_fee_value || 0) / 100)
                                                         : 0;
-                                                earningLabel = `🤝 Consignment — Swami earns ₹${fee.toLocaleString('en-IN')} fee`;
+                                                earningLabel = `🅿️ Park & Sell — Swami earns ₹${fee.toLocaleString('en-IN')} fee`;
                                             } else {
                                                 const profit = price - (car.purchase_cost || 0);
                                                 earningLabel = `💰 Est. profit: ₹${profit.toLocaleString('en-IN')}`;

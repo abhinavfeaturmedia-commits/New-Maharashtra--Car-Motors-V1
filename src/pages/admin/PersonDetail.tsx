@@ -67,7 +67,7 @@ const dealTypeLabel: Record<string, string> = {
     purchase:    '🛒 Bought a Car',
     sell_to_us:  '🤝 Sold a Car to Us',
     exchange:    '🔄 Exchange Deal',
-    consignment: '📋 Consignment',
+    consignment: '🅿️ Park & Sell',
 };
 
 const dealStatusBadge: Record<string, { label: string; color: string }> = {

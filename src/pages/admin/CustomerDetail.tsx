@@ -112,7 +112,7 @@ const DEAL_TYPES = [
     { value: 'purchase',    label: 'Purchase (Customer Buys)',  icon: 'shopping_cart',   color: 'emerald' },
     { value: 'sell_to_us',  label: 'Sell to Us',               icon: 'sell',            color: 'blue'    },
     { value: 'exchange',    label: 'Exchange',                  icon: 'swap_horiz',      color: 'purple'  },
-    { value: 'consignment', label: 'Consignment',               icon: 'handshake',       color: 'amber'   },
+    { value: 'consignment', label: 'Park & Sell',                 icon: 'handshake',       color: 'amber'   },
 ];
 
 const DEAL_STATUS_CONFIG = {

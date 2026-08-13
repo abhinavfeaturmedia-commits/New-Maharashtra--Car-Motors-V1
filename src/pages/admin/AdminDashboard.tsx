@@ -123,7 +123,7 @@ const AdminDashboard = () => {
                 <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
                     <span className="material-symbols-outlined text-amber-500 text-xl shrink-0 mt-0.5">warning</span>
                     <div className="flex-1">
-                        <p className="font-bold text-amber-800 text-sm">{stats.expiringConsignments} consignment{stats.expiringConsignments > 1 ? 's' : ''} expiring within 7 days!</p>
+                        <p className="font-bold text-amber-800 text-sm">{stats.expiringConsignments} Park &amp; Sell listing{stats.expiringConsignments > 1 ? 's' : ''} expiring within 7 days!</p>
                         <div className="flex flex-wrap gap-2 mt-1.5">
                             {expiringList.map((c: any, i: number) => (
                                 <span key={i} className="text-[11px] bg-amber-100 text-amber-800 font-semibold px-2 py-0.5 rounded-full">
@@ -159,9 +159,9 @@ const AdminDashboard = () => {
             {/* 3-Source Breakdown */}
             <div className="grid grid-cols-3 gap-4">
                 {[
-                    { label: 'Consignments Active', value: stats.consignmentActive, icon: '🤝', sub: `Fee this month: ${fmt(stats.consignmentFeesMonth)}`, link: '/admin/consignments', border: 'border-purple-200', bg: 'bg-purple-50' },
+                    { label: 'Park & Sell Active',  value: stats.consignmentActive, icon: '🅿️', sub: `Fee this month: ${fmt(stats.consignmentFeesMonth)}`, link: '/admin/consignments', border: 'border-purple-200', bg: 'bg-purple-50' },
                     { label: 'Dealer Cars',          value: stats.dealerCars,        icon: '🏪', sub: 'Available from dealers',                               link: '/admin/inventory?tab=available&dealer=dealer',    border: 'border-amber-200',  bg: 'bg-amber-50' },
-                    { label: 'Expiring Soon',        value: stats.expiringConsignments, icon: '⏰', sub: 'Consignments ≤ 7 days',                              link: '/admin/consignments', border: stats.expiringConsignments > 0 ? 'border-red-200' : 'border-slate-100', bg: stats.expiringConsignments > 0 ? 'bg-red-50' : 'bg-slate-50' },
+                    { label: 'Expiring Soon',        value: stats.expiringConsignments, icon: '⏰', sub: 'Park & Sell ≤ 7 days',                              link: '/admin/consignments', border: stats.expiringConsignments > 0 ? 'border-red-200' : 'border-slate-100', bg: stats.expiringConsignments > 0 ? 'bg-red-50' : 'bg-slate-50' },
                 ].map(s => (
                     <Link key={s.label} to={s.link} className={`rounded-2xl border ${s.border} ${s.bg} p-4 shadow-sm hover:shadow-md transition-shadow`}>
                         <div className="text-2xl mb-1">{s.icon}</div>
@@ -255,7 +255,7 @@ const AdminDashboard = () => {
                             {[
                                 { to: '/admin/inventory/new', icon: 'add_a_photo',   title: 'Upload Vehicle',   sub: 'Create a new live listing' },
                                 { to: '/admin/leads',         icon: 'contact_mail',  title: 'Manage Leads',    sub: 'View CRM and follow-ups' },
-                                { to: '/admin/consignments',  icon: 'handshake',     title: 'Consignments',    sub: 'Track owner listings' },
+                                { to: '/admin/consignments',  icon: 'handshake',     title: 'Park & Sell',      sub: 'Track owner listings' },
                             ].map(a => (
                                 <Link key={a.to} to={a.to} className="w-full flex items-center gap-3 p-3 bg-slate-50 border border-slate-100 rounded-xl hover:border-slate-200 transition-colors">
                                     <span className="material-symbols-outlined text-primary text-xl">{a.icon}</span>

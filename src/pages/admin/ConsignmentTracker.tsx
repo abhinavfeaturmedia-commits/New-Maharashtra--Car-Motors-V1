@@ -137,11 +137,11 @@ const ConsignmentTracker = () => {
             // Record sale atomically via stored procedure (or fallback)
             const { error: rpcErr } = await supabase.rpc('complete_vehicle_sale', {
                 p_inventory_id: car.id,
-                p_customer_name: saleForm.buyer_name || 'Consignment Buyer',
+                p_customer_name: saleForm.buyer_name || 'Park & Sell Buyer',
                 p_customer_phone: saleForm.buyer_phone || '0000000000',
                 p_sale_price: salePrice,
                 p_sale_type: 'consignment',
-                p_notes: `Consignment sale — buyer: ${saleForm.buyer_name}. Owner: ${car.consignment_owner_name || 'Unknown'}. Swami fee: ₹${fee.toLocaleString('en-IN')}`,
+                p_notes: `Park & Sell — buyer: ${saleForm.buyer_name}. Owner: ${car.consignment_owner_name || 'Unknown'}. Swami fee: ₹${fee.toLocaleString('en-IN')}`,
             });
 
             if (rpcErr) {
@@ -150,7 +150,7 @@ const ConsignmentTracker = () => {
                 const { data: fallbackSale, error: saleErr } = await supabase.from('sales').insert({
                     customer_id: buyerCustomerId,
                     inventory_id: car.id,
-                    customer_name: saleForm.buyer_name || 'Consignment Buyer',
+                    customer_name: saleForm.buyer_name || 'Park & Sell Buyer',
                     customer_phone: saleForm.buyer_phone || '0000000000',
                     sale_date: new Date().toISOString().split('T')[0],
                     sale_price: salePrice,
@@ -160,7 +160,7 @@ const ConsignmentTracker = () => {
                     purchase_cost_snapshot: 0,
                     status: 'completed',
                     payment_status: 'paid',
-                    notes: `Consignment sale — buyer: ${saleForm.buyer_name}. Owner: ${car.consignment_owner_name || 'Unknown'}. Swami fee: ₹${fee.toLocaleString('en-IN')}`,
+                    notes: `Park & Sell — buyer: ${saleForm.buyer_name}. Owner: ${car.consignment_owner_name || 'Unknown'}. Swami fee: ₹${fee.toLocaleString('en-IN')}`,
                 }).select('id').single();
                 if (saleErr) throw saleErr;
 
@@ -178,17 +178,17 @@ const ConsignmentTracker = () => {
                             advance_paid: salePrice,
                             balance_due: 0,
                             payment_mode: 'Paid',
-                            notes: `Consignment sale of ${car.make} ${car.model}. Fee earned: ₹${fee.toLocaleString('en-IN')}`,
+                            notes: `Park & Sell of ${car.make} ${car.model}. Fee earned: ₹${fee.toLocaleString('en-IN')}`,
                         });
-                    } catch (e) { console.warn('Consignment deal record error:', e); }
+                    } catch (e) { console.warn('Park & Sell deal record error:', e); }
 
                     try {
                         await supabase.from('customer_notes').insert({
                             customer_id: buyerCustomerId,
                             note_type: 'general',
-                            content: `🤝 Consignment Vehicle Purchased: ${car.year || ''} ${car.make} ${car.model} for ₹${salePrice.toLocaleString('en-IN')}.`,
+                            content: `🅿️ Park & Sell Vehicle Purchased: ${car.year || ''} ${car.make} ${car.model} for ₹${salePrice.toLocaleString('en-IN')}.`,
                         });
-                    } catch (e) { console.warn('Consignment note record error:', e); }
+                    } catch (e) { console.warn('Park & Sell note record error:', e); }
                 }
 
                 // Mark car sold
@@ -243,16 +243,16 @@ const ConsignmentTracker = () => {
                 <div>
                     <h1 className="text-2xl font-black text-primary font-display flex items-center gap-2">
                         <span className="material-symbols-outlined text-purple-600 text-2xl">handshake</span>
-                        Consignment Tracker
+                        Park &amp; Sell Tracker
                     </h1>
-                    <p className="text-slate-500 text-sm mt-0.5">Cars listed on behalf of their owners — track status, fees, and expiry</p>
+                    <p className="text-slate-500 text-sm mt-0.5">Owner-parked vehicles listed for sale — track status, fees &amp; expiry</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <button onClick={fetchCars} className="h-10 w-10 flex items-center justify-center border border-slate-200 rounded-xl text-slate-500 hover:bg-slate-50 transition-colors" title="Refresh">
                         <span className="material-symbols-outlined text-lg">refresh</span>
                     </button>
                     <Link to="/admin/inventory/new" className="h-10 px-5 bg-purple-600 text-white font-bold rounded-xl text-sm flex items-center gap-2 hover:bg-purple-700 transition-colors shadow-sm">
-                        <span className="material-symbols-outlined text-lg">add</span> Add Consignment
+                        <span className="material-symbols-outlined text-lg">add</span> Add Park &amp; Sell
                     </Link>
                 </div>
             </div>
@@ -324,10 +324,10 @@ const ConsignmentTracker = () => {
                                     <td colSpan={7} className="text-center py-16">
                                         <span className="material-symbols-outlined text-4xl text-slate-200 mb-3 block">handshake</span>
                                         <p className="text-slate-400 font-medium text-sm">
-                                            {searchQuery ? `No results for "${searchQuery}"` : 'No consignment cars found'}
+                                            {searchQuery ? `No results for "${searchQuery}"` : 'No Park & Sell cars found'}
                                         </p>
                                         <Link to="/admin/inventory/new" className="inline-flex items-center gap-1 mt-3 text-sm font-semibold text-purple-600 hover:underline">
-                                            <span className="material-symbols-outlined text-base">add</span> Add first consignment
+                                            <span className="material-symbols-outlined text-base">add</span> Add first Park &amp; Sell listing
                                         </Link>
                                     </td>
                                 </tr>
@@ -473,9 +473,9 @@ const ConsignmentTracker = () => {
             <div className="bg-purple-50/60 border border-purple-100 rounded-2xl p-4 flex items-start gap-3">
                 <span className="material-symbols-outlined text-purple-500 text-xl shrink-0">info</span>
                 <div>
-                    <p className="text-sm font-bold text-purple-800 mb-1">How Consignment Works</p>
+                    <p className="text-sm font-bold text-purple-800 mb-1">How Park &amp; Sell Works</p>
                     <p className="text-xs text-purple-700">
-                        The buyer pays directly to the car owner. Swami Motors earns only the agreed service fee (fixed amount or percentage of sale).
+                        The owner parks their car with us. The buyer pays the owner directly. Swami Motors earns only the agreed service fee (fixed amount or percentage of sale).
                         No funds pass through Swami Motors for the car itself.
                     </p>
                 </div>
@@ -485,7 +485,7 @@ const ConsignmentTracker = () => {
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
                         <div className="bg-gradient-to-r from-purple-600 to-purple-400 px-6 pt-6 pb-8">
-                            <h2 className="text-xl font-black text-white">Record Consignment Sale</h2>
+                            <h2 className="text-xl font-black text-white">Record Park &amp; Sell Sale</h2>
                             <p className="text-white/70 text-sm mt-1">{saleModal.car.year} {saleModal.car.make} {saleModal.car.model}</p>
                         </div>
                         <form onSubmit={handleRecordSale} className="p-6 space-y-4">

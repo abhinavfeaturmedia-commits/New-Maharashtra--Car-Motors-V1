@@ -780,7 +780,7 @@ Condition: ${form.condition}`;
                         <span className="material-symbols-outlined text-accent">directions_car</span> Vehicle Identity & Pricing
                     </h2>
 
-                    {/* Source Toggle (Purchased / Consignment / Dealer) */}
+                    {/* Source Toggle (Purchased / Park & Sell / Dealer) */}
                     <div className="mb-5">
                         <label className="text-sm font-medium text-slate-700 mb-2 block">Car Source <span className="text-xs text-slate-400">(internal — not shown to customers)</span></label>
                         <div className="flex gap-2">
@@ -804,7 +804,7 @@ Condition: ${form.condition}`;
                                         : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
                                 }`}
                             >
-                                <span className="material-symbols-outlined text-base">handshake</span> Consignment
+                                <span className="material-symbols-outlined text-base">handshake</span> Park &amp; Sell
                             </button>
                             <button
                                 type="button"
@@ -847,7 +847,7 @@ Condition: ${form.condition}`;
                         <div className="bg-purple-50/60 border border-purple-100 rounded-2xl p-4 mb-5 space-y-4">
                             <div className="flex items-center gap-2 mb-1">
                                 <span className="material-symbols-outlined text-purple-600 text-lg">handshake</span>
-                                <p className="text-sm font-bold text-purple-800">Consignment Details <span className="text-xs font-normal text-purple-600">(selling on behalf of owner)</span></p>
+                                <p className="text-sm font-bold text-purple-800">Park &amp; Sell Details <span className="text-xs font-normal text-purple-600">(selling on behalf of owner)</span></p>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>

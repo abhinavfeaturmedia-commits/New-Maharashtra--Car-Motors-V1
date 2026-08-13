@@ -9,7 +9,7 @@ import HighlightText from '../../components/ui/HighlightText';
 // ─── Sale Type Config ──────────────────────────────────────────────────────────
 const saleTypeBadge: Record<string, { label: string; cls: string }> = {
     purchased:    { label: '🏠 Purchased',   cls: 'bg-blue-100 text-blue-700' },
-    consignment:  { label: '🤝 Consignment', cls: 'bg-purple-100 text-purple-700' },
+    consignment:  { label: '🅿️ Park & Sell', cls: 'bg-purple-100 text-purple-700' },
     dealer:       { label: '🏪 Dealer',       cls: 'bg-amber-100 text-amber-700' },
 };
 
@@ -266,7 +266,7 @@ const AdminSales = () => {
                     { label: 'Total Sales',       value: loading ? '...' : String(filtered.length),          icon: 'sell',            color: 'bg-green-500/10 text-green-600' },
                     { label: 'Gross Revenue',     value: loading ? '...' : formatCurrency(totalRevenue),     icon: 'currency_rupee',  color: 'bg-blue-500/10 text-blue-600' },
                     { label: 'Net Income',        value: loading ? '...' : formatCurrency(totalNetIncome),   icon: 'trending_up',     color: 'bg-emerald-500/10 text-emerald-600' },
-                    { label: 'Consignment Fees',  value: loading ? '...' : formatCurrency(consignmentFees),  icon: 'handshake',       color: 'bg-purple-500/10 text-purple-600' },
+                    { label: 'Park & Sell Fees',  value: loading ? '...' : formatCurrency(consignmentFees),  icon: 'handshake',       color: 'bg-purple-500/10 text-purple-600' },
                 ].map(s => (
                     <div key={s.label} className="bg-white rounded-2xl border border-slate-100 p-5 shadow-[var(--shadow-card)]">
                         <div className="flex items-center justify-between mb-3">
@@ -299,7 +299,7 @@ const AdminSales = () => {
                 <select value={typeFilter} onChange={e => setType(e.target.value)} className="h-10 px-4 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none">
                     <option value="All">All Types</option>
                     <option value="purchased">🏠 Purchased</option>
-                    <option value="consignment">🤝 Consignment</option>
+                    <option value="consignment">🅿️ Park & Sell</option>
                     <option value="dealer">🏪 Dealer</option>
                 </select>
             </div>
@@ -397,7 +397,7 @@ const AdminSales = () => {
                                     { label: 'Sale Price', value: formatCurrency(detail.sale_price ?? detail.final_price ?? 0) },
                                     { label: 'Net Income', value: formatCurrency(detail.profit || 0) },
                                     { label: 'Purchase Cost', value: formatCurrency(detail.purchase_cost_snapshot || 0) },
-                                    ...(detail.sale_type === 'consignment' ? [{ label: 'Consignment Fee', value: formatCurrency(detail.consignment_fee_collected || 0) }] : []),
+                                    ...(detail.sale_type === 'consignment' ? [{ label: 'Park & Sell Fee', value: formatCurrency(detail.consignment_fee_collected || 0) }] : []),
                                 ].map(item => (
                                     <div key={item.label} className="bg-slate-50 rounded-xl px-3.5 py-3">
                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{item.label}</p>

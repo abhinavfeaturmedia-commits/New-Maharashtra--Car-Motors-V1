@@ -267,7 +267,7 @@ const OwnerDashboard: React.FC = () => {
                         { icon: 'add_a_photo',    label: 'Add a Car',        sub: 'New vehicle listing', link: '/admin/inventory/new',  bg: 'bg-blue-50 hover:bg-blue-100 border-blue-100',    ic: 'text-blue-600' },
                         { icon: 'person_search',  label: 'Add a Customer',   sub: 'New buyer or seller',  link: '/admin/people',         bg: 'bg-purple-50 hover:bg-purple-100 border-purple-100', ic: 'text-purple-600' },
                         { icon: 'point_of_sale',  label: 'Record a Sale',    sub: 'Mark a deal as done', link: '/admin/sales',          bg: 'bg-green-50 hover:bg-green-100 border-green-100',  ic: 'text-green-600' },
-                        { icon: 'handshake',      label: 'Track Consignment',sub: 'Owner-listed vehicles',link: '/admin/consignments',   bg: 'bg-amber-50 hover:bg-amber-100 border-amber-100',  ic: 'text-amber-600' },
+                        { icon: 'handshake',      label: 'Park & Sell',      sub: 'Owner-parked vehicles', link: '/admin/consignments',   bg: 'bg-amber-50 hover:bg-amber-100 border-amber-100',  ic: 'text-amber-600' },
                     ].map(a => (
                         <Link
                             key={a.link}

@@ -35,7 +35,7 @@ const DOC_TYPE_LABELS: Record<string, string> = {
 };
 
 const DEAL_TYPE_LABELS: Record<string, string> = {
-    purchase: 'Purchase', sell_to_us: 'Sell to Us', exchange: 'Exchange', consignment: 'Consignment',
+    purchase: 'Purchase', sell_to_us: 'Sell to Us', exchange: 'Exchange', consignment: 'Park & Sell',
 };
 
 const getDocLabel = (type: string) => DOC_TYPE_LABELS[type] ?? type;

@@ -11,7 +11,7 @@ const REPORT_TYPES = [
     'Lead Analysis',
     'Customer CRM Report',
     'Bookings & Test Drives',
-    'Consignment Listings',
+    'Park & Sell Listings',
     'Vehicle Expenses Report',
     'Commission Report',
     'Financial Transactions',
@@ -213,9 +213,9 @@ const Reports = () => {
                     fileName = `Bookings_Report_${today}.csv`;
                     break;
 
-                case 'Consignment Listings':
+                case 'Park & Sell Listings':
                     dataToExport = inventory.filter((i: any) => i.source === 'consignment' && localFilterDate(i.created_at)).map((i: any) => ({
-                        ConsignmentID: i.id,
+                        ParkAndSellID: i.id,
                         Make:          i.make,
                         Model:         i.model,
                         Year:          i.year,
@@ -227,7 +227,7 @@ const Reports = () => {
                         Status:        i.status,
                         EndDate:       i.consignment_end_date ? new Date(i.consignment_end_date).toLocaleDateString('en-IN') : '',
                     }));
-                    fileName = `Consignment_Listings_${today}.csv`;
+                    fileName = `Park_and_Sell_Listings_${today}.csv`;
                     break;
 
                 case 'Vehicle Expenses Report':

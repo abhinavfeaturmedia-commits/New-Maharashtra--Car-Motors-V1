@@ -106,45 +106,63 @@ const BookTestDrive = () => {
         setError('');
         setLoading(true);
 
+        const isoDate = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(selectedDate).padStart(2, '0')}`;
+
         const messageText = car
             ? `Test Drive requested for: ${car.year} ${car.make} ${car.model} on ${selectedDateLabel} at ${selectedTime}`
             : `Test Drive requested for: ${selectedDateLabel} at ${selectedTime}`;
 
         const { data: leadData, error: err } = await supabase.from('leads').insert({
             type: 'test_drive',
-            lead_type: 'buy',
             full_name: form.full_name.trim(),
-            name: form.full_name.trim(),
             phone: form.phone.trim(),
             car_make: car?.make || null,
             car_model: car?.model || null,
             car_year: car?.year || null,
+            inventory_id: car?.id || null,
             message: messageText,
             source: 'website_test_drive',
+            status: 'new',
         }).select().single();
 
-        if (err) setError('Something went wrong. Please call us directly.');
-        else {
-            if (leadData?.id) {
-                // Generate chronological date ISO string
-                const d = new Date(calYear, calMonth, selectedDate);
-                const isoDate = d.toISOString().split('T')[0];
-
-                await supabase.from('bookings').insert({
-                    lead_id: leadData.id,
-                    inventory_id: car?.id || null,
-                    customer_name: form.full_name.trim(),
-                    customer_phone: form.phone.trim(),
-                    booking_type: 'test_drive',
-                    preferred_date: isoDate,
-                    booking_date: isoDate,
-                    preferred_time: selectedTime,
-                    booking_time: selectedTime,
-                    status: 'pending'
-                });
-            }
-            setSubmitted(true);
+        if (err) {
+            console.error('Test drive lead creation error:', err);
+            setError('Something went wrong. Please call us directly.');
+            setLoading(false);
+            return;
         }
+
+        if (leadData?.id) {
+            const { error: bookingErr } = await supabase.from('bookings').insert({
+                lead_id: leadData.id,
+                inventory_id: car?.id || null,
+                customer_name: form.full_name.trim(),
+                customer_phone: form.phone.trim(),
+                booking_type: 'test_drive',
+                booking_date: isoDate,
+                booking_time: selectedTime,
+                status: 'scheduled',
+                notes: `Test Drive requested for ${car ? `${car.year} ${car.make} ${car.model}` : 'Vehicle'}`
+            });
+            if (bookingErr) {
+                console.error('Booking schedule creation error:', bookingErr);
+            }
+        }
+
+        const { error: tdErr } = await supabase.from('test_drive_bookings').insert({
+            customer_name: form.full_name.trim(),
+            phone: form.phone.trim(),
+            car_id: car?.id || null,
+            preferred_date: isoDate,
+            preferred_time: selectedTime,
+            status: 'scheduled',
+            notes: messageText
+        });
+        if (tdErr) {
+            console.error('Test drive history creation error:', tdErr);
+        }
+
+        setSubmitted(true);
         setLoading(false);
     };
 
