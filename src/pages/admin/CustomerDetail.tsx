@@ -161,11 +161,23 @@ const emptyDealForm: DealForm = {
     internal_notes: '',
 };
 
-const emptyDocForm = {
+interface DocForm {
+    deal_id: string;
+    doc_type: string;
+    doc_label: string;
+    party_role: 'buyer' | 'seller' | 'general';
+    file_url: string;
+    file_name: string;
+    issue_date: string;
+    expiry_date: string;
+    notes: string;
+}
+
+const emptyDocForm: DocForm = {
     deal_id: '',
     doc_type: 'aadhaar',
     doc_label: '',
-    party_role: 'buyer' as const,
+    party_role: 'buyer',
     file_url: '',
     file_name: '',
     issue_date: '',
@@ -185,6 +197,27 @@ const formatCurrency = (val: number | null) => {
     if (val >= 10000000) return `₹${(val / 10000000).toFixed(2)} Cr`;
     if (val >= 100000) return `₹${(val / 100000).toFixed(1)} L`;
     return `₹${val.toLocaleString('en-IN')}`;
+};
+
+const toDateInputValue = (d: string | null | undefined): string => {
+    if (!d) return '';
+    const trimmed = String(d).trim();
+    if (!trimmed) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+    const part = trimmed.split('T')[0].split(' ')[0].trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(part)) return part;
+    try {
+        const parsed = new Date(trimmed);
+        if (!isNaN(parsed.getTime())) {
+            const year = parsed.getFullYear();
+            const month = String(parsed.getMonth() + 1).padStart(2, '0');
+            const day = String(parsed.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+    } catch {
+        // fallback
+    }
+    return '';
 };
 
 const getDaysUntilExpiry = (expiry: string | null): number | null => {
@@ -236,10 +269,12 @@ const CustomerDetail = () => {
     const [documents, setDocuments] = useState<CustomerDocument[]>([]);
     const [docsLoading, setDocsLoading] = useState(false);
     const [isAddingDoc, setIsAddingDoc] = useState(false);
+    const [editingDoc, setEditingDoc] = useState<CustomerDocument | null>(null);
     const [docForm, setDocForm] = useState(emptyDocForm);
     const [docSaving, setDocSaving] = useState(false);
     const [uploadingFile, setUploadingFile] = useState(false);
     const [uploadStatusText, setUploadStatusText] = useState('');
+    const [downloadingDocId, setDownloadingDocId] = useState<string | null>(null);
 
     // Timeline state
     const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
@@ -311,7 +346,7 @@ const CustomerDetail = () => {
     const fetchDeals = useCallback(async () => {
         if (!id) return;
         setDealsLoading(true);
-        const { data } = await supabase
+        const { data, error } = await supabase
             .from('customer_deals')
             .select(`
                 *,
@@ -321,9 +356,25 @@ const CustomerDetail = () => {
             .or(`customer_id.eq.${id},seller_customer_id.eq.${id}`)
             .order('created_at', { ascending: false });
 
-        const existingDeals = (data as CustomerDeal[]) || [];
-        const existingInventoryIds = new Set(existingDeals.map(d => d.inventory_id).filter(Boolean));
-        const existingSaleIds = new Set(existingDeals.map(d => d.sale_id).filter(Boolean));
+        let allDeals: CustomerDeal[] = [];
+        if (error) {
+            console.warn('Error fetching customer_deals with seller filter, falling back:', error);
+            const { data: fallbackData } = await supabase
+                .from('customer_deals')
+                .select(`
+                    *,
+                    car:inventory(make, model, year, registration_no),
+                    lead:leads(full_name, status)
+                `)
+                .eq('customer_id', id)
+                .order('created_at', { ascending: false });
+            allDeals = (fallbackData as CustomerDeal[]) || [];
+        } else {
+            allDeals = (data as CustomerDeal[]) || [];
+        }
+
+        const existingInventoryIds = new Set(allDeals.map(d => d.inventory_id).filter(Boolean));
+        const existingSaleIds = new Set(allDeals.map(d => d.sale_id).filter(Boolean));
 
         // Auto-detect any sales for this customer not yet in customer_deals
         const customerSales = sales.filter(s => s.customer_id === id);
@@ -331,70 +382,57 @@ const CustomerDetail = () => {
             !existingSaleIds.has(s.id) && (!s.inventory_id || !existingInventoryIds.has(s.inventory_id))
         );
 
-        const autoDeals: CustomerDeal[] = [];
+        if (missingSales.length > 0) {
+            for (const sale of missingSales) {
+                const saleDateStr = sale.sale_date
+                    ? new Date(sale.sale_date).toISOString().split('T')[0]
+                    : new Date(sale.created_at || Date.now()).toISOString().split('T')[0];
 
-        for (const sale of missingSales) {
-            const saleDateStr = sale.sale_date
-                ? new Date(sale.sale_date).toISOString().split('T')[0]
-                : new Date(sale.created_at || Date.now()).toISOString().split('T')[0];
+                try {
+                    const { data: inserted, error: insertErr } = await supabase
+                        .from('customer_deals')
+                        .insert({
+                            customer_id: id,
+                            inventory_id: sale.inventory_id || null,
+                            lead_id: sale.lead_id || null,
+                            sale_id: sale.id,
+                            deal_type: sale.sale_type === 'consignment' ? 'consignment' : 'purchase',
+                            deal_status: 'completed',
+                            inquiry_date: saleDateStr,
+                            deal_date: saleDateStr,
+                            rto_date: saleDateStr,
+                            delivery_date: saleDateStr,
+                            handover_date: saleDateStr,
+                            total_amount: Number(sale.sale_price ?? sale.final_price ?? 0),
+                            advance_paid: Number(sale.sale_price ?? sale.final_price ?? 0),
+                            balance_due: sale.payment_status === 'paid' ? 0 : Number(sale.balance_amount || 0),
+                            payment_mode: sale.payment_method || 'Paid',
+                            notes: `Auto-synced from completed purchase (${sale.car ? `${sale.car.year || ''} ${sale.car.make} ${sale.car.model}` : 'Vehicle'}).`,
+                            internal_notes: 'Auto-synchronized from Sales record',
+                        })
+                        .select(`
+                            *,
+                            car:inventory(make, model, year, registration_no),
+                            lead:leads(full_name, status)
+                        `)
+                        .single();
 
-            const synthDeal: CustomerDeal = {
-                id: `auto-sale-${sale.id}`,
-                customer_id: id,
-                seller_customer_id: null,
-                inventory_id: sale.inventory_id || null,
-                lead_id: sale.lead_id || null,
-                sale_id: sale.id,
-                deal_type: sale.sale_type === 'consignment' ? 'consignment' : 'purchase',
-                deal_status: 'completed',
-                inquiry_date: saleDateStr,
-                deal_date: saleDateStr,
-                rto_date: saleDateStr,
-                delivery_date: saleDateStr,
-                handover_date: saleDateStr,
-                hypothecation_clearance_date: null,
-                total_amount: Number(sale.sale_price ?? sale.final_price ?? 0),
-                advance_paid: Number(sale.sale_price ?? sale.final_price ?? 0),
-                balance_due: sale.payment_status === 'paid' ? 0 : Number(sale.balance_amount || 0),
-                payment_mode: sale.payment_method || 'Paid',
-                notes: `Auto-synced from completed purchase (${sale.car ? `${sale.car.year || ''} ${sale.car.make} ${sale.car.model}` : 'Vehicle'}).`,
-                internal_notes: 'Auto-synchronized from Sales record',
-                created_at: sale.created_at || new Date().toISOString(),
-                car: sale.car ? { make: sale.car.make, model: sale.car.model, year: sale.car.year, registration_no: sale.car.registration_no } : null,
-                lead: null,
-            };
-            autoDeals.push(synthDeal);
-
-            // Persist to Supabase customer_deals asynchronously
-            try {
-                supabase.from('customer_deals').insert({
-                    customer_id: id,
-                    inventory_id: sale.inventory_id || null,
-                    lead_id: sale.lead_id || null,
-                    sale_id: sale.id,
-                    deal_type: sale.sale_type === 'consignment' ? 'consignment' : 'purchase',
-                    deal_status: 'completed',
-                    inquiry_date: saleDateStr,
-                    deal_date: saleDateStr,
-                    rto_date: saleDateStr,
-                    delivery_date: saleDateStr,
-                    handover_date: saleDateStr,
-                    total_amount: Number(sale.sale_price ?? sale.final_price ?? 0),
-                    advance_paid: Number(sale.sale_price ?? sale.final_price ?? 0),
-                    balance_due: sale.payment_status === 'paid' ? 0 : Number(sale.balance_amount || 0),
-                    payment_mode: sale.payment_method || 'Paid',
-                    notes: `Auto-synced from completed purchase (${sale.car ? `${sale.car.make} ${sale.car.model}` : 'Vehicle'}).`,
-                }).then(() => {});
-            } catch (e) {
-                console.warn('Auto-sync insert error:', e);
+                    if (!insertErr && inserted) {
+                        allDeals.push(inserted as CustomerDeal);
+                        existingSaleIds.add(sale.id);
+                        if (sale.inventory_id) existingInventoryIds.add(sale.inventory_id);
+                    }
+                } catch (e) {
+                    console.warn('Auto-sync insert error:', e);
+                }
             }
         }
 
-        const mergedDeals = [...existingDeals, ...autoDeals].sort((a, b) =>
+        allDeals.sort((a, b) =>
             new Date(b.deal_date || b.created_at).getTime() - new Date(a.deal_date || a.created_at).getTime()
         );
 
-        setDeals(mergedDeals);
+        setDeals(allDeals);
         setDealsLoading(false);
     }, [id, sales]);
 
@@ -560,14 +598,19 @@ const CustomerDetail = () => {
 
     useEffect(() => {
         if (!customer) return;
-        if (activeTab === 'deals')     fetchDeals();
+        if (activeTab === 'deals')     { fetchDeals(); fetchDocuments(); }
         if (activeTab === 'documents') { fetchDeals(); fetchDocuments(); }
         if (activeTab === 'timeline')  fetchTimeline();
         if (activeTab === 'logs')      fetchLogs();
     }, [activeTab, customer]);
 
-    // Also fetch deals initially for document deal dropdown
-    useEffect(() => { if (customer) fetchDeals(); }, [customer]);
+    // Also fetch deals and documents initially for all tabs and document deal dropdown
+    useEffect(() => {
+        if (customer) {
+            fetchDeals();
+            fetchDocuments();
+        }
+    }, [customer]);
 
     // ─── URL tab param ────────────────────────────────────────────────────────
     useEffect(() => {
@@ -716,42 +759,149 @@ const CustomerDetail = () => {
         return urlData?.publicUrl || null;
     };
 
+    const openEditDoc = (doc: CustomerDocument) => {
+        setEditingDoc(doc);
+        setDocForm({
+            deal_id: doc.deal_id || '',
+            doc_type: doc.doc_type,
+            doc_label: doc.doc_label || '',
+            party_role: doc.party_role || 'buyer',
+            file_url: doc.file_url || '',
+            file_name: doc.file_name || '',
+            issue_date: toDateInputValue(doc.issue_date),
+            expiry_date: toDateInputValue(doc.expiry_date),
+            notes: doc.notes || '',
+        });
+        setIsAddingDoc(true);
+    };
+
+    const handleDownloadDoc = async (doc: CustomerDocument) => {
+        if (!doc.file_url) {
+            alert('No file attached to this document.');
+            return;
+        }
+
+        setDownloadingDocId(doc.id);
+
+        try {
+            const response = await fetch(doc.file_url);
+            if (!response.ok) throw new Error('Network response was not ok');
+            const blob = await response.blob();
+            const blobUrl = URL.createObjectURL(blob);
+
+            // Determine file extension
+            let ext = '';
+            if (doc.file_name && doc.file_name.includes('.')) {
+                ext = '.' + doc.file_name.split('.').pop();
+            } else if (doc.file_url.includes('.')) {
+                const cleanUrl = doc.file_url.split('?')[0];
+                ext = '.' + cleanUrl.split('.').pop();
+            } else {
+                ext = blob.type.includes('pdf') ? '.pdf' : blob.type.includes('png') ? '.png' : '.jpg';
+            }
+
+            const safeCustomerName = (customer?.full_name || 'Customer').replace(/[^a-zA-Z0-9_-]/g, '_');
+            const safeDocName = (doc.doc_label || getDocLabel(doc.doc_type)).replace(/[^a-zA-Z0-9_-]/g, '_');
+            const downloadFilename = `${safeCustomerName}_${safeDocName}${ext}`;
+
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = downloadFilename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(blobUrl);
+
+            addNotification({
+                title: 'Document Downloaded',
+                message: `Downloaded ${downloadFilename}`,
+                type: 'success',
+            });
+        } catch (err) {
+            console.warn('Direct blob download failed, falling back to direct anchor download:', err);
+            const link = document.createElement('a');
+            link.href = doc.file_url;
+            link.target = '_blank';
+            link.download = doc.file_name || `${doc.doc_label || getDocLabel(doc.doc_type)}`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } finally {
+            setDownloadingDocId(null);
+        }
+    };
+
     const handleSaveDoc = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!customer) return;
         setDocSaving(true);
 
+        const cleanIssueDate = toDateInputValue(docForm.issue_date) || null;
+        const cleanExpiryDate = toDateInputValue(docForm.expiry_date) || null;
+
+        const isValidUuid = (val: string | null | undefined): boolean => {
+            if (!val) return false;
+            return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(val).trim());
+        };
+
+        const cleanDealId = isValidUuid(docForm.deal_id) ? docForm.deal_id.trim() : null;
+
         const payload = {
             customer_id: customer.id,
-            deal_id: docForm.deal_id || null,
+            deal_id: cleanDealId,
             doc_type: docForm.doc_type,
-            doc_label: docForm.doc_label || null,
+            doc_label: docForm.doc_label ? docForm.doc_label.trim() : null,
             party_role: docForm.party_role,
             file_url: docForm.file_url || null,
             file_name: docForm.file_name || null,
-            issue_date: docForm.issue_date || null,
-            expiry_date: docForm.expiry_date || null,
-            notes: docForm.notes || null,
+            issue_date: cleanIssueDate,
+            expiry_date: cleanExpiryDate,
+            notes: docForm.notes ? docForm.notes.trim() : null,
             uploaded_by: profile?.id ?? user?.id ?? null,
         };
 
-        const { error } = await supabase.from('customer_documents').insert(payload);
-        setDocSaving(false);
-        if (!error) {
-            setIsAddingDoc(false);
-            setDocForm(emptyDocForm);
-            fetchDocuments();
-            fetchDeals();
-            if (profile) {
-                await supabase.from('audit_logs').insert({
-                    user_id: profile.id,
-                    action: 'Document Added',
-                    target_type: 'Customer',
-                    target_name: customer.full_name,
-                    details: `Added ${getDocLabel(docForm.doc_type)} (${docForm.party_role}) for ${customer.full_name}`,
-                });
+        if (editingDoc) {
+            const { error } = await supabase.from('customer_documents').update(payload).eq('id', editingDoc.id);
+            setDocSaving(false);
+            if (!error) {
+                setEditingDoc(null);
+                setIsAddingDoc(false);
+                setDocForm(emptyDocForm);
+                fetchDocuments();
+                fetchDeals();
+                if (profile) {
+                    await supabase.from('audit_logs').insert({
+                        user_id: profile.id,
+                        action: 'Document Updated',
+                        target_type: 'Customer',
+                        target_name: customer.full_name,
+                        details: `Updated ${docForm.doc_label || getDocLabel(docForm.doc_type)} for ${customer.full_name}`,
+                    });
+                }
+            } else {
+                alert('Failed to update document: ' + error.message);
             }
-        } else alert('Failed to save document');
+        } else {
+            const { error } = await supabase.from('customer_documents').insert(payload);
+            setDocSaving(false);
+            if (!error) {
+                setIsAddingDoc(false);
+                setDocForm(emptyDocForm);
+                fetchDocuments();
+                fetchDeals();
+                if (profile) {
+                    await supabase.from('audit_logs').insert({
+                        user_id: profile.id,
+                        action: 'Document Added',
+                        target_type: 'Customer',
+                        target_name: customer.full_name,
+                        details: `Added ${getDocLabel(docForm.doc_type)} (${docForm.party_role}) for ${customer.full_name}`,
+                    });
+                }
+            } else {
+                alert('Failed to save document: ' + error.message);
+            }
+        }
     };
 
     const handleDeleteDoc = async (docId: string) => {
@@ -1272,7 +1422,7 @@ const CustomerDetail = () => {
                                     const dt = DEAL_TYPES.find(t => t.value === deal.deal_type);
                                     const st = DEAL_STATUS_CONFIG[deal.deal_status];
                                     const balance = deal.balance_due || 0;
-                                    const dealDocs = documentsByDeal[deal.id] || [];
+                                    const dealDocs = documents.filter(d => d.deal_id === deal.id);
                                     const expiringDealDocs = dealDocs.filter(d => {
                                         const days = getDaysUntilExpiry(d.expiry_date);
                                         return days !== null && days <= 30;
@@ -1471,13 +1621,37 @@ const CustomerDetail = () => {
                                                                                 target="_blank"
                                                                                 rel="noreferrer"
                                                                                 className="size-7 rounded-lg bg-white border border-slate-200 hover:bg-primary hover:text-white hover:border-primary text-slate-500 flex items-center justify-center transition-all"
-                                                                                title="View / Download Document"
+                                                                                title="View Document"
                                                                             >
                                                                                 <span className="material-symbols-outlined text-xs">open_in_new</span>
                                                                             </a>
                                                                         )}
+                                                                        {doc.file_url && (
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => handleDownloadDoc(doc)}
+                                                                                disabled={downloadingDocId === doc.id}
+                                                                                className="size-7 rounded-lg bg-white border border-slate-200 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 text-slate-400 flex items-center justify-center transition-colors disabled:opacity-50"
+                                                                                title="Download Document"
+                                                                            >
+                                                                                {downloadingDocId === doc.id ? (
+                                                                                    <span className="size-3 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                                                                                ) : (
+                                                                                    <span className="material-symbols-outlined text-xs">download</span>
+                                                                                )}
+                                                                            </button>
+                                                                        )}
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => openEditDoc(doc)}
+                                                                            className="size-7 rounded-lg bg-white border border-slate-200 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 text-slate-400 flex items-center justify-center transition-colors"
+                                                                            title="Edit Document"
+                                                                        >
+                                                                            <span className="material-symbols-outlined text-xs">edit</span>
+                                                                        </button>
                                                                         {isAdmin && (
                                                                             <button
+                                                                                type="button"
                                                                                 onClick={() => handleDeleteDoc(doc.id)}
                                                                                 className="size-7 rounded-lg bg-white border border-slate-200 hover:bg-red-50 hover:text-red-500 hover:border-red-200 text-slate-400 flex items-center justify-center transition-colors"
                                                                                 title="Delete Document"
@@ -1582,10 +1756,10 @@ const CustomerDetail = () => {
                                     <div className="bg-gradient-to-r from-primary to-primary-light px-6 pt-5 pb-6 shrink-0">
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <h2 className="text-lg font-black text-white">Add Document</h2>
-                                                <p className="text-white/60 text-xs">Attach buyer/seller/general document</p>
+                                                <h2 className="text-lg font-black text-white">{editingDoc ? 'Edit Document' : 'Add Document'}</h2>
+                                                <p className="text-white/60 text-xs">{editingDoc ? 'Update document metadata, expiry date or replace file' : 'Attach buyer/seller/general document'}</p>
                                             </div>
-                                            <button onClick={() => setIsAddingDoc(false)} className="size-8 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center">
+                                            <button onClick={() => { setIsAddingDoc(false); setEditingDoc(null); setDocForm(emptyDocForm); }} className="size-8 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center">
                                                 <span className="material-symbols-outlined text-white text-lg">close</span>
                                             </button>
                                         </div>
@@ -1631,7 +1805,9 @@ const CustomerDetail = () => {
 
                                         {/* File Upload */}
                                         <div>
-                                            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Upload File (PDF / Image)</label>
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
+                                                {editingDoc?.file_url ? 'Replace File (optional)' : 'Upload File (PDF / Image)'}
+                                            </label>
                                             <input
                                                 type="file"
                                                 accept=".pdf,.jpg,.jpeg,.png,.webp"
@@ -1644,7 +1820,17 @@ const CustomerDetail = () => {
                                                 className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
                                             />
                                             {uploadingFile && <p className="text-xs text-primary mt-1 flex items-center gap-1"><span className="size-3 border-2 border-primary border-t-transparent rounded-full animate-spin" /> {uploadStatusText || 'Uploading…'}</p>}
-                                            {docForm.file_url && !uploadingFile && <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1"><span className="material-symbols-outlined text-xs">check_circle</span> {docForm.file_name || 'File uploaded'}</p>}
+                                            {docForm.file_url && !uploadingFile && (
+                                                <div className="mt-1 flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl px-3 py-1.5 text-xs text-slate-600">
+                                                    <span className="flex items-center gap-1 text-emerald-600 font-medium truncate">
+                                                        <span className="material-symbols-outlined text-xs">check_circle</span>
+                                                        {docForm.file_name || 'File attached'}
+                                                    </span>
+                                                    <a href={docForm.file_url} target="_blank" rel="noreferrer" className="text-primary hover:underline text-[11px] font-bold shrink-0 ml-2">
+                                                        Preview
+                                                    </a>
+                                                </div>
+                                            )}
                                         </div>
 
                                         <div>
@@ -1674,13 +1860,13 @@ const CustomerDetail = () => {
 
                                         <div>
                                             <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Notes</label>
-                                            <textarea rows={2} value={docForm.notes} onChange={e => setDocForm({ ...docForm, notes: e.target.value })} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/10 resize-none" />
+                                            <textarea rows={2} value={docForm.notes} onChange={e => setDocForm({ ...docForm, notes: e.target.value })} placeholder="Add notes, document IDs, or comments..." className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/10 resize-none" />
                                         </div>
 
                                         <div className="flex gap-3 pt-2">
-                                            <button type="button" onClick={() => setIsAddingDoc(false)} className="flex-1 h-11 border border-slate-200 text-slate-600 font-semibold rounded-xl text-sm">Cancel</button>
+                                            <button type="button" onClick={() => { setIsAddingDoc(false); setEditingDoc(null); setDocForm(emptyDocForm); }} className="flex-1 h-11 border border-slate-200 text-slate-600 font-semibold rounded-xl text-sm">Cancel</button>
                                             <button type="submit" disabled={docSaving || uploadingFile} className="flex-1 h-11 bg-primary text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 disabled:opacity-60">
-                                                {docSaving ? <><span className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Saving…</> : 'Save Document'}
+                                                {docSaving ? <><span className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Saving…</> : (editingDoc ? 'Save Changes' : 'Save Document')}
                                             </button>
                                         </div>
                                     </form>
@@ -1747,13 +1933,54 @@ const CustomerDetail = () => {
                                                                             {doc.notes && <p className="text-[10px] text-slate-400 mt-0.5 italic">{doc.notes}</p>}
                                                                         </div>
                                                                         <div className="flex items-center gap-1 shrink-0">
+                                                                            {/* View File */}
                                                                             {doc.file_url && (
-                                                                                <a href={doc.file_url} target="_blank" rel="noreferrer" className="size-8 rounded-lg bg-slate-50 hover:bg-primary/10 text-slate-400 hover:text-primary flex items-center justify-center transition-colors" title="View file">
+                                                                                <a
+                                                                                    href={doc.file_url}
+                                                                                    target="_blank"
+                                                                                    rel="noreferrer"
+                                                                                    className="size-8 rounded-lg bg-slate-50 hover:bg-primary/10 text-slate-400 hover:text-primary flex items-center justify-center transition-colors"
+                                                                                    title="View file"
+                                                                                >
                                                                                     <span className="material-symbols-outlined text-sm">open_in_new</span>
                                                                                 </a>
                                                                             )}
+
+                                                                            {/* Download File */}
+                                                                            {doc.file_url && (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => handleDownloadDoc(doc)}
+                                                                                    disabled={downloadingDocId === doc.id}
+                                                                                    className="size-8 rounded-lg bg-slate-50 hover:bg-emerald-50 text-slate-400 hover:text-emerald-600 flex items-center justify-center transition-colors disabled:opacity-50"
+                                                                                    title="Download document file"
+                                                                                >
+                                                                                    {downloadingDocId === doc.id ? (
+                                                                                        <span className="size-3.5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                                                                                    ) : (
+                                                                                        <span className="material-symbols-outlined text-sm">download</span>
+                                                                                    )}
+                                                                                </button>
+                                                                            )}
+
+                                                                            {/* Edit Document */}
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => openEditDoc(doc)}
+                                                                                className="size-8 rounded-lg bg-slate-50 hover:bg-amber-50 text-slate-400 hover:text-amber-600 flex items-center justify-center transition-colors"
+                                                                                title="Edit document & expiry"
+                                                                            >
+                                                                                <span className="material-symbols-outlined text-sm">edit</span>
+                                                                            </button>
+
+                                                                            {/* Delete Document */}
                                                                             {isAdmin && (
-                                                                                <button onClick={() => handleDeleteDoc(doc.id)} className="size-8 rounded-lg bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-500 flex items-center justify-center transition-colors">
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => handleDeleteDoc(doc.id)}
+                                                                                    className="size-8 rounded-lg bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-500 flex items-center justify-center transition-colors"
+                                                                                    title="Delete document"
+                                                                                >
                                                                                     <span className="material-symbols-outlined text-sm">delete</span>
                                                                                 </button>
                                                                             )}

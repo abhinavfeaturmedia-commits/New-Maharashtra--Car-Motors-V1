@@ -96,6 +96,111 @@ const Customers = () => {
     });
     const [visitSaving, setVisitSaving] = useState(false);
 
+    // ─── Customer Data Export State & Field Definitions ───────────────────────
+    const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+    const [exportScope, setExportScope] = useState<'all' | 'filtered' | 'buyers' | 'prospects'>('all');
+    const [exportDatePreset, setExportDatePreset] = useState<'all' | '30d' | '90d' | 'this_year' | 'custom'>('all');
+    const [exportCustomStartDate, setExportCustomStartDate] = useState('');
+    const [exportCustomEndDate, setExportCustomEndDate] = useState('');
+    const [exportFormat, setExportFormat] = useState<'csv' | 'json'>('csv');
+    const [isExporting, setIsExporting] = useState(false);
+
+    const EXPORT_FIELD_GROUPS = useMemo(() => [
+        {
+            title: 'Contact & Personal Information',
+            category: 'contact',
+            icon: 'badge',
+            fields: [
+                { id: 'full_name', label: 'Full Name', defaultChecked: true },
+                { id: 'phone', label: 'Primary Phone', defaultChecked: true },
+                { id: 'alternate_phone', label: 'Alternate Phone', defaultChecked: false },
+                { id: 'whatsapp_number', label: 'WhatsApp Number', defaultChecked: true },
+                { id: 'email', label: 'Email Address', defaultChecked: true },
+                { id: 'city', label: 'City / Region', defaultChecked: true },
+                { id: 'address', label: 'Residential Address', defaultChecked: false },
+                { id: 'office_address', label: 'Office Address', defaultChecked: false },
+                { id: 'occupation', label: 'Occupation / Business', defaultChecked: false },
+                { id: 'date_of_birth', label: 'Date of Birth', defaultChecked: false },
+                { id: 'created_at', label: 'Customer Since (Added Date)', defaultChecked: true },
+            ]
+        },
+        {
+            title: 'Sales, Vehicles & Financial Metrics',
+            category: 'sales',
+            icon: 'payments',
+            fields: [
+                { id: 'customer_type', label: 'Customer Segment (Buyer / Prospect)', defaultChecked: true },
+                { id: 'total_purchases', label: 'Total Purchases Count', defaultChecked: true },
+                { id: 'lifetime_value', label: 'Lifetime Spent / LTV Volume (₹)', defaultChecked: true },
+                { id: 'purchased_vehicles', label: 'Purchased Vehicles (Make, Model, Year, Reg No)', defaultChecked: true },
+                { id: 'last_purchase_date', label: 'Latest Purchase Date', defaultChecked: true },
+                { id: 'last_purchase_amount', label: 'Latest Purchase Amount (₹)', defaultChecked: false },
+            ]
+        },
+        {
+            title: 'CRM Intelligence & System IDs',
+            category: 'engagement',
+            icon: 'folder_shared',
+            fields: [
+                { id: 'notes', label: 'Staff Internal Notes', defaultChecked: false },
+                { id: 'customer_id', label: 'Customer Database UUID', defaultChecked: false },
+            ]
+        }
+    ], []);
+
+    const [selectedFields, setSelectedFields] = useState<Set<string>>(() => {
+        const initial = new Set<string>();
+        [
+            'full_name', 'phone', 'whatsapp_number', 'email', 'city', 'created_at',
+            'customer_type', 'total_purchases', 'lifetime_value', 'purchased_vehicles', 'last_purchase_date'
+        ].forEach(f => initial.add(f));
+        return initial;
+    });
+
+    const toggleField = (id: string) => {
+        setSelectedFields(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const toggleGroup = (groupCategory: string) => {
+        const group = EXPORT_FIELD_GROUPS.find(g => g.category === groupCategory);
+        if (!group) return;
+        const allGroupIds = group.fields.map(f => f.id);
+        const allSelected = allGroupIds.every(id => selectedFields.has(id));
+
+        setSelectedFields(prev => {
+            const next = new Set(prev);
+            if (allSelected) {
+                allGroupIds.forEach(id => next.delete(id));
+            } else {
+                allGroupIds.forEach(id => next.add(id));
+            }
+            return next;
+        });
+    };
+
+    const applyFieldPreset = (preset: 'contacts' | 'sales' | 'all' | 'none') => {
+        if (preset === 'none') {
+            setSelectedFields(new Set());
+        } else if (preset === 'all') {
+            const all = new Set<string>();
+            EXPORT_FIELD_GROUPS.forEach(g => g.fields.forEach(f => all.add(f.id)));
+            setSelectedFields(all);
+        } else if (preset === 'contacts') {
+            setSelectedFields(new Set([
+                'full_name', 'phone', 'alternate_phone', 'whatsapp_number', 'email', 'city', 'address', 'created_at'
+            ]));
+        } else if (preset === 'sales') {
+            setSelectedFields(new Set([
+                'full_name', 'phone', 'city', 'customer_type', 'total_purchases', 'lifetime_value', 'purchased_vehicles', 'last_purchase_date'
+            ]));
+        }
+    };
+
     // ─── Debounced RPC search ────────────────────────────────────────────────
     const [rpcMatchIds, setRpcMatchIds] = useState<Set<string> | null>(null);
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -528,6 +633,152 @@ const Customers = () => {
         }
     };
 
+    // ─── Export Dataset Computation & Download Handler ────────────────────────
+    const exportDataset = useMemo(() => {
+        let baseList: Customer[] = [];
+        const buyerIds = new Set(sales.map(s => s.customer_id).filter(Boolean));
+
+        if (exportScope === 'all') baseList = customers;
+        else if (exportScope === 'filtered') baseList = filtered;
+        else if (exportScope === 'buyers') baseList = customers.filter(c => buyerIds.has(c.id));
+        else if (exportScope === 'prospects') baseList = customers.filter(c => !buyerIds.has(c.id));
+
+        // Date filter based on created_at
+        if (exportDatePreset === '30d') {
+            const cutoff = new Date();
+            cutoff.setDate(cutoff.getDate() - 30);
+            baseList = baseList.filter(c => new Date(c.created_at) >= cutoff);
+        } else if (exportDatePreset === '90d') {
+            const cutoff = new Date();
+            cutoff.setDate(cutoff.getDate() - 90);
+            baseList = baseList.filter(c => new Date(c.created_at) >= cutoff);
+        } else if (exportDatePreset === 'this_year') {
+            const startOfYear = new Date(new Date().getFullYear(), 0, 1);
+            baseList = baseList.filter(c => new Date(c.created_at) >= startOfYear);
+        } else if (exportDatePreset === 'custom' && exportCustomStartDate) {
+            const start = new Date(exportCustomStartDate);
+            const end = exportCustomEndDate ? new Date(exportCustomEndDate + 'T23:59:59') : new Date();
+            baseList = baseList.filter(c => {
+                const d = new Date(c.created_at);
+                return d >= start && d <= end;
+            });
+        }
+
+        return baseList;
+    }, [customers, filtered, sales, exportScope, exportDatePreset, exportCustomStartDate, exportCustomEndDate]);
+
+    const handleExecuteExport = () => {
+        if (selectedFields.size === 0) {
+            alert('Please select at least one field to export.');
+            return;
+        }
+
+        if (exportDataset.length === 0) {
+            alert('No customer records match the selected audience and date filters.');
+            return;
+        }
+
+        setIsExporting(true);
+
+        try {
+            // Build rich relational export rows
+            const formattedRows = exportDataset.map(c => {
+                const custSales = sales.filter(s => s.customer_id === c.id);
+                const totalSpent = custSales.reduce((sum, s) => sum + (Number(s.sale_price ?? s.final_price) || 0), 0);
+                const isBuyer = custSales.length > 0;
+                
+                const vehicleList = custSales.map(s => {
+                    if (s.car) {
+                        return `${s.car.year || ''} ${s.car.make || ''} ${s.car.model || ''}${s.car.registration_no ? ` (${s.car.registration_no})` : ''}`.trim();
+                    }
+                    return `Car ID: ${s.inventory_id || s.car_id || 'N/A'}`;
+                }).filter(Boolean).join('; ');
+
+                const latestSale = custSales[0];
+                const latestPurchaseDate = latestSale?.sale_date ? new Date(latestSale.sale_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A';
+                const latestPurchaseAmount = latestSale ? Number(latestSale.sale_price ?? latestSale.final_price) || 0 : 0;
+
+                const row: Record<string, any> = {};
+
+                if (selectedFields.has('full_name')) row['Full Name'] = c.full_name || '';
+                if (selectedFields.has('phone')) row['Primary Phone'] = c.phone || '';
+                if (selectedFields.has('alternate_phone')) row['Alternate Phone'] = c.alternate_phone || '';
+                if (selectedFields.has('whatsapp_number')) row['WhatsApp Number'] = c.whatsapp_number || c.phone || '';
+                if (selectedFields.has('email')) row['Email Address'] = c.email || '';
+                if (selectedFields.has('city')) row['City'] = c.city || '';
+                if (selectedFields.has('address')) row['Residential Address'] = c.address || '';
+                if (selectedFields.has('office_address')) row['Office Address'] = c.office_address || '';
+                if (selectedFields.has('occupation')) row['Occupation'] = c.occupation || '';
+                if (selectedFields.has('date_of_birth')) row['Date of Birth'] = c.date_of_birth || '';
+                if (selectedFields.has('created_at')) row['Customer Since'] = c.created_at ? new Date(c.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+                
+                if (selectedFields.has('customer_type')) row['Customer Segment'] = isBuyer ? 'Verified Buyer' : 'Active Prospect';
+                if (selectedFields.has('total_purchases')) row['Total Purchases'] = custSales.length;
+                if (selectedFields.has('lifetime_value')) row['Lifetime Spent (INR)'] = totalSpent;
+                if (selectedFields.has('purchased_vehicles')) row['Purchased Vehicles'] = vehicleList || 'None';
+                if (selectedFields.has('last_purchase_date')) row['Latest Purchase Date'] = latestPurchaseDate;
+                if (selectedFields.has('last_purchase_amount')) row['Latest Purchase Amount (INR)'] = latestPurchaseAmount;
+                
+                if (selectedFields.has('notes')) row['Staff Notes'] = c.notes || '';
+                if (selectedFields.has('customer_id')) row['Customer UUID'] = c.id;
+
+                return row;
+            });
+
+            const timestamp = new Date().toISOString().slice(0, 10);
+            const audienceTag = exportScope === 'all' ? 'All' : exportScope === 'buyers' ? 'Buyers' : exportScope === 'prospects' ? 'Prospects' : 'Filtered';
+
+            if (exportFormat === 'csv') {
+                const filename = `Maharashtra_Motors_Customers_${audienceTag}_${timestamp}.csv`;
+                const headers = Object.keys(formattedRows[0]);
+                const csvRows = [
+                    headers.map(h => `"${h.replace(/"/g, '""')}"`).join(','),
+                    ...formattedRows.map(row =>
+                        headers.map(h => {
+                            const val = row[h] ?? '';
+                            const str = typeof val === 'object' ? JSON.stringify(val) : String(val);
+                            return `"${str.replace(/"/g, '""')}"`;
+                        }).join(',')
+                    )
+                ].join('\r\n');
+
+                const blob = new Blob(['\uFEFF' + csvRows], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            } else {
+                const filename = `Maharashtra_Motors_Customers_${audienceTag}_${timestamp}.json`;
+                const jsonBlob = new Blob([JSON.stringify(formattedRows, null, 2)], { type: 'application/json;charset=utf-8;' });
+                const url = URL.createObjectURL(jsonBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            }
+
+            addNotification({
+                title: 'Customer Export Generated',
+                message: `Successfully exported ${formattedRows.length} customer records with ${selectedFields.size} fields.`,
+                type: 'success'
+            });
+
+            setIsExportModalOpen(false);
+        } catch (err: any) {
+            console.error('Export failed:', err);
+            alert('Failed to generate export: ' + (err.message || 'Unknown error'));
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -536,6 +787,13 @@ const Customers = () => {
                     <p className="text-slate-500 text-sm">{loading ? '...' : customers.length} verified customers in your database.</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                    <button
+                        onClick={() => setIsExportModalOpen(true)}
+                        className="h-10 px-3.5 bg-slate-100 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 hover:bg-slate-200 transition-colors border border-slate-200 shadow-xs"
+                        title="Export customer data with custom field selection"
+                    >
+                        <span className="material-symbols-outlined text-base text-slate-600">download</span> Export Data
+                    </button>
                     <Link to="/admin/sales" className="h-10 px-3.5 bg-green-50 text-green-700 font-bold rounded-xl text-xs flex items-center gap-1.5 hover:bg-green-100 transition-colors border border-green-200">
                         <span className="material-symbols-outlined text-base">point_of_sale</span> Sales
                     </Link>
@@ -1220,6 +1478,305 @@ const Customers = () => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* ─── Export Customer Data Modal ─── */}
+            {isExportModalOpen && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
+                    <div className="bg-white rounded-3xl border border-slate-100 shadow-2xl max-w-2xl w-full overflow-hidden my-6 flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200">
+                        {/* Modal Header */}
+                        <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/60">
+                            <div className="flex items-center gap-3">
+                                <div className="size-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+                                    <span className="material-symbols-outlined text-xl">download</span>
+                                </div>
+                                <div>
+                                    <h3 className="text-base font-black text-primary font-display">Export Customer Directory</h3>
+                                    <p className="text-xs text-slate-500">Configure target audience, select data columns, and export</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setIsExportModalOpen(false)}
+                                className="size-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors"
+                            >
+                                <span className="material-symbols-outlined text-lg">close</span>
+                            </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="p-5 overflow-y-auto space-y-5 divide-y divide-slate-100">
+                            {/* Step 1: Target Audience & Date Filter */}
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                                        <span className="material-symbols-outlined text-sm text-primary">group</span>
+                                        1. Select Customer Audience
+                                    </label>
+                                    <span className="text-[11px] font-bold text-primary bg-primary/10 px-2.5 py-0.5 rounded-full">
+                                        {exportDataset.length} Records Selected
+                                    </span>
+                                </div>
+
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                    {[
+                                        { id: 'all', label: 'All Customers', count: customers.length },
+                                        { id: 'filtered', label: 'Current View', count: filtered.length },
+                                        { id: 'buyers', label: 'Verified Buyers', count: activeBuyersCount },
+                                        { id: 'prospects', label: 'Prospects Only', count: Math.max(0, customers.length - activeBuyersCount) },
+                                    ].map(opt => (
+                                        <button
+                                            key={opt.id}
+                                            type="button"
+                                            onClick={() => setExportScope(opt.id as any)}
+                                            className={`p-2.5 rounded-2xl border text-left transition-all ${
+                                                exportScope === opt.id
+                                                    ? 'border-primary bg-primary/5 shadow-xs'
+                                                    : 'border-slate-200 hover:border-slate-300 bg-white'
+                                            }`}
+                                        >
+                                            <p className={`text-xs font-bold ${exportScope === opt.id ? 'text-primary' : 'text-slate-700'}`}>
+                                                {opt.label}
+                                            </p>
+                                            <p className="text-[11px] text-slate-400 font-semibold mt-0.5">{opt.count} customers</p>
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* Date Range Preset Selector */}
+                                <div className="pt-2">
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <label className="text-[11px] font-bold text-slate-600">Joined / Added Date Filter</label>
+                                    </div>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {[
+                                            { id: 'all', label: 'All Time' },
+                                            { id: '30d', label: 'Last 30 Days' },
+                                            { id: '90d', label: 'Last 90 Days' },
+                                            { id: 'this_year', label: 'This Year (2026)' },
+                                            { id: 'custom', label: 'Custom Range' },
+                                        ].map(preset => (
+                                            <button
+                                                key={preset.id}
+                                                type="button"
+                                                onClick={() => setExportDatePreset(preset.id as any)}
+                                                className={`text-xs font-semibold px-3 py-1 rounded-xl border transition-all ${
+                                                    exportDatePreset === preset.id
+                                                        ? 'bg-primary text-white border-primary shadow-xs'
+                                                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                                                }`}
+                                            >
+                                                {preset.label}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Custom Date Pickers */}
+                                    {exportDatePreset === 'custom' && (
+                                        <div className="grid grid-cols-2 gap-3 mt-2.5 p-3 bg-slate-50 rounded-2xl border border-slate-200">
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-slate-500 mb-1">Start Date</label>
+                                                <input
+                                                    type="date"
+                                                    value={exportCustomStartDate}
+                                                    onChange={e => setExportCustomStartDate(e.target.value)}
+                                                    className="w-full h-8 px-2.5 text-xs bg-white border border-slate-200 rounded-lg outline-none"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-slate-500 mb-1">End Date</label>
+                                                <input
+                                                    type="date"
+                                                    value={exportCustomEndDate}
+                                                    onChange={e => setExportCustomEndDate(e.target.value)}
+                                                    className="w-full h-8 px-2.5 text-xs bg-white border border-slate-200 rounded-lg outline-none"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Step 2: Granular Column Selection */}
+                            <div className="pt-4 space-y-3">
+                                <div className="flex items-center justify-between flex-wrap gap-2">
+                                    <label className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                                        <span className="material-symbols-outlined text-sm text-primary">checklist</span>
+                                        2. Select Columns To Export
+                                    </label>
+
+                                    {/* Quick Preset Buttons */}
+                                    <div className="flex items-center gap-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => applyFieldPreset('contacts')}
+                                            className="text-[10px] font-bold px-2 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition"
+                                        >
+                                            ⚡ Contacts
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => applyFieldPreset('sales')}
+                                            className="text-[10px] font-bold px-2 py-1 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 transition"
+                                        >
+                                            💼 Sales & LTV
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => applyFieldPreset('all')}
+                                            className="text-[10px] font-bold px-2 py-1 rounded-lg bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 transition"
+                                        >
+                                            🔍 Full Dossier
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => applyFieldPreset('none')}
+                                            className="text-[10px] font-bold px-2 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200 transition"
+                                        >
+                                            Clear
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Field Categories Accordion / Cards */}
+                                <div className="space-y-3">
+                                    {EXPORT_FIELD_GROUPS.map(group => {
+                                        const allInGroupSelected = group.fields.every(f => selectedFields.has(f.id));
+                                        const someInGroupSelected = group.fields.some(f => selectedFields.has(f.id));
+
+                                        return (
+                                            <div key={group.category} className="border border-slate-200 rounded-2xl p-3 bg-white">
+                                                <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-slate-100">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="material-symbols-outlined text-base text-primary">{group.icon}</span>
+                                                        <span className="text-xs font-bold text-slate-800">{group.title}</span>
+                                                        <span className="text-[10px] font-semibold text-slate-400">
+                                                            ({group.fields.filter(f => selectedFields.has(f.id)).length}/{group.fields.length})
+                                                        </span>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => toggleGroup(group.category)}
+                                                        className="text-[11px] font-bold text-primary hover:underline"
+                                                    >
+                                                        {allInGroupSelected ? 'Deselect All' : 'Select All'}
+                                                    </button>
+                                                </div>
+
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                    {group.fields.map(field => {
+                                                        const isChecked = selectedFields.has(field.id);
+                                                        return (
+                                                            <label
+                                                                key={field.id}
+                                                                className={`flex items-center gap-2.5 p-2 rounded-xl border text-xs cursor-pointer select-none transition-all ${
+                                                                    isChecked
+                                                                        ? 'border-primary/40 bg-primary/5 text-slate-900 font-semibold'
+                                                                        : 'border-slate-100 hover:border-slate-200 bg-slate-50/50 text-slate-600'
+                                                                }`}
+                                                            >
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={isChecked}
+                                                                    onChange={() => toggleField(field.id)}
+                                                                    className="size-4 rounded border-slate-300 text-primary focus:ring-primary accent-primary"
+                                                                />
+                                                                <span className="truncate">{field.label}</span>
+                                                            </label>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Step 3: Format & Summary */}
+                            <div className="pt-4 space-y-3">
+                                <label className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                                    <span className="material-symbols-outlined text-sm text-primary">tune</span>
+                                    3. Export File Format
+                                </label>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <label
+                                        className={`flex items-center gap-3 p-3 rounded-2xl border cursor-pointer select-none transition-all ${
+                                            exportFormat === 'csv'
+                                                ? 'border-primary bg-primary/5 shadow-xs'
+                                                : 'border-slate-200 bg-white hover:border-slate-300'
+                                        }`}
+                                    >
+                                        <input
+                                            type="radio"
+                                            name="export_format"
+                                            checked={exportFormat === 'csv'}
+                                            onChange={() => setExportFormat('csv')}
+                                            className="size-4 text-primary focus:ring-primary accent-primary"
+                                        />
+                                        <div>
+                                            <p className="text-xs font-bold text-slate-800">CSV Spreadsheet (.csv)</p>
+                                            <p className="text-[10px] text-slate-400">Excel, Google Sheets & CRM friendly</p>
+                                        </div>
+                                    </label>
+
+                                    <label
+                                        className={`flex items-center gap-3 p-3 rounded-2xl border cursor-pointer select-none transition-all ${
+                                            exportFormat === 'json'
+                                                ? 'border-primary bg-primary/5 shadow-xs'
+                                                : 'border-slate-200 bg-white hover:border-slate-300'
+                                        }`}
+                                    >
+                                        <input
+                                            type="radio"
+                                            name="export_format"
+                                            checked={exportFormat === 'json'}
+                                            onChange={() => setExportFormat('json')}
+                                            className="size-4 text-primary focus:ring-primary accent-primary"
+                                        />
+                                        <div>
+                                            <p className="text-xs font-bold text-slate-800">JSON Data File (.json)</p>
+                                            <p className="text-[10px] text-slate-400">Standard structured format for backup</p>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-4 border-t border-slate-100 bg-slate-50/60 flex items-center justify-between flex-wrap gap-3">
+                            <div className="text-xs text-slate-500">
+                                <span className="font-bold text-slate-800">{exportDataset.length}</span> customers • <span className="font-bold text-slate-800">{selectedFields.size}</span> columns selected
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsExportModalOpen(false)}
+                                    className="px-4 h-10 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-100 transition"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleExecuteExport}
+                                    disabled={isExporting || exportDataset.length === 0 || selectedFields.size === 0}
+                                    className="px-5 h-10 rounded-xl bg-primary hover:bg-primary-light text-white font-bold text-xs transition shadow-sm flex items-center gap-2 disabled:opacity-60"
+                                >
+                                    {isExporting ? (
+                                        <>
+                                            <span className="size-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                            Generating File…
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className="material-symbols-outlined text-base">download</span>
+                                            Download Export ({exportFormat.toUpperCase()})
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

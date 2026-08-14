@@ -405,9 +405,37 @@ const LeadDetail = () => {
     const [note, setNote] = useState('');
     const [noteType, setNoteType] = useState('note');
 
-    // Task State
+    // ─── Task & Reminder State ──────────────────────────────────────────────────
+    interface LeadTask {
+        id: string;
+        lead_id: string | null;
+        title: string;
+        description: string | null;
+        status: string; // 'pending' | 'todo' | 'in_progress' | 'completed' | 'cancelled'
+        priority: string; // 'Hot' | 'Medium' | 'Cold' | 'High' | 'Low'
+        due_date: string | null;
+        category: string | null; // 'reminder' | 'call' | 'visit' | 'document' | 'inspection' | 'payment' | 'followup'
+        assigned_to: string | null;
+        created_by: string | null;
+        completed_at: string | null;
+        created_at: string;
+        assignee?: { full_name: string | null } | null;
+        creator?: { full_name: string | null } | null;
+    }
+
+    const [leadTasks, setLeadTasks] = useState<LeadTask[]>([]);
+    const [tasksLoading, setTasksLoading] = useState(false);
+    const [taskSaving, setTaskSaving] = useState(false);
+    const [taskTab, setTaskTab] = useState<'pending' | 'completed' | 'all'>('pending');
     const [isAddingTask, setIsAddingTask] = useState(false);
-    const [taskForm, setTaskForm] = useState({ title: '', due_date: '', priority: 'Medium', description: '' });
+    const [taskForm, setTaskForm] = useState({
+        title: '',
+        due_date: '',
+        priority: 'Medium',
+        category: 'reminder',
+        assigned_to: '',
+        description: ''
+    });
 
     // ─── Follow-Up State ───────────────────────────────────────────────────────
     const [followUps, setFollowUps] = useState<FollowUp[]>([]);
@@ -481,6 +509,8 @@ const LeadDetail = () => {
             ? followUpForm.next_followup_date.slice(0, 10)
             : null;
 
+        const primaryType = (followUpForm.contacted_via && followUpForm.contacted_via[0]) ? followUpForm.contacted_via[0] : 'call';
+
         const payload: any = {
             lead_id: id,
             contacted_via: followUpForm.contacted_via,
@@ -493,17 +523,27 @@ const LeadDetail = () => {
             assigned_to: profile?.id ?? user?.id ?? null,
             created_by: profile?.id ?? user?.id ?? null,
             is_done: false,
-            type: 'followup',
+            type: primaryType,
         };
 
+        let insertError;
         const { error } = await supabase.from('follow_ups').insert(payload);
-        if (!error) {
+        insertError = error;
+
+        // Fallback retry omitting created_by if any schema cache issue occurs
+        if (insertError && insertError.message?.includes('created_by')) {
+            const { created_by, ...fallbackPayload } = payload;
+            const { error: retryError } = await supabase.from('follow_ups').insert(fallbackPayload);
+            insertError = retryError;
+        }
+
+        if (!insertError) {
             // Also log an activity for the timeline
             const methodsJoined = followUpForm.contacted_via.join(', ');
             const activityNoteText = `Follow-up via ${methodsJoined}: ${outcomeLabel(followUpForm.outcome)}${followUpForm.notes ? ' — ' + followUpForm.notes : ''}`;
             await supabase.from('lead_activities').insert({
                 lead_id: id,
-                type: 'followup',
+                type: primaryType,
                 activity_type: followUpForm.contacted_via.join(',') || 'call',
                 title: `Follow-up (${methodsJoined})`,
                 description: activityNoteText,
@@ -534,10 +574,11 @@ const LeadDetail = () => {
             setFollowUpForm({ contacted_via: ['call'], outcome: 'answered', notes: '', next_followup_date: '', duration_minutes: '' });
             setIsLoggingFollowUp(false);
             fetchFollowUps();
+            fetchLeadTasks();
             refreshData();
         } else {
-            console.error('Failed to save follow-up:', error);
-            alert('Failed to save follow-up: ' + (error.message || 'Please try again.'));
+            console.error('Failed to save follow-up:', insertError);
+            alert('Failed to save follow-up: ' + (insertError.message || 'Please try again.'));
         }
         setFollowUpSaving(false);
     };
@@ -810,6 +851,33 @@ const LeadDetail = () => {
         }
     }, [id]);
 
+    const fetchLeadTasks = useCallback(async () => {
+        if (!id) return;
+        setTasksLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('tasks')
+                .select('*, assignee:profiles!assigned_to(full_name), creator:profiles!created_by(full_name)')
+                .eq('lead_id', id)
+                .order('due_date', { ascending: true, nullsFirst: false });
+
+            if (!error && data) {
+                setLeadTasks(data as LeadTask[]);
+            } else if (error) {
+                const { data: fbData } = await supabase
+                    .from('tasks')
+                    .select('*')
+                    .eq('lead_id', id)
+                    .order('due_date', { ascending: true, nullsFirst: false });
+                if (fbData) setLeadTasks(fbData as LeadTask[]);
+            }
+        } catch (err) {
+            console.error("Error fetching tasks for lead:", err);
+        } finally {
+            setTasksLoading(false);
+        }
+    }, [id]);
+
     useEffect(() => {
         const fetchLinkedItems = async () => {
             try {
@@ -843,10 +911,11 @@ const LeadDetail = () => {
             fetchCarInterests();
             fetchStaff();
             fetchVisits();
+            fetchLeadTasks();
             fetchLinkedItems();
             fetchSales();
         }
-    }, [id, fetchFollowUps, fetchCarInterests, fetchStaff, fetchVisits, fetchSales]);
+    }, [id, fetchFollowUps, fetchCarInterests, fetchStaff, fetchVisits, fetchLeadTasks, fetchSales]);
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -1186,26 +1255,127 @@ const LeadDetail = () => {
         }
     };
 
+    const setQuickDueDate = (hoursAhead: number, setHour?: number) => {
+        const d = new Date();
+        if (setHour !== undefined) {
+            d.setDate(d.getDate() + Math.floor(hoursAhead / 24));
+            d.setHours(setHour, 0, 0, 0);
+        } else {
+            d.setHours(d.getHours() + hoursAhead);
+        }
+        const offset = d.getTimezoneOffset() * 60000;
+        const localIso = new Date(d.getTime() - offset).toISOString().slice(0, 16);
+        setTaskForm(prev => ({ ...prev, due_date: localIso }));
+    };
+
     const handleAddTask = async (e: React.FormEvent) => {
         e.preventDefault();
-        if(!taskForm.title || !taskForm.due_date) return;
+        if (!taskForm.title.trim() || !taskForm.due_date) return;
+        setTaskSaving(true);
         
-        const { error } = await supabase.from('tasks').insert({
-            lead_id: id,
-            title: taskForm.title,
-            description: taskForm.description || null,
-            due_date: new Date(taskForm.due_date).toISOString(),
-            priority: taskForm.priority,
-            status: 'todo'
-        });
-        
-        if (!error) {
-            setTaskForm({ title: '', due_date: '', priority: 'Medium', description: '' });
+        try {
+            const assignedStaffId = taskForm.assigned_to || lead?.assigned_to || profile?.id || user?.id || null;
+            const newDueDate = new Date(taskForm.due_date).toISOString();
+
+            const { error } = await supabase.from('tasks').insert({
+                lead_id: id,
+                title: taskForm.title.trim(),
+                description: taskForm.description.trim() || null,
+                due_date: newDueDate,
+                priority: taskForm.priority || 'Medium',
+                category: taskForm.category || 'reminder',
+                status: 'pending',
+                assigned_to: assignedStaffId,
+                created_by: profile?.id || user?.id || null,
+            });
+            
+            if (error) throw error;
+
+            // Log activity to lead timeline
+            const dueFormatted = new Date(taskForm.due_date).toLocaleString('en-IN', {
+                day: 'numeric',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            await supabase.from('lead_activities').insert({
+                lead_id: id,
+                type: 'task',
+                activity_type: 'task',
+                title: `Task Scheduled: ${taskForm.title.trim()}`,
+                description: `Due on ${dueFormatted}${taskForm.description ? ' — ' + taskForm.description : ''} (Priority: ${taskForm.priority})`,
+                notes: `Reminder task created for ${lead?.full_name || 'lead'}`,
+                created_by: profile?.id || user?.id || null,
+            });
+
+            setTaskForm({
+                title: '',
+                due_date: '',
+                priority: 'Medium',
+                category: 'reminder',
+                assigned_to: '',
+                description: ''
+            });
             setIsAddingTask(false);
-            refreshData(); // To pull tasks 
-        } else {
-            console.error(error);
-            alert("Failed to create task");
+            await fetchLeadTasks();
+            await refreshData();
+        } catch (err: any) {
+            console.error('Failed to create task:', err);
+            alert('Failed to save task: ' + (err.message || 'Please try again.'));
+        } finally {
+            setTaskSaving(false);
+        }
+    };
+
+    const handleToggleTaskStatus = async (task: LeadTask) => {
+        const isNowCompleted = task.status !== 'completed';
+        const newStatus = isNowCompleted ? 'completed' : 'pending';
+        const completedAt = isNowCompleted ? new Date().toISOString() : null;
+
+        try {
+            const { error } = await supabase
+                .from('tasks')
+                .update({
+                    status: newStatus,
+                    completed_at: completedAt,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', task.id);
+
+            if (error) throw error;
+
+            if (isNowCompleted) {
+                await supabase.from('lead_activities').insert({
+                    lead_id: id,
+                    type: 'task',
+                    activity_type: 'task',
+                    title: `Task Completed: ${task.title}`,
+                    description: `Marked as done by ${profile?.full_name || 'Staff'}`,
+                    notes: `Completed task: ${task.title}`,
+                    created_by: profile?.id || user?.id || null,
+                });
+            }
+
+            await fetchLeadTasks();
+            await refreshData();
+        } catch (err: any) {
+            console.error('Failed to update task status:', err);
+            alert('Could not update task: ' + err.message);
+        }
+    };
+
+    const handleDeleteTask = async (taskId: string, taskTitle: string) => {
+        if (!window.confirm(`Delete task "${taskTitle}"?`)) return;
+
+        try {
+            const { error } = await supabase.from('tasks').delete().eq('id', taskId);
+            if (error) throw error;
+
+            await fetchLeadTasks();
+            await refreshData();
+        } catch (err: any) {
+            console.error('Failed to delete task:', err);
+            alert('Failed to delete task: ' + err.message);
         }
     };
 
@@ -2841,33 +3011,363 @@ const LeadDetail = () => {
                             </div>
                         </div>
 
-                        {/* Add Task Module (kept for reminders) */}
-                        <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-[var(--shadow-card)]">
-                            <div className="flex items-center gap-2 mb-3"><span className="material-symbols-outlined text-amber-500 text-lg">task</span><h4 className="font-bold text-primary text-sm">Schedule Reminder Task</h4></div>
-                            
+                        {/* ─── Tasks & Reminders Manager with Full History ─── */}
+                        <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-[var(--shadow-card)]">
+                            {/* Card Header */}
+                            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="size-8 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center">
+                                        <span className="material-symbols-outlined text-lg">task_alt</span>
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <h4 className="font-bold text-primary text-sm">Tasks & Reminders</h4>
+                                            <span className="text-[10px] font-extrabold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
+                                                {leadTasks.filter(t => t.status !== 'completed').length} Pending
+                                            </span>
+                                        </div>
+                                        <p className="text-[10px] text-slate-400">Scheduled actions for this lead</p>
+                                    </div>
+                                </div>
+                                {canEdit && !isAddingTask && (
+                                    <button
+                                        onClick={() => setIsAddingTask(true)}
+                                        className="flex items-center gap-1 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-1.5 rounded-xl transition-all shadow-xs"
+                                    >
+                                        <span className="material-symbols-outlined text-sm">add</span>
+                                        Add Task
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Add Task Form View */}
                             {isAddingTask ? (
-                                <form onSubmit={handleAddTask} className="space-y-3">
-                                    <input required type="text" placeholder="Task Title" value={taskForm.title} onChange={e => setTaskForm({...taskForm, title: e.target.value})} className="w-full h-9 border border-slate-200 rounded-lg px-3 text-xs outline-none focus:border-amber-400 bg-white" />
-                                    <input required type="datetime-local" value={taskForm.due_date} onChange={e => setTaskForm({...taskForm, due_date: e.target.value})} className="w-full h-9 border border-slate-200 rounded-lg px-3 text-xs outline-none focus:border-amber-400 bg-white" />
-                                    <select value={taskForm.priority} onChange={e => setTaskForm({...taskForm, priority: e.target.value})} className="w-full h-9 border border-slate-200 rounded-lg px-3 text-xs outline-none focus:border-amber-400 bg-white">
-                                        <option value="Hot">High Priority</option>
-                                        <option value="Medium">Medium</option>
-                                        <option value="Cold">Low</option>
-                                    </select>
-                                    <textarea placeholder="Description (Optional)" value={taskForm.description} onChange={e => setTaskForm({...taskForm, description: e.target.value})} rows={2} className="w-full border border-slate-200 rounded-lg p-3 text-xs outline-none focus:border-amber-400 bg-white"></textarea>
-                                    <div className="flex gap-2">
-                                        <button type="button" onClick={() => setIsAddingTask(false)} className="flex-1 bg-slate-100 text-slate-500 h-8 rounded-lg text-xs font-bold hover:bg-slate-200 transition">Cancel</button>
-                                        <button type="submit" className="flex-1 bg-amber-500 text-white h-8 rounded-lg text-xs font-bold hover:bg-amber-600 transition shadow-sm">Save Task</button>
+                                <form onSubmit={handleAddTask} className="p-4 space-y-3 bg-amber-50/30 border-b border-amber-100">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-bold text-amber-900">New Reminder Task</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsAddingTask(false)}
+                                            className="text-slate-400 hover:text-slate-600 text-xs"
+                                        >
+                                            <span className="material-symbols-outlined text-base">close</span>
+                                        </button>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-[11px] font-bold text-slate-600 mb-1">Task Title <span className="text-red-400">*</span></label>
+                                        <input
+                                            required
+                                            type="text"
+                                            placeholder="e.g. Call regarding loan approval document"
+                                            value={taskForm.title}
+                                            onChange={e => setTaskForm({ ...taskForm, title: e.target.value })}
+                                            className="w-full h-9 border border-slate-200 rounded-xl px-3 text-xs outline-none focus:ring-2 focus:ring-amber-500/20 bg-white"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <label className="block text-[11px] font-bold text-slate-600">Due Date & Time <span className="text-red-400">*</span></label>
+                                            {/* Quick Due Date Presets */}
+                                            <div className="flex items-center gap-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setQuickDueDate(2)}
+                                                    className="text-[9px] font-bold bg-white border border-slate-200 text-slate-600 hover:border-amber-400 hover:text-amber-700 px-1.5 py-0.5 rounded"
+                                                >
+                                                    +2h
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setQuickDueDate(24, 10)}
+                                                    className="text-[9px] font-bold bg-white border border-slate-200 text-slate-600 hover:border-amber-400 hover:text-amber-700 px-1.5 py-0.5 rounded"
+                                                >
+                                                    Tmrw 10am
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setQuickDueDate(48, 11)}
+                                                    className="text-[9px] font-bold bg-white border border-slate-200 text-slate-600 hover:border-amber-400 hover:text-amber-700 px-1.5 py-0.5 rounded"
+                                                >
+                                                    In 2d
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <input
+                                            required
+                                            type="datetime-local"
+                                            value={taskForm.due_date}
+                                            onChange={e => setTaskForm({ ...taskForm, due_date: e.target.value })}
+                                            className="w-full h-9 border border-slate-200 rounded-xl px-3 text-xs outline-none focus:ring-2 focus:ring-amber-500/20 bg-white"
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-2.5">
+                                        <div>
+                                            <label className="block text-[11px] font-bold text-slate-600 mb-1">Priority</label>
+                                            <select
+                                                value={taskForm.priority}
+                                                onChange={e => setTaskForm({ ...taskForm, priority: e.target.value })}
+                                                className="w-full h-9 border border-slate-200 rounded-xl px-2.5 text-xs outline-none focus:ring-2 focus:ring-amber-500/20 bg-white"
+                                            >
+                                                <option value="Hot">🔥 High (Hot)</option>
+                                                <option value="Medium">⚡ Medium</option>
+                                                <option value="Cold">❄️ Low (Cold)</option>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-[11px] font-bold text-slate-600 mb-1">Category</label>
+                                            <select
+                                                value={taskForm.category}
+                                                onChange={e => setTaskForm({ ...taskForm, category: e.target.value })}
+                                                className="w-full h-9 border border-slate-200 rounded-xl px-2.5 text-xs outline-none focus:ring-2 focus:ring-amber-500/20 bg-white"
+                                            >
+                                                <option value="reminder">🔔 Reminder</option>
+                                                <option value="call">📞 Phone Call</option>
+                                                <option value="followup">💬 Follow-up</option>
+                                                <option value="visit">🚶 Customer Visit</option>
+                                                <option value="inspection">🔍 Inspection</option>
+                                                <option value="document">📄 Documentation</option>
+                                                <option value="payment">💳 Payment</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {staffMembers.length > 0 && (
+                                        <div>
+                                            <label className="block text-[11px] font-bold text-slate-600 mb-1">Assignee</label>
+                                            <select
+                                                value={taskForm.assigned_to || lead?.assigned_to || ''}
+                                                onChange={e => setTaskForm({ ...taskForm, assigned_to: e.target.value })}
+                                                className="w-full h-9 border border-slate-200 rounded-xl px-2.5 text-xs outline-none focus:ring-2 focus:ring-amber-500/20 bg-white"
+                                            >
+                                                <option value="">Assign to Lead Owner / Myself</option>
+                                                {staffMembers.map(s => (
+                                                    <option key={s.id} value={s.id}>
+                                                        {s.full_name || 'Staff User'} ({s.role})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    )}
+
+                                    <div>
+                                        <label className="block text-[11px] font-bold text-slate-600 mb-1">Notes / Instructions</label>
+                                        <textarea
+                                            placeholder="Add details, instructions or customer context..."
+                                            value={taskForm.description}
+                                            onChange={e => setTaskForm({ ...taskForm, description: e.target.value })}
+                                            rows={2}
+                                            className="w-full border border-slate-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-amber-500/20 bg-white"
+                                        />
+                                    </div>
+
+                                    <div className="flex gap-2 pt-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsAddingTask(false)}
+                                            className="flex-1 bg-white border border-slate-200 text-slate-600 h-9 rounded-xl text-xs font-bold hover:bg-slate-50 transition"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            disabled={taskSaving}
+                                            className="flex-1 bg-amber-500 hover:bg-amber-600 text-white h-9 rounded-xl text-xs font-bold transition shadow-sm flex items-center justify-center gap-1 disabled:opacity-60"
+                                        >
+                                            {taskSaving ? (
+                                                <span className="size-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                                            ) : (
+                                                <span className="material-symbols-outlined text-sm">save</span>
+                                            )}
+                                            Save Task
+                                        </button>
                                     </div>
                                 </form>
-                            ) : canEdit ? (
-                                <>
-                                    <p className="text-sm text-slate-500 mb-4 leading-relaxed">Set a calendar reminder separate from follow-up calls.</p>
-                                    <button onClick={() => setIsAddingTask(true)} className="w-full flex items-center justify-center gap-2 h-10 bg-amber-50 hover:bg-amber-500 hover:text-white border border-amber-200 hover:border-amber-500 text-amber-600 font-bold rounded-xl text-sm transition-all shadow-sm">
-                                        <span className="material-symbols-outlined text-base">add_task</span> Add Reminder Task
-                                    </button>
-                                </>
                             ) : null}
+
+                            {/* Tabs: Pending vs Completed History */}
+                            <div className="flex border-b border-slate-100 bg-slate-50/50 px-3 pt-2 text-xs">
+                                <button
+                                    type="button"
+                                    onClick={() => setTaskTab('pending')}
+                                    className={`px-3 py-1.5 font-bold border-b-2 transition-colors ${taskTab === 'pending' ? 'border-amber-500 text-amber-800 bg-white rounded-t-lg' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+                                >
+                                    Pending ({leadTasks.filter(t => t.status !== 'completed').length})
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setTaskTab('completed')}
+                                    className={`px-3 py-1.5 font-bold border-b-2 transition-colors ${taskTab === 'completed' ? 'border-green-600 text-green-800 bg-white rounded-t-lg' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+                                >
+                                    History ({leadTasks.filter(t => t.status === 'completed').length})
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setTaskTab('all')}
+                                    className={`px-3 py-1.5 font-bold border-b-2 transition-colors ${taskTab === 'all' ? 'border-primary text-primary bg-white rounded-t-lg' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+                                >
+                                    All ({leadTasks.length})
+                                </button>
+                            </div>
+
+                            {/* Task List / History Items */}
+                            <div className="divide-y divide-slate-100 max-h-[420px] overflow-y-auto">
+                                {tasksLoading ? (
+                                    <div className="py-8 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
+                                        <span className="size-4 border-2 border-slate-200 border-t-amber-500 rounded-full animate-spin" />
+                                        Loading tasks…
+                                    </div>
+                                ) : leadTasks.length === 0 ? (
+                                    <div className="py-8 text-center px-4">
+                                        <div className="size-10 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-2 text-amber-500">
+                                            <span className="material-symbols-outlined text-xl">event_available</span>
+                                        </div>
+                                        <p className="text-xs font-bold text-slate-700">No reminder tasks scheduled</p>
+                                        <p className="text-[11px] text-slate-400 mt-0.5">Click &quot;Add Task&quot; above to set a calendar reminder or follow-up.</p>
+                                    </div>
+                                ) : (
+                                    leadTasks
+                                        .filter(t => {
+                                            if (taskTab === 'pending') return t.status !== 'completed';
+                                            if (taskTab === 'completed') return t.status === 'completed';
+                                            return true;
+                                        })
+                                        .map(task => {
+                                            const isCompleted = task.status === 'completed';
+                                            const dueDateObj = task.due_date ? new Date(task.due_date) : null;
+                                            const isOverdue = !isCompleted && dueDateObj && dueDateObj.getTime() < Date.now();
+                                            const isToday = dueDateObj && dueDateObj.toDateString() === new Date().toDateString();
+
+                                            // Category icon mapping
+                                            const categoryIcons: Record<string, string> = {
+                                                call: 'call',
+                                                followup: 'chat',
+                                                visit: 'directions_walk',
+                                                inspection: 'search',
+                                                document: 'description',
+                                                payment: 'payments',
+                                                reminder: 'notifications'
+                                            };
+                                            const catIcon = categoryIcons[task.category || 'reminder'] || 'task_alt';
+
+                                            return (
+                                                <div
+                                                    key={task.id}
+                                                    className={`p-3.5 hover:bg-slate-50/80 transition-colors flex items-start gap-3 ${isCompleted ? 'bg-slate-50/40 opacity-80' : isOverdue ? 'bg-red-50/30' : ''}`}
+                                                >
+                                                    {/* Toggle Checkbox Button */}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleToggleTaskStatus(task)}
+                                                        className={`size-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 transition-all cursor-pointer ${
+                                                            isCompleted
+                                                                ? 'bg-green-600 text-white shadow-xs'
+                                                                : 'bg-white border-2 border-slate-300 hover:border-green-500 text-transparent hover:text-green-500'
+                                                        }`}
+                                                        title={isCompleted ? 'Click to mark as pending' : 'Click to complete task'}
+                                                    >
+                                                        <span className="material-symbols-outlined text-sm font-bold">check</span>
+                                                    </button>
+
+                                                    {/* Task Content */}
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                                                            {/* Category Chip */}
+                                                            <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded capitalize">
+                                                                <span className="material-symbols-outlined text-[12px]">{catIcon}</span>
+                                                                {task.category || 'task'}
+                                                            </span>
+
+                                                            {/* Priority Pill */}
+                                                            <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded-full ${
+                                                                task.priority === 'Hot' || task.priority === 'High'
+                                                                    ? 'bg-red-100 text-red-700'
+                                                                    : task.priority === 'Cold' || task.priority === 'Low'
+                                                                    ? 'bg-slate-100 text-slate-600'
+                                                                    : 'bg-amber-100 text-amber-800'
+                                                            }`}>
+                                                                {task.priority || 'Medium'}
+                                                            </span>
+
+                                                            {/* Due Date Indicator */}
+                                                            {dueDateObj && !isCompleted && (
+                                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                                                                    isOverdue
+                                                                        ? 'bg-red-500 text-white animate-pulse'
+                                                                        : isToday
+                                                                        ? 'bg-amber-500/20 text-amber-800'
+                                                                        : 'bg-blue-50 text-blue-700'
+                                                                }`}>
+                                                                    <span className="material-symbols-outlined text-[11px]">schedule</span>
+                                                                    {isOverdue ? 'Overdue: ' : isToday ? 'Today: ' : ''}
+                                                                    {dueDateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}, {dueDateObj.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                                                                </span>
+                                                            )}
+
+                                                            {isCompleted && task.completed_at && (
+                                                                <span className="text-[10px] font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                                    <span className="material-symbols-outlined text-[12px]">done_all</span>
+                                                                    Completed on {new Date(task.completed_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                                                                </span>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Title */}
+                                                        <p className={`text-xs font-bold ${isCompleted ? 'line-through text-slate-400' : 'text-slate-800'}`}>
+                                                            {task.title}
+                                                        </p>
+
+                                                        {/* Description */}
+                                                        {task.description && (
+                                                            <p className="text-[11px] text-slate-500 mt-0.5 leading-normal">
+                                                                {task.description}
+                                                            </p>
+                                                        )}
+
+                                                        {/* Meta footer: Assignee & Delete */}
+                                                        <div className="flex items-center justify-between mt-2 pt-1 border-t border-slate-50">
+                                                            <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                                                                {task.assignee?.full_name ? (
+                                                                    <span className="flex items-center gap-0.5 text-slate-600 font-medium">
+                                                                        <span className="material-symbols-outlined text-[11px]">person</span>
+                                                                        {task.assignee.full_name}
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="text-slate-400">Assigned: Team</span>
+                                                                )}
+                                                                <span>•</span>
+                                                                <span>Created {new Date(task.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                                                            </div>
+
+                                                            <div className="flex items-center gap-1">
+                                                                {isCompleted && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleToggleTaskStatus(task)}
+                                                                        className="text-[10px] font-bold text-amber-700 hover:underline px-1 py-0.5"
+                                                                    >
+                                                                        Reopen
+                                                                    </button>
+                                                                )}
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleDeleteTask(task.id, task.title)}
+                                                                    className="text-slate-300 hover:text-red-500 transition-colors p-1 rounded"
+                                                                    title="Delete task"
+                                                                >
+                                                                    <span className="material-symbols-outlined text-sm">delete</span>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>

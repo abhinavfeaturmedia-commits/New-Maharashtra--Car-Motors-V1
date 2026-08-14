@@ -72,12 +72,12 @@ const SellCar = () => {
                 <div className="relative z-10 container-main py-16 lg:py-24">
                     <span className="inline-flex items-center gap-2 bg-accent text-primary text-xs font-bold px-3 py-1.5 rounded-lg mb-6 uppercase"><span className="material-symbols-outlined text-sm">verified</span> Best Price Guaranteed</span>
                     <h1 className="text-4xl lg:text-6xl font-black text-white font-display leading-tight mb-4">Sell your car in <span className="text-accent">30 minutes</span></h1>
-                    <p className="text-slate-400 text-lg max-w-lg mb-8">New Maharashtra Motors: Pune's most trusted vehicle sales & service. Instant payment, free RC transfer.</p>
+                    <p className="text-slate-400 text-lg max-w-lg mb-8">New Maharashtra Motors: Pune&apos;s most trusted vehicle sales & service. Instant payment, free RC transfer.</p>
                     <div className="flex gap-3 max-w-lg">
                         <input type="text" value={heroReg} onChange={e => setHeroReg(e.target.value)} placeholder="MH09 AB 1234" className="flex-1 h-12 bg-white/10 border border-white/20 text-white placeholder:text-white/50 rounded-xl px-5 text-sm outline-none backdrop-blur focus:ring-2 focus:ring-accent/30" />
                         <button onClick={() => {
                             document.getElementById('sell-form')?.scrollIntoView({ behavior: 'smooth' });
-                        }} className="h-12 flex items-center justify-center px-6 bg-accent text-primary font-bold rounded-xl hover:bg-accent-hover transition-all text-sm whitespace-nowrap border-0">Get Instant Quote</button>
+                        }} className="h-12 flex items-center justify-center px-6 bg-accent text-primary font-bold rounded-xl hover:bg-accent-hover transition-all text-sm whitespace-nowrap border-0">Request Valuation</button>
                     </div>
                     <p className="text-xs text-slate-500 mt-3 flex items-center gap-1"><span className="material-symbols-outlined text-xs text-green-400">check_circle</span> 10,000+ Happy Customers in Pune</p>
                 </div>
@@ -116,7 +116,7 @@ const SellCar = () => {
                         </div>
                         <div className="space-y-6">
                             {[
-                                { icon: 'computer', title: 'Instant Online Quote', desc: 'Get an AI-driven estimated price range in seconds by entering your car details.' },
+                                { icon: 'support_agent', title: 'Submit Car Details', desc: 'Share your vehicle details. Our representative will contact you with the best valuation.' },
                                 { icon: 'home', title: 'Free Home Evaluation', desc: 'We visit you in Pune to inspect the car condition. It takes just 30 minutes.' },
                                 { icon: 'payments', title: 'Same-Day Payment', desc: "Agree on the price? Money is transferred to your bank instantly." },
                             ].map((step, i) => (
@@ -144,8 +144,10 @@ const SellCar = () => {
                                 <div className="size-16 bg-green-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                                     <span className="material-symbols-outlined text-green-600 text-3xl">check_circle</span>
                                 </div>
-                                <h3 className="text-2xl font-bold text-primary font-display mb-2">Request Received!</h3>
-                                <p className="text-slate-500 text-sm mb-8">Our evaluation expert will call you shortly on +91 {form.phone} to give you an estimate.</p>
+                                <h3 className="text-2xl font-bold text-primary font-display mb-2">Valuation Request Received!</h3>
+                                <p className="text-slate-500 text-sm mb-8">
+                                    Thank you, <strong className="text-slate-700">{form.full_name}</strong>. Our representative will contact you as soon as possible on <strong className="text-slate-700">+91 {form.phone}</strong> regarding your <strong>{form.car_make} {form.car_model}</strong>.
+                                </p>
                                 <button
                                     onClick={() => { setSubmitted(false); setForm({ full_name: '', phone: '', car_make: '', car_model: '', car_year: String(new Date().getFullYear()), car_mileage: '' }); }}
                                     className="h-11 px-6 bg-primary text-white font-semibold rounded-xl text-sm hover:bg-primary-light transition-colors"
@@ -159,8 +161,8 @@ const SellCar = () => {
                                     <span className="inline-flex items-center gap-1.5 bg-accent/20 text-accent-hover text-xs font-bold px-3 py-1.5 rounded-lg mb-3">
                                         <span className="material-symbols-outlined text-[14px]">speed</span> 30-Min Evaluation
                                     </span>
-                                    <h2 className="text-3xl font-black text-primary font-display mb-2">Get Your Car's Value</h2>
-                                    <p className="text-slate-500 text-sm">Fill details below. No obligations, 100% free quote.</p>
+                                    <h2 className="text-3xl font-black text-primary font-display mb-2">Get Your Car&apos;s Value</h2>
+                                    <p className="text-slate-500 text-sm">Fill details below. No obligations, 100% free evaluation.</p>
                                 </div>
 
                                 {error && (
@@ -205,17 +207,17 @@ const SellCar = () => {
                                         </div>
                                     </div>
 
-                                    {/* Estimated Payout Banner */}
+                                    {/* Representative Contact Notice Banner */}
                                     {form.car_make.trim() && form.car_model.trim() && (
-                                        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-center justify-between">
-                                            <div>
-                                                <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider block">Estimated Pune Trade-in Value</span>
-                                                <span className="text-xs text-slate-500">Based on recent market sales in Pune</span>
+                                        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-center gap-3.5">
+                                            <div className="size-10 rounded-xl bg-amber-500/20 text-amber-800 flex items-center justify-center shrink-0">
+                                                <span className="material-symbols-outlined text-xl text-amber-800">support_agent</span>
                                             </div>
-                                            <div className="text-right">
-                                                <span className="text-lg font-black text-primary font-display tabular-nums">
-                                                    ₹ {(Math.max(2.5, 8.5 - (new Date().getFullYear() - Number(form.car_year || new Date().getFullYear())) * 0.45)).toFixed(2)} - {(Math.max(2.8, 9.2 - (new Date().getFullYear() - Number(form.car_year || new Date().getFullYear())) * 0.45)).toFixed(2)} Lakh
-                                                </span>
+                                            <div className="flex-1">
+                                                <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider block">Personalized Market Valuation</span>
+                                                <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
+                                                    Our representative will contact you as soon as possible with the best price for your <strong className="text-slate-800">{form.car_make} {form.car_model}</strong>.
+                                                </p>
                                             </div>
                                         </div>
                                     )}

@@ -91,10 +91,10 @@ const NAV_GROUPS: NavGroup[] = [
     {
         label: 'Admin',
         items: [
-            { name: 'Users', href: '/admin/users', icon: 'manage_accounts', module: 'users' },
+            { name: 'Users', href: '/admin/users', icon: 'manage_accounts', module: 'users', adminOnly: true },
             { name: 'Attendance', href: '/admin/attendance', icon: 'fingerprint', module: 'attendance' },
-            { name: 'Audit Logs', href: '/admin/audit-logs', icon: 'history', module: 'audit_logs' },
-            { name: 'Settings', href: '/admin/settings', icon: 'settings', module: 'settings' },
+            { name: 'Audit Logs', href: '/admin/audit-logs', icon: 'history', module: 'audit_logs', adminOnly: true },
+            { name: 'Settings', href: '/admin/settings', icon: 'settings', module: 'settings', adminOnly: true },
         ],
     },
 ];
