@@ -57,6 +57,10 @@ const Customers = () => {
     const { customers, sales, loading, refreshData } = useData();
     const navigate = useNavigate();
     const [search, setSearch] = useState('');
+    const searchInputRef = useRef<HTMLInputElement | null>(null);
+    const [selectedRowIndex, setSelectedRowIndex] = useState<number>(-1);
+    const [previewCustomer, setPreviewCustomer] = useState<Customer | null>(null);
+    const [showSearchDropdown, setShowSearchDropdown] = useState(false);
     const [detail, setDetail] = useState<Customer | null>(null);
     const [isAdding, setIsAdding] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
@@ -64,6 +68,34 @@ const Customers = () => {
     const [addForm, setAddForm] = useState(emptyForm);
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
+
+    // ─── Scope Filters & Recent Searches ─────────────────────────────────────────
+    type ScopeFilter = 'all' | 'buyers' | 'prospects' | 'expiring_docs' | 'high_ltv' | 'multi_deal' | 'sellers' | 'active_recent';
+    const [scopeFilter, setScopeFilter] = useState<ScopeFilter>('all');
+
+    const [searchHistory, setSearchHistory] = useState<string[]>(() => {
+        try {
+            const saved = localStorage.getItem('mm_recent_customer_searches');
+            return saved ? JSON.parse(saved) : [];
+        } catch {
+            return [];
+        }
+    });
+
+    const saveSearchTerm = (term: string) => {
+        const trimmed = term.trim();
+        if (!trimmed || trimmed.length < 2) return;
+        setSearchHistory(prev => {
+            const updated = [trimmed, ...prev.filter(t => t.toLowerCase() !== trimmed.toLowerCase())].slice(0, 6);
+            try { localStorage.setItem('mm_recent_customer_searches', JSON.stringify(updated)); } catch {}
+            return updated;
+        });
+    };
+
+    const clearSearchHistory = () => {
+        setSearchHistory([]);
+        try { localStorage.removeItem('mm_recent_customer_searches'); } catch {}
+    };
 
     // ─── Visits State ──────────────────────────────────────────────────────────
     interface Visit {
@@ -201,25 +233,125 @@ const Customers = () => {
         }
     };
 
-    // ─── Debounced RPC search ────────────────────────────────────────────────
-    const [rpcMatchIds, setRpcMatchIds] = useState<Set<string> | null>(null);
+    // ─── Debounced RPC search with rich match metadata ───────────────────────
+    const [rpcMatches, setRpcMatches] = useState<Map<string, { type: string; snippet: string }> | null>(null);
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // ─── Document & Deal Aggregations for CRM Filters ────────────────────────
+    const [expiringDocCustomerIds, setExpiringDocCustomerIds] = useState<Set<string>>(new Set());
+    const [customerDocsMap, setCustomerDocsMap] = useState<Map<string, Array<{ id: string; doc_type: string; doc_label: string | null; expiry_date: string | null; file_url: string | null }>>>(new Map());
+    const [customerDealsMap, setCustomerDealsMap] = useState<Map<string, Array<{ id: string; car_title: string; reg_no: string; is_seller: boolean; sale_price: number }>>>(new Map());
+    const [sellerCustomerIds, setSellerCustomerIds] = useState<Set<string>>(new Set());
+
+    useEffect(() => {
+        supabase
+            .from('customer_documents')
+            .select('id, customer_id, doc_type, doc_label, expiry_date, file_url')
+            .then(({ data }) => {
+                const expSet = new Set<string>();
+                const docMap = new Map<string, Array<{ id: string; doc_type: string; doc_label: string | null; expiry_date: string | null; file_url: string | null }>>();
+                (data || []).forEach((d: any) => {
+                    if (!d.customer_id) return;
+                    if (!docMap.has(d.customer_id)) docMap.set(d.customer_id, []);
+                    docMap.get(d.customer_id)!.push(d);
+                    if (d.expiry_date) {
+                        const days = Math.floor((new Date(d.expiry_date).getTime() - Date.now()) / 86400000);
+                        if (days <= 30) {
+                            expSet.add(d.customer_id);
+                        }
+                    }
+                });
+                setExpiringDocCustomerIds(expSet);
+                setCustomerDocsMap(docMap);
+            });
+    }, []);
+
+    useEffect(() => {
+        supabase
+            .from('customer_deals')
+            .select('id, customer_id, seller_customer_id, total_amount, inventory:inventory_id(make, model, year, registration_no)')
+            .then(({ data }) => {
+                const dMap = new Map<string, Array<{ id: string; car_title: string; reg_no: string; is_seller: boolean; sale_price: number }>>();
+                const sSet = new Set<string>();
+                (data || []).forEach((d: any) => {
+                    const inv = d.inventory;
+                    const carTitle = inv ? `${inv.year || ''} ${inv.make || ''} ${inv.model || ''}`.trim() : 'Vehicle Deal';
+                    const regNo = inv?.registration_no || '';
+                    const amt = Number(d.total_amount) || 0;
+                    if (d.customer_id) {
+                        if (!dMap.has(d.customer_id)) dMap.set(d.customer_id, []);
+                        dMap.get(d.customer_id)!.push({ id: d.id, car_title: carTitle, reg_no: regNo, is_seller: false, sale_price: amt });
+                    }
+                    if (d.seller_customer_id) {
+                        sSet.add(d.seller_customer_id);
+                        if (!dMap.has(d.seller_customer_id)) dMap.set(d.seller_customer_id, []);
+                        dMap.get(d.seller_customer_id)!.push({ id: d.id, car_title: carTitle, reg_no: regNo, is_seller: true, sale_price: amt });
+                    }
+                });
+                setCustomerDealsMap(dMap);
+                setSellerCustomerIds(sSet);
+            });
+    }, []);
 
     useEffect(() => {
         if (debounceRef.current) clearTimeout(debounceRef.current);
         const q = search.trim();
         if (!q) {
-            setRpcMatchIds(null);
+            setRpcMatches(null);
             return;
         }
         debounceRef.current = setTimeout(async () => {
-            const { data, error } = await supabase.rpc('search_customers_by_text', { search_term: q });
-            if (!error && data) {
-                setRpcMatchIds(new Set(data as string[]));
+            try {
+                const { data, error } = await supabase.rpc('search_customers_by_text', { search_term: q });
+                if (!error && data) {
+                    const matchMap = new Map<string, { type: string; snippet: string }>();
+                    if (Array.isArray(data)) {
+                        data.forEach((row: any) => {
+                            if (row && typeof row.id === 'string') {
+                                matchMap.set(row.id, {
+                                    type: row.match_type || 'contact',
+                                    snippet: row.match_snippet || 'Matched Profile'
+                                });
+                            } else if (typeof row === 'string') {
+                                matchMap.set(row, { type: 'contact', snippet: 'Matched Profile' });
+                            }
+                        });
+                    }
+                    setRpcMatches(matchMap);
+                    saveSearchTerm(q);
+                }
+            } catch (err) {
+                console.error('Customer search RPC error:', err);
             }
-        }, 450);
+        }, 250);
         return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
     }, [search]);
+
+    // ─── Keyboard Navigation Listener ──────────────────────────────────────────
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.key === '/' || ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k')) && document.activeElement !== searchInputRef.current) {
+                e.preventDefault();
+                searchInputRef.current?.focus();
+                searchInputRef.current?.select();
+                return;
+            }
+            if (e.key === 'Escape') {
+                if (previewCustomer) {
+                    setPreviewCustomer(null);
+                } else if (showSearchDropdown) {
+                    setShowSearchDropdown(false);
+                } else if (search) {
+                    setSearch('');
+                } else {
+                    searchInputRef.current?.blur();
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [previewCustomer, showSearchDropdown, search]);
 
     // ─── Customer 360 History ─────────────────────────────────────────
     const [activeTab, setActiveTab] = useState<'overview' | 'timeline'>('overview');
@@ -434,22 +566,24 @@ const Customers = () => {
      * by car interest (make/model/reg) without opening their detail panel first.
      * This is separate from the per-detail fetch above which loads full car info for display.
      */
-    const [customerCarInterestMap, setCustomerCarInterestMap] = useState<Map<string, Array<{ make: string; model: string; registration_no: string }>>>(new Map());
+    const [customerCarInterestMap, setCustomerCarInterestMap] = useState<Map<string, Array<{ make: string; model: string; registration_no: string; clean_reg: string }>>>(new Map());
 
     useEffect(() => {
         supabase
             .from('lead_car_interests')
-            .select('customer_id, car:inventory(make, model, registration_no)')
+            .select('customer_id, car:inventory(make, model, registration_no, license_plate)')
             .not('customer_id', 'is', null)
             .then(({ data }) => {
-                const map = new Map<string, Array<{ make: string; model: string; registration_no: string }>>();
+                const map = new Map<string, Array<{ make: string; model: string; registration_no: string; clean_reg: string }>>();
                 (data || []).forEach((r: any) => {
                     if (!r.customer_id || !r.car) return;
                     if (!map.has(r.customer_id)) map.set(r.customer_id, []);
+                    const reg = (r.car.registration_no || r.car.license_plate || '').toLowerCase();
                     map.get(r.customer_id)!.push({
                         make:            (r.car.make            || '').toLowerCase(),
                         model:           (r.car.model           || '').toLowerCase(),
-                        registration_no: (r.car.registration_no || '').toLowerCase(),
+                        registration_no: reg,
+                        clean_reg:       reg.replace(/[^a-z0-9]/g, ''),
                     });
                 });
                 setCustomerCarInterestMap(map);
@@ -463,23 +597,42 @@ const Customers = () => {
      * without any extra DB round-trip.
      */
     const customerCarMap = useMemo(() => {
-        const map = new Map<string, Array<{ make: string; model: string; registration_no: string }>>(
-        );
+        const map = new Map<string, Array<{ make: string; model: string; registration_no: string; clean_reg: string }>>();
         for (const sale of (sales || [])) {
             const cid = sale.customer_id;
             if (!cid || !sale.car) continue;
             if (!map.has(cid)) map.set(cid, []);
+            const reg = (sale.car.registration_no || sale.car.license_plate || '').toLowerCase();
             map.get(cid)!.push({
                 make:            (sale.car.make            || '').toLowerCase(),
                 model:           (sale.car.model           || '').toLowerCase(),
-                registration_no: (sale.car.registration_no || '').toLowerCase(),
+                registration_no: reg,
+                clean_reg:       reg.replace(/[^a-z0-9]/g, ''),
             });
         }
         return map;
     }, [sales]);
 
-    // ─── Filter Tabs & Summary KPIs ──────────────────────────────────────────
-    const [tabFilter, setTabFilter] = useState<'all' | 'buyers' | 'prospects'>('all');
+    // ─── Customer Aggregations & Multi-Token Intelligence ────────────────────
+    const customerSalesMap = useMemo(() => {
+        const map = new Map<string, any[]>();
+        (sales || []).forEach(s => {
+            if (!s.customer_id) return;
+            if (!map.has(s.customer_id)) map.set(s.customer_id, []);
+            map.get(s.customer_id)!.push(s);
+        });
+        return map;
+    }, [sales]);
+
+    const customerLtvMap = useMemo(() => {
+        const map = new Map<string, number>();
+        (sales || []).forEach(s => {
+            if (!s.customer_id) return;
+            const amt = Number(s.sale_price ?? s.final_price) || 0;
+            map.set(s.customer_id, (map.get(s.customer_id) || 0) + amt);
+        });
+        return map;
+    }, [sales]);
 
     const totalPurchasesVolume = useMemo(() => {
         return sales.reduce((sum, s) => sum + (Number(s.sale_price ?? s.final_price) || 0), 0);
@@ -490,54 +643,218 @@ const Customers = () => {
         return customers.filter(c => buyerIds.has(c.id)).length;
     }, [customers, sales]);
 
-    const filtered = useMemo(() => {
-        const q = search.toLowerCase().trim();
+    const expiringDocsCount = useMemo(() => {
+        return customers.filter(c => expiringDocCustomerIds.has(c.id)).length;
+    }, [customers, expiringDocCustomerIds]);
+
+    const highLtvCount = useMemo(() => {
+        return customers.filter(c => (customerLtvMap.get(c.id) || 0) >= 1000000).length;
+    }, [customers, customerLtvMap]);
+
+    const multiDealCount = useMemo(() => {
+        return customers.filter(c => {
+            const sCount = (customerSalesMap.get(c.id) || []).length;
+            const dCount = (customerDealsMap.get(c.id) || []).length;
+            return (sCount + dCount) >= 2;
+        }).length;
+    }, [customers, customerSalesMap, customerDealsMap]);
+
+    const sellersCount = useMemo(() => {
+        return customers.filter(c => sellerCustomerIds.has(c.id)).length;
+    }, [customers, sellerCustomerIds]);
+
+    const activeRecentCount = useMemo(() => {
+        const thirtyDaysAgo = Date.now() - 30 * 86400000;
+        return customers.filter(c => {
+            const created = new Date(c.created_at || '').getTime();
+            const custSales = customerSalesMap.get(c.id) || [];
+            const hasRecentSale = custSales.some(s => new Date(s.sale_date || s.created_at || '').getTime() >= thirtyDaysAgo);
+            return created >= thirtyDaysAgo || hasRecentSale;
+        }).length;
+    }, [customers, customerSalesMap]);
+
+    // ─── Multi-Token Query Parser & Filter ────────────────────────────────────
+    const { filtered, customerMatchReasonMap } = useMemo(() => {
+        const rawQ = search.trim();
+        const reasonMap = new Map<string, { type: string; snippet: string }>();
+
         let list = customers;
 
-        if (tabFilter === 'buyers') {
-            const buyerIds = new Set(sales.map(s => s.customer_id).filter(Boolean));
+        // 1. Apply Scope Filter
+        const buyerIds = new Set(sales.map(s => s.customer_id).filter(Boolean));
+
+        if (scopeFilter === 'buyers') {
             list = list.filter(c => buyerIds.has(c.id));
-        } else if (tabFilter === 'prospects') {
-            const buyerIds = new Set(sales.map(s => s.customer_id).filter(Boolean));
+        } else if (scopeFilter === 'prospects') {
             list = list.filter(c => !buyerIds.has(c.id));
+        } else if (scopeFilter === 'expiring_docs') {
+            list = list.filter(c => expiringDocCustomerIds.has(c.id));
+        } else if (scopeFilter === 'high_ltv') {
+            list = list.filter(c => (customerLtvMap.get(c.id) || 0) >= 1000000);
+        } else if (scopeFilter === 'multi_deal') {
+            list = list.filter(c => {
+                const sCount = (customerSalesMap.get(c.id) || []).length;
+                const dCount = (customerDealsMap.get(c.id) || []).length;
+                return (sCount + dCount) >= 2;
+            });
+        } else if (scopeFilter === 'sellers') {
+            list = list.filter(c => sellerCustomerIds.has(c.id));
+        } else if (scopeFilter === 'active_recent') {
+            const thirtyDaysAgo = Date.now() - 30 * 86400000;
+            list = list.filter(c => {
+                const created = new Date(c.created_at || '').getTime();
+                const custSales = customerSalesMap.get(c.id) || [];
+                const hasRecentSale = custSales.some(s => new Date(s.sale_date || s.created_at || '').getTime() >= thirtyDaysAgo);
+                return created >= thirtyDaysAgo || hasRecentSale;
+            });
         }
 
-        if (!q) return list;
-
-        // If RPC results are ready, use them as primary filter (searches relations deeply)
-        if (rpcMatchIds !== null) {
-            return list.filter(c => rpcMatchIds.has(c.id));
+        if (!rawQ) {
+            return { filtered: list, customerMatchReasonMap: reasonMap };
         }
 
-        // Instant local filter while RPC loads (covers all direct customer fields + car lookup maps)
-        return list.filter(c => {
-            // 1. Standard personal fields (expanded)
-            if ([
-                c.full_name, c.phone, c.email, c.city,
-                c.alternate_phone, c.whatsapp_number,
-                c.address, c.office_address,
-                c.occupation, c.notes,
-            ].some(v => v && String(v).toLowerCase().includes(q))) return true;
+        // 2. Tokenize Query
+        const tokens = rawQ.toLowerCase().split(/\s+/).filter(Boolean);
+        const cleanRawQ = rawQ.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
 
-            // 2. Cars from PURCHASE history (sales → inventory)
+        const resultList = list.filter(c => {
+            // Check if backend RPC confirmed this customer
+            if (rpcMatches && rpcMatches.has(c.id)) {
+                reasonMap.set(c.id, rpcMatches.get(c.id)!);
+                return true;
+            }
+
+            const cleanPhone = (c.phone || '').replace(/\D/g, '');
+            const cleanAltPhone = (c.alternate_phone || '').replace(/\D/g, '');
+            const cleanWhatsapp = (c.whatsapp_number || '').replace(/\D/g, '');
             const purchasedCars = customerCarMap.get(c.id) || [];
-            if (purchasedCars.some(car =>
-                car.make.includes(q) ||
-                car.model.includes(q) ||
-                car.registration_no.includes(q) ||
-                `${car.make} ${car.model}`.includes(q)
-            )) return true;
-
-            // 3. Cars from INTEREST history (lead_car_interests with customer_id)
             const interestedCars = customerCarInterestMap.get(c.id) || [];
-            return interestedCars.some(car =>
-                car.make.includes(q) ||
-                car.model.includes(q) ||
-                car.registration_no.includes(q) ||
-                `${car.make} ${car.model}`.includes(q)
-            );
+            const docs = customerDocsMap.get(c.id) || [];
+            const deals = customerDealsMap.get(c.id) || [];
+            const ltv = customerLtvMap.get(c.id) || 0;
+
+            let matchedSnippet: { type: string; snippet: string } | null = null;
+
+            const allTokensMatch = tokens.every(token => {
+                // Syntax: city:pune
+                if (token.startsWith('city:')) {
+                    const val = token.slice(5);
+                    return c.city?.toLowerCase().includes(val);
+                }
+                // Syntax: car:ertiga
+                if (token.startsWith('car:') || token.startsWith('make:') || token.startsWith('model:')) {
+                    const val = token.split(':')[1];
+                    const carMatch = purchasedCars.find(car => car.make.includes(val) || car.model.includes(val))
+                        || interestedCars.find(car => car.make.includes(val) || car.model.includes(val));
+                    if (carMatch) {
+                        matchedSnippet = { type: 'vehicle', snippet: `🚗 ${carMatch.make} ${carMatch.model}` };
+                        return true;
+                    }
+                    return false;
+                }
+                // Syntax: reg:mh09
+                if (token.startsWith('reg:') || token.startsWith('no:')) {
+                    const val = token.split(':')[1].replace(/[^a-z0-9]/g, '');
+                    const purchasedCarMatch = purchasedCars.find(car => car.clean_reg.includes(val));
+                    if (purchasedCarMatch) {
+                        matchedSnippet = { type: 'vehicle', snippet: `🚗 Reg: ${purchasedCarMatch.registration_no}` };
+                        return true;
+                    }
+                    const interestCarMatch = interestedCars.find(car => car.clean_reg.includes(val));
+                    if (interestCarMatch) {
+                        matchedSnippet = { type: 'vehicle', snippet: `🚗 Reg: ${interestCarMatch.registration_no}` };
+                        return true;
+                    }
+                    const dealMatch = deals.find(d => d.reg_no.replace(/[^a-z0-9]/g, '').toLowerCase().includes(val));
+                    if (dealMatch) {
+                        matchedSnippet = { type: 'vehicle', snippet: `🚗 Reg: ${dealMatch.reg_no}` };
+                        return true;
+                    }
+                    return false;
+                }
+                // Syntax: doc:invoice
+                if (token.startsWith('doc:')) {
+                    const val = token.slice(4);
+                    const docMatch = docs.find(d => (d.doc_label || '').toLowerCase().includes(val) || d.doc_type.toLowerCase().includes(val));
+                    if (docMatch) {
+                        matchedSnippet = { type: 'document', snippet: `📄 ${docMatch.doc_label || docMatch.doc_type}` };
+                        return true;
+                    }
+                    return false;
+                }
+                // Syntax: >5L or >1000000
+                if (token.startsWith('>') || token.startsWith('min:')) {
+                    const numStr = token.replace(/[^0-9]/g, '');
+                    const isLakh = token.includes('l') || token.includes('cr');
+                    let targetVal = Number(numStr) || 0;
+                    if (token.includes('cr')) targetVal *= 10000000;
+                    else if (isLakh) targetVal *= 100000;
+                    return ltv >= targetVal;
+                }
+
+                // General token match
+                if (c.full_name?.toLowerCase().includes(token)) {
+                    if (!matchedSnippet) matchedSnippet = { type: 'contact', snippet: `👤 ${c.full_name}` };
+                    return true;
+                }
+                if (c.phone?.includes(token) || (cleanRawQ && cleanPhone.includes(cleanRawQ))) {
+                    if (!matchedSnippet) matchedSnippet = { type: 'contact', snippet: `📞 ${c.phone}` };
+                    return true;
+                }
+                if (c.city?.toLowerCase().includes(token)) {
+                    if (!matchedSnippet) matchedSnippet = { type: 'contact', snippet: `📍 ${c.city}` };
+                    return true;
+                }
+                if (c.occupation?.toLowerCase().includes(token)) {
+                    if (!matchedSnippet) matchedSnippet = { type: 'contact', snippet: `💼 ${c.occupation}` };
+                    return true;
+                }
+                if (c.email?.toLowerCase().includes(token)) {
+                    if (!matchedSnippet) matchedSnippet = { type: 'contact', snippet: `✉️ ${c.email}` };
+                    return true;
+                }
+                if (c.notes?.toLowerCase().includes(token)) {
+                    if (!matchedSnippet) matchedSnippet = { type: 'contact', snippet: `📝 ${c.notes.slice(0, 30)}…` };
+                    return true;
+                }
+
+                // Car check
+                const carMatch = purchasedCars.find(car => car.make.includes(token) || car.model.includes(token) || car.registration_no.includes(token) || (cleanRawQ && car.clean_reg.includes(cleanRawQ)));
+                if (carMatch) {
+                    matchedSnippet = { type: 'vehicle', snippet: `🚗 ${carMatch.make} ${carMatch.model} (${carMatch.registration_no})` };
+                    return true;
+                }
+
+                const dealMatch = deals.find(d => d.car_title.toLowerCase().includes(token) || d.reg_no.toLowerCase().includes(token));
+                if (dealMatch) {
+                    matchedSnippet = { type: 'vehicle', snippet: `🏷️ Deal: ${dealMatch.car_title} (${dealMatch.reg_no})` };
+                    return true;
+                }
+
+                const docMatch = docs.find(d => (d.doc_label || '').toLowerCase().includes(token) || d.doc_type.toLowerCase().includes(token));
+                if (docMatch) {
+                    matchedSnippet = { type: 'document', snippet: `📄 ${docMatch.doc_label || docMatch.doc_type}` };
+                    return true;
+                }
+
+                const intMatch = interestedCars.find(car => car.make.includes(token) || car.model.includes(token));
+                if (intMatch) {
+                    matchedSnippet = { type: 'lead', snippet: `🎯 Interest: ${intMatch.make} ${intMatch.model}` };
+                    return true;
+                }
+
+                return false;
+            });
+
+            if (allTokensMatch && matchedSnippet) {
+                reasonMap.set(c.id, matchedSnippet);
+            }
+
+            return allTokensMatch;
         });
-    }, [customers, sales, tabFilter, search, rpcMatchIds, customerCarMap, customerCarInterestMap]);
+
+        return { filtered: resultList, customerMatchReasonMap: reasonMap };
+    }, [customers, sales, scopeFilter, search, rpcMatches, customerCarMap, customerCarInterestMap, customerDocsMap, customerDealsMap, expiringDocCustomerIds, customerLtvMap, customerSalesMap, sellerCustomerIds]);
 
     const formatDate = (dateStr: string | null) => {
         if (!dateStr) return '—';
@@ -844,32 +1161,177 @@ const Customers = () => {
                 </div>
             </div>
 
-            {/* Filter Tabs & Search */}
-            <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-                <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
-                    {[
-                        { id: 'all', label: 'All Customers', count: customers.length },
-                        { id: 'buyers', label: 'Buyers Only', count: activeBuyersCount },
-                        { id: 'prospects', label: 'Prospects', count: customers.length - activeBuyersCount },
-                    ].map(t => (
-                        <button
-                            key={t.id}
-                            onClick={() => setTabFilter(t.id as any)}
-                            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                                tabFilter === t.id
-                                    ? 'bg-white text-primary shadow-xs'
-                                    : 'text-slate-500 hover:text-slate-700'
-                            }`}
-                        >
-                            {t.label} ({t.count})
-                        </button>
-                    ))}
+            {/* ── Filter Tabs, Quick Scope Pills & Search Bar ── */}
+            <div className="space-y-3">
+                {/* Search Bar & Command Center Bar */}
+                <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+                    {/* Primary Scope Tabs */}
+                    <div className="flex bg-slate-100 p-1 rounded-xl gap-1 overflow-x-auto">
+                        {[
+                            { id: 'all', label: 'All Customers', count: customers.length, icon: 'groups' },
+                            { id: 'buyers', label: 'Verified Buyers', count: activeBuyersCount, icon: 'verified' },
+                            { id: 'prospects', label: 'Prospects', count: customers.length - activeBuyersCount, icon: 'person_search' },
+                        ].map(t => (
+                            <button
+                                key={t.id}
+                                onClick={() => setScopeFilter(t.id as any)}
+                                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                                    scopeFilter === t.id
+                                        ? 'bg-white text-primary shadow-xs'
+                                        : 'text-slate-500 hover:text-slate-700'
+                                }`}
+                            >
+                                <span className="material-symbols-outlined text-sm">{t.icon}</span>
+                                {t.label} ({t.count})
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Search Input Box with Keyboard Hints & Recent Dropdown */}
+                    <div className="relative w-full max-w-lg">
+                        <div className="flex items-center gap-2 bg-white border border-slate-200 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/10 rounded-xl px-3 h-11 transition-all shadow-xs">
+                            <span className="material-symbols-outlined text-slate-400 text-lg shrink-0">search</span>
+                            <input
+                                ref={searchInputRef}
+                                value={search}
+                                onChange={e => {
+                                    setSearch(e.target.value);
+                                    setShowSearchDropdown(true);
+                                }}
+                                onFocus={() => setShowSearchDropdown(true)}
+                                placeholder="Search name, phone, email, city, car brand, reg. no (e.g. MH09, Ertiga)…"
+                                className="bg-transparent text-sm text-primary outline-none w-full placeholder:text-slate-400"
+                            />
+                            {search ? (
+                                <button
+                                    onClick={() => {
+                                        setSearch('');
+                                        setShowSearchDropdown(false);
+                                    }}
+                                    className="material-symbols-outlined text-slate-300 text-base hover:text-slate-600 transition-colors"
+                                    title="Clear search"
+                                >
+                                    close
+                                </button>
+                            ) : (
+                                <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 hidden sm:inline-block">
+                                    / or ⌘K
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Recent Searches Dropdown */}
+                        {showSearchDropdown && !search && searchHistory.length > 0 && (
+                            <div className="absolute top-12 left-0 right-0 z-40 bg-white border border-slate-200 rounded-2xl shadow-xl p-3.5 animate-in fade-in slide-in-from-top-1">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                                        <span className="material-symbols-outlined text-xs">history</span> Recent Searches
+                                    </span>
+                                    <button
+                                        onClick={clearSearchHistory}
+                                        className="text-[10px] font-bold text-slate-400 hover:text-red-500 transition-colors"
+                                    >
+                                        Clear History
+                                    </button>
+                                </div>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {searchHistory.map((term, idx) => (
+                                        <button
+                                            key={idx}
+                                            onClick={() => {
+                                                setSearch(term);
+                                                setShowSearchDropdown(false);
+                                            }}
+                                            className="text-xs font-medium text-slate-700 bg-slate-50 hover:bg-primary/10 hover:text-primary border border-slate-200 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
+                                        >
+                                            <span className="material-symbols-outlined text-xs text-slate-400">search</span>
+                                            {term}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+                                    <span>Tip: You can use <code className="font-mono text-primary font-bold">city:pune</code> or <code className="font-mono text-primary font-bold">reg:mh09</code></span>
+                                    <button onClick={() => setShowSearchDropdown(false)} className="text-slate-400 hover:text-slate-600 font-bold">Close</button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
-                <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 h-10 w-full max-w-md">
-                    <span className="material-symbols-outlined text-slate-400 text-lg">search</span>
-                    <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, phone, email, city, car brand or reg. no…" className="bg-transparent text-sm text-primary outline-none w-full" />
-                    {search && <button onClick={() => setSearch('')} className="material-symbols-outlined text-slate-300 text-base hover:text-slate-500">close</button>}
+                {/* Quick Scope Filter Chips Bar */}
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest shrink-0 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-xs">tune</span> Quick Scopes:
+                    </span>
+
+                    <button
+                        onClick={() => setScopeFilter(scopeFilter === 'expiring_docs' ? 'all' : 'expiring_docs')}
+                        className={`px-3 py-1 rounded-xl font-bold border transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                            scopeFilter === 'expiring_docs'
+                                ? 'bg-red-500 text-white border-red-500 shadow-xs'
+                                : 'bg-red-50/70 text-red-700 border-red-200/80 hover:bg-red-100'
+                        }`}
+                    >
+                        <span className="material-symbols-outlined text-xs">warning</span>
+                        Expiring Docs ({expiringDocsCount})
+                    </button>
+
+                    <button
+                        onClick={() => setScopeFilter(scopeFilter === 'high_ltv' ? 'all' : 'high_ltv')}
+                        className={`px-3 py-1 rounded-xl font-bold border transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                            scopeFilter === 'high_ltv'
+                                ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
+                                : 'bg-amber-50/70 text-amber-800 border-amber-200/80 hover:bg-amber-100'
+                        }`}
+                    >
+                        <span className="material-symbols-outlined text-xs">diamond</span>
+                        High LTV &gt;₹10L ({highLtvCount})
+                    </button>
+
+                    <button
+                        onClick={() => setScopeFilter(scopeFilter === 'multi_deal' ? 'all' : 'multi_deal')}
+                        className={`px-3 py-1 rounded-xl font-bold border transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                            scopeFilter === 'multi_deal'
+                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                                : 'bg-emerald-50/70 text-emerald-800 border-emerald-200/80 hover:bg-emerald-100'
+                        }`}
+                    >
+                        <span className="material-symbols-outlined text-xs">repeat</span>
+                        Multi-Deal 2+ ({multiDealCount})
+                    </button>
+
+                    <button
+                        onClick={() => setScopeFilter(scopeFilter === 'sellers' ? 'all' : 'sellers')}
+                        className={`px-3 py-1 rounded-xl font-bold border transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                            scopeFilter === 'sellers'
+                                ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
+                                : 'bg-purple-50/70 text-purple-800 border-purple-200/80 hover:bg-purple-100'
+                        }`}
+                    >
+                        <span className="material-symbols-outlined text-xs">sell</span>
+                        Sellers / Consignment ({sellersCount})
+                    </button>
+
+                    <button
+                        onClick={() => setScopeFilter(scopeFilter === 'active_recent' ? 'all' : 'active_recent')}
+                        className={`px-3 py-1 rounded-xl font-bold border transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                            scopeFilter === 'active_recent'
+                                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                                : 'bg-blue-50/70 text-blue-800 border-blue-200/80 hover:bg-blue-100'
+                        }`}
+                    >
+                        <span className="material-symbols-outlined text-xs">schedule</span>
+                        Active 30d ({activeRecentCount})
+                    </button>
+
+                    {scopeFilter !== 'all' && (
+                        <button
+                            onClick={() => setScopeFilter('all')}
+                            className="px-2.5 py-1 text-slate-400 hover:text-slate-700 text-[11px] font-bold underline whitespace-nowrap"
+                        >
+                            Reset Scope
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -882,7 +1344,7 @@ const Customers = () => {
                             <th className="text-left px-5 py-3">Customer</th>
                             <th className="text-left px-5 py-3">Contact</th>
                             <th className="text-left px-5 py-3">City</th>
-                            <th className="text-left px-5 py-3">Sales</th>
+                            <th className="text-left px-5 py-3">Sales & Deals</th>
                             <th className="text-left px-5 py-3">Added On</th>
                             <th className="text-left px-5 py-3">Actions</th>
                         </tr>
@@ -895,25 +1357,67 @@ const Customers = () => {
                                 <td colSpan={6} className="py-16 text-center">
                                     <span className="material-symbols-outlined text-4xl text-slate-200 mb-3 block">people_alt</span>
                                     <p className="text-slate-400 font-medium">No customers found</p>
-                                    <p className="text-xs text-slate-300 mt-1">Convert leads or add a customer manually.</p>
+                                    <p className="text-xs text-slate-300 mt-1">Try clearing your search query or reset filter scope.</p>
+                                    {(search || scopeFilter !== 'all') && (
+                                        <button
+                                            onClick={() => { setSearch(''); setScopeFilter('all'); }}
+                                            className="mt-3 px-4 py-1.5 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-xl text-xs font-bold transition-all"
+                                        >
+                                            Clear All Filters
+                                        </button>
+                                    )}
                                 </td>
                             </tr>
                         ) : (
-                            filtered.map((c: Customer) => {
+                            filtered.map((c: Customer, idx: number) => {
                                 const custSales = getCustomerSales(c.id);
+                                const deals = customerDealsMap.get(c.id) || [];
+                                const docs = customerDocsMap.get(c.id) || [];
+                                const ltv = customerLtvMap.get(c.id) || 0;
+                                const isSeller = sellerCustomerIds.has(c.id);
+                                const matchReason = customerMatchReasonMap.get(c.id);
+                                const isSelected = selectedRowIndex === idx;
+
                                 return (
-                                    <tr key={c.id} onClick={() => navigate(`/admin/customers/${c.id}`)} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60 cursor-pointer transition-colors group">
+                                    <tr
+                                        key={c.id}
+                                        onClick={() => navigate(`/admin/customers/${c.id}`)}
+                                        className={`border-b border-slate-50 last:border-0 hover:bg-slate-50/70 cursor-pointer transition-colors group ${
+                                            isSelected ? 'bg-primary/5 ring-1 ring-primary/20' : ''
+                                        }`}
+                                    >
                                         <td className="px-5 py-3.5">
-                                            <div className="flex items-center gap-2.5">
-                                                <div className="size-9 rounded-full bg-gradient-to-br from-primary to-primary-light text-white flex items-center justify-center text-sm font-bold shrink-0">
+                                            <div className="flex items-start gap-2.5">
+                                                <div className="size-9 rounded-full bg-gradient-to-br from-primary to-primary-light text-white flex items-center justify-center text-sm font-bold shrink-0 mt-0.5">
                                                     {c.full_name?.charAt(0).toUpperCase() || 'U'}
                                                 </div>
-                                                <div>
+                                                <div className="min-w-0">
                                                     <p className="text-sm font-semibold text-primary group-hover:text-accent transition-colors flex items-center gap-1">
                                                         <HighlightText text={c.full_name} highlight={search} />
                                                         <span className="material-symbols-outlined text-xs opacity-0 group-hover:opacity-100 transition-opacity">open_in_new</span>
                                                     </p>
+                                                    
                                                     {c.occupation && <p className="text-[10px] text-slate-400">{c.occupation}</p>}
+
+                                                    {/* Match Reasoning Badge */}
+                                                    {search && matchReason && (
+                                                        <div className="mt-1 flex items-center gap-1">
+                                                            <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                                                                matchReason.type === 'vehicle' 
+                                                                    ? 'bg-amber-50 text-amber-800 border-amber-200/80' 
+                                                                    : matchReason.type === 'document'
+                                                                    ? 'bg-purple-50 text-purple-800 border-purple-200/80'
+                                                                    : matchReason.type === 'lead'
+                                                                    ? 'bg-indigo-50 text-indigo-800 border-indigo-200/80'
+                                                                    : 'bg-blue-50 text-blue-800 border-blue-200/80'
+                                                            }`}>
+                                                                <span className="material-symbols-outlined text-[11px]">
+                                                                    {matchReason.type === 'vehicle' ? 'directions_car' : matchReason.type === 'document' ? 'description' : matchReason.type === 'lead' ? 'track_changes' : 'search_insights'}
+                                                                </span>
+                                                                <span><HighlightText text={matchReason.snippet} highlight={search} /></span>
+                                                            </span>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </td>
@@ -923,17 +1427,39 @@ const Customers = () => {
                                         </td>
                                         <td className="px-5 py-3.5 text-sm text-slate-600"><HighlightText text={c.city || 'Pune'} highlight={search} /></td>
                                         <td className="px-5 py-3.5">
-                                            {custSales.length > 0 ? (
-                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-green-50 text-green-700 uppercase tracking-wide">
-                                                    {custSales.length} Purchase{custSales.length > 1 ? 's' : ''}
-                                                </span>
-                                            ) : (
-                                                <span className="text-[10px] text-slate-300">—</span>
-                                            )}
+                                            <div className="flex flex-col gap-0.5">
+                                                {custSales.length > 0 ? (
+                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-green-50 text-green-700 uppercase tracking-wide inline-block w-max">
+                                                        {custSales.length} Purchase{custSales.length > 1 ? 's' : ''} ({formatCurrency(ltv)})
+                                                    </span>
+                                                ) : isSeller ? (
+                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 uppercase tracking-wide inline-block w-max">
+                                                        🏷️ Consignment Seller
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[10px] text-slate-300">—</span>
+                                                )}
+                                                {deals.length > custSales.length && (
+                                                    <span className="text-[9px] text-slate-400 font-medium">
+                                                        {deals.length} total deal records
+                                                    </span>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="px-5 py-3.5 text-xs text-slate-500 whitespace-nowrap">{formatDate(c.created_at)}</td>
                                         <td className="px-5 py-3.5">
                                             <div className="flex items-center gap-1.5">
+                                                <button
+                                                    type="button"
+                                                    onClick={e => {
+                                                        e.stopPropagation();
+                                                        setPreviewCustomer(c);
+                                                    }}
+                                                    className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold transition-all flex items-center gap-1"
+                                                    title="Quick Glance Preview"
+                                                >
+                                                    <span className="material-symbols-outlined text-xs">visibility</span> Glance
+                                                </button>
                                                 <Link to={`/admin/customers/${c.id}`} onClick={e => e.stopPropagation()} className="px-2.5 py-1 bg-primary/10 hover:bg-primary text-primary hover:text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1">
                                                     <span className="material-symbols-outlined text-xs">account_box</span> 360 Hub
                                                 </Link>
@@ -953,6 +1479,128 @@ const Customers = () => {
                 </table>
                 </div>
             </div>
+
+            {/* ── Interactive Live Customer Glance Slide-Over Drawer ── */}
+            {previewCustomer && (
+                <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-xs transition-opacity" onClick={() => setPreviewCustomer(null)}>
+                    <div className="bg-white w-full max-w-md h-full shadow-2xl p-6 overflow-y-auto flex flex-col justify-between animate-in slide-in-from-right duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="space-y-6">
+                            {/* Header */}
+                            <div className="flex items-start justify-between pb-4 border-b border-slate-100">
+                                <div className="flex items-center gap-3">
+                                    <div className="size-12 rounded-2xl bg-gradient-to-br from-primary to-primary-light text-white flex items-center justify-center text-lg font-bold shadow-md">
+                                        {previewCustomer.full_name?.charAt(0).toUpperCase() || 'U'}
+                                    </div>
+                                    <div>
+                                        <h3 className="text-base font-black text-slate-900">{previewCustomer.full_name}</h3>
+                                        <p className="text-xs text-slate-500">{previewCustomer.city || 'Pune'} · {previewCustomer.occupation || 'Customer'}</p>
+                                        <p className="text-[10px] text-slate-400 mt-0.5">Added: {formatDate(previewCustomer.created_at)}</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => setPreviewCustomer(null)} className="size-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center">
+                                    <span className="material-symbols-outlined text-base">close</span>
+                                </button>
+                            </div>
+
+                            {/* Quick Action Contact Bar */}
+                            <div className="grid grid-cols-3 gap-2">
+                                <a
+                                    href={`tel:${previewCustomer.phone}`}
+                                    className="flex flex-col items-center justify-center p-2.5 bg-green-50 hover:bg-green-100 text-green-700 rounded-xl transition-colors text-center border border-green-200/80"
+                                >
+                                    <span className="material-symbols-outlined text-lg mb-0.5">call</span>
+                                    <span className="text-[11px] font-bold">Call Phone</span>
+                                </a>
+                                <a
+                                    href={`https://wa.me/91${(previewCustomer.whatsapp_number || previewCustomer.phone).replace(/\D/g, '')}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="flex flex-col items-center justify-center p-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl transition-colors text-center border border-emerald-200/80"
+                                >
+                                    <span className="material-symbols-outlined text-lg mb-0.5">chat</span>
+                                    <span className="text-[11px] font-bold">WhatsApp</span>
+                                </a>
+                                <a
+                                    href={previewCustomer.email ? `mailto:${previewCustomer.email}` : '#'}
+                                    className={`flex flex-col items-center justify-center p-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl transition-colors text-center border border-blue-200/80 ${!previewCustomer.email ? 'opacity-50 pointer-events-none' : ''}`}
+                                >
+                                    <span className="material-symbols-outlined text-lg mb-0.5">mail</span>
+                                    <span className="text-[11px] font-bold">Send Email</span>
+                                </a>
+                            </div>
+
+                            {/* Financial Metrics */}
+                            <div className="grid grid-cols-2 gap-3 bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                                <div>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Lifetime Spent (LTV)</p>
+                                    <p className="text-base font-black text-slate-900 mt-0.5">{formatCurrency(customerLtvMap.get(previewCustomer.id) || 0)}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Purchases / Deals</p>
+                                    <p className="text-base font-black text-primary mt-0.5">{(customerSalesMap.get(previewCustomer.id) || []).length} Purchases</p>
+                                </div>
+                            </div>
+
+                            {/* Linked Cars & Deals */}
+                            <div>
+                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                    <span className="material-symbols-outlined text-sm">directions_car</span> Linked Vehicles & Deals
+                                </h4>
+                                {((customerCarMap.get(previewCustomer.id) || []).length === 0 && (customerDealsMap.get(previewCustomer.id) || []).length === 0) ? (
+                                    <p className="text-xs text-slate-400 bg-slate-50 p-3 rounded-xl">No purchased vehicles linked yet.</p>
+                                ) : (
+                                    <div className="space-y-1.5">
+                                        {(customerCarMap.get(previewCustomer.id) || []).map((car, i) => (
+                                            <div key={i} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-xs">
+                                                <span className="font-bold text-slate-800 uppercase">{car.make} {car.model}</span>
+                                                <span className="font-mono text-[11px] text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">{car.registration_no || 'No Reg'}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Vault Documents Status */}
+                            <div>
+                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                    <span className="material-symbols-outlined text-sm">folder_open</span> Document Vault
+                                </h4>
+                                {((customerDocsMap.get(previewCustomer.id) || []).length === 0) ? (
+                                    <p className="text-xs text-slate-400 bg-slate-50 p-3 rounded-xl">No vault documents attached yet.</p>
+                                ) : (
+                                    <div className="space-y-1.5">
+                                        {(customerDocsMap.get(previewCustomer.id) || []).map(doc => {
+                                            const days = doc.expiry_date ? Math.floor((new Date(doc.expiry_date).getTime() - Date.now()) / 86400000) : null;
+                                            return (
+                                                <div key={doc.id} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-xs">
+                                                    <span className="font-medium text-slate-700 truncate max-w-[200px]">{doc.doc_label || doc.doc_type}</span>
+                                                    {days !== null ? (
+                                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${days <= 30 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                                                            {days <= 30 ? `Exp in ${days}d` : 'Valid'}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-[10px] text-slate-400">KYC</span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Slide-over Footer */}
+                        <div className="pt-4 border-t border-slate-100 mt-6 flex items-center gap-2">
+                            <button
+                                onClick={() => navigate(`/admin/customers/${previewCustomer.id}`)}
+                                className="flex-1 h-11 bg-primary text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 hover:bg-primary-light transition-colors shadow-sm"
+                            >
+                                <span className="material-symbols-outlined text-sm">account_box</span> Open 360 Hub
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* ── Customer Detail Modal ── */}
             {detail && (

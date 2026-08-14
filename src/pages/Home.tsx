@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { getPrimaryImage, formatPriceLakh } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
 import { FALLBACK_INVENTORY } from '../data/mockInventory';
+import HappyCustomersCarousel from '../components/home/HappyCustomersCarousel';
 
 
 const TRUST_BADGES = [
@@ -731,6 +732,9 @@ const Home = () => {
                     </div>
                 </div>
             </section>
+
+            {/* Happy Customers / Car Delivery Celebrations Carousel */}
+            <HappyCustomersCarousel />
 
             {/* Deal of the Week Spotlight */}
             {dealCar && (

@@ -51,6 +51,7 @@ import CustomerDetail from './pages/admin/CustomerDetail';
 import CustomerAlerts from './pages/admin/CustomerAlerts';
 import FollowUps from './pages/admin/FollowUps';
 import LeadSources from './pages/admin/LeadSources';
+import AdminHappyCustomers from './pages/admin/AdminHappyCustomers';
 
 // Admin — Operations
 import VehicleExpenses from './pages/admin/VehicleExpenses';
@@ -148,6 +149,7 @@ const App: React.FC = () => {
                             {/* CRM */}
                             <Route path="customers" element={<ModuleRoute module="crm"><Customers /></ModuleRoute>} />
                             <Route path="customers/:id" element={<ModuleRoute module="crm"><CustomerDetail /></ModuleRoute>} />
+                            <Route path="happy-customers" element={<ModuleRoute module="crm"><AdminHappyCustomers /></ModuleRoute>} />
                             <Route path="customer-alerts" element={<ModuleRoute module="crm"><CustomerAlerts /></ModuleRoute>} />
                             <Route path="follow-ups" element={<ModuleRoute module="crm"><FollowUps /></ModuleRoute>} />
                             <Route path="lead-sources" element={<ModuleRoute module="crm"><LeadSources /></ModuleRoute>} />

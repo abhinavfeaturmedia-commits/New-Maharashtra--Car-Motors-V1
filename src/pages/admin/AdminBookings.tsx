@@ -34,11 +34,22 @@ const AdminBookings = () => {
             return;
         }
         debounceRef.current = setTimeout(async () => {
-            const { data, error } = await supabase.rpc('search_bookings_by_text', { search_term: q });
-            if (!error && data) {
-                setRpcMatchIds(new Set(data as string[]));
+            try {
+                const { data, error } = await supabase.rpc('search_bookings_by_text', { search_term: q });
+                if (!error && data) {
+                    const matchSet = new Set<string>();
+                    if (Array.isArray(data)) {
+                        data.forEach((row: any) => {
+                            if (typeof row === 'string') matchSet.add(row);
+                            else if (row && typeof row.id === 'string') matchSet.add(row.id);
+                        });
+                    }
+                    setRpcMatchIds(matchSet);
+                }
+            } catch (err) {
+                console.error('Booking search RPC error:', err);
             }
-        }, 450);
+        }, 300);
         return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
     }, [search]);
 

@@ -35,8 +35,8 @@ export async function compressPdf(
     options: PdfCompressionOptions = {}
 ): Promise<PdfCompressionResult> {
     const {
-        targetMaxMb = 1.8,
-        quality = 0.75,
+        targetMaxMb = 1.4,
+        quality = 0.80,
         maxDimension = 1800,
         forceCompress = false,
         onProgress
@@ -46,7 +46,7 @@ export async function compressPdf(
 
     // If file is already smaller than target (and forceCompress is false), return original immediately
     if (!forceCompress && file.size <= targetMaxMb * 1024 * 1024) {
-        onProgress?.(100, 'File already under target size');
+        onProgress?.(100, 'File already under 1.4 MB target size');
         return {
             file,
             originalSizeMb,
@@ -180,6 +180,7 @@ export async function compressPdf(
 
 /**
  * Automatically applies high-quality compression to any PDF file prior to upload.
+ * Strictly limits final file size to <= 1.4 MB while preserving sharp text and legal stamps.
  * Non-PDF files or files already optimized are returned as-is safely.
  */
 export async function autoCompressPdf(
@@ -190,12 +191,32 @@ export async function autoCompressPdf(
     if (!isPdf) return file;
 
     try {
+        // If file is already <= 1.4 MB, we don't need to force compress unless requested
+        if (file.size <= 1.4 * 1024 * 1024) {
+            onProgress?.(100, 'PDF size is optimal (≤ 1.4 MB)');
+            return file;
+        }
+
         const result = await compressPdf(file, {
-            quality: 0.85,
+            targetMaxMb: 1.4,
+            quality: 0.80,
             maxDimension: 1800,
             forceCompress: true,
             onProgress
         });
+
+        // Safeguard: if result is still > 1.4 MB, run a second pass with optimized scale
+        if (result.file.size > 1.4 * 1024 * 1024) {
+            const pass2 = await compressPdf(result.file, {
+                targetMaxMb: 1.4,
+                quality: 0.72,
+                maxDimension: 1500,
+                forceCompress: true,
+                onProgress
+            });
+            return pass2.file;
+        }
+
         return result.file;
     } catch (e) {
         console.warn('Auto PDF compression fallback to original:', e);

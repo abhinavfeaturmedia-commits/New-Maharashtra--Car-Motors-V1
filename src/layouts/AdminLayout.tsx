@@ -52,6 +52,7 @@ const NAV_GROUPS: NavGroup[] = [
         label: 'CRM',
         items: [
             { name: 'Customers', href: '/admin/customers', icon: 'contacts', module: 'crm' },
+            { name: 'Happy Customers', href: '/admin/happy-customers', icon: 'celebration', module: 'crm' },
             { name: 'Customer Alerts', href: '/admin/customer-alerts', icon: 'notification_important', module: 'crm', adminOnly: true },
             { name: 'Follow-Ups', href: '/admin/follow-ups', icon: 'notifications_active', module: 'crm' },
             { name: 'Lead Sources', href: '/admin/lead-sources', icon: 'hub', module: 'crm' },

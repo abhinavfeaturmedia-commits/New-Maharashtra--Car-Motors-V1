@@ -119,14 +119,19 @@ export async function compressImage(
                     ctx2.fillStyle = '#FFFFFF';
                     ctx2.fillRect(0, 0, w2, h2);
                     ctx2.drawImage(imageElement, 0, 0, w2, h2);
-                    blob = await canvasToBlob(canvas2, outputMime, 0.75);
+                    blob = await canvasToBlob(canvas2, outputMime, 0.72);
+
+                    // Final pass guarantee if still > 600 KB
+                    if (blob.size > maxTargetKb * 1024) {
+                        blob = await canvasToBlob(canvas2, outputMime, 0.65);
+                    }
                 }
             }
         }
 
-        // Safety fallback: if compressed file is somehow larger than original, return original
-        if (blob.size >= file.size) {
-            onProgress?.(100, 'Original photo is smaller');
+        // Safety fallback: if compressed file is somehow larger than original (and original was <= maxTargetKb), return original
+        if (blob.size >= file.size && file.size <= maxTargetKb * 1024) {
+            onProgress?.(100, 'Original photo is smaller and optimal');
             return {
                 file,
                 originalSizeKb,

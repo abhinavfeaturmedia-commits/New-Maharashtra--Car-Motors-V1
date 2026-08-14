@@ -314,13 +314,22 @@ const AdminLeads = () => {
         }
 
         searchTimeout.current = setTimeout(async () => {
-            // Optional: call the backend RPC if the user deployed the migration
-            // This falls back silently if the RPC does not exist
-            const { data, error } = await supabase.rpc('search_leads_by_text', { search_term: query });
-            if (!error && data) {
-                setRpcMatchIds(new Set(data.map((id: string) => id)));
+            try {
+                const { data, error } = await supabase.rpc('search_leads_by_text', { search_term: query });
+                if (!error && data) {
+                    const matchSet = new Set<string>();
+                    if (Array.isArray(data)) {
+                        data.forEach((row: any) => {
+                            if (typeof row === 'string') matchSet.add(row);
+                            else if (row && typeof row.id === 'string') matchSet.add(row.id);
+                        });
+                    }
+                    setRpcMatchIds(matchSet);
+                }
+            } catch (err) {
+                console.error('Leads search RPC error:', err);
             }
-        }, 500);
+        }, 300);
 
         return () => {
             if (searchTimeout.current) clearTimeout(searchTimeout.current);

@@ -6,7 +6,7 @@ import { useData } from '../../contexts/DataContext';
 import { useNotifications } from '../../contexts/NotificationContext';
 import { toWhatsAppUrl } from '../../lib/utils';
 import { compressPdf, autoCompressPdf } from '../../lib/pdfCompressor';
-import { autoCompressImage } from '../../lib/imageCompressor';
+import { compressImage, autoCompressImage } from '../../lib/imageCompressor';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -80,6 +80,25 @@ interface TimelineEvent {
     icon: string;
     color: string;
     data: any;
+}
+
+export interface BatchDocItem {
+    id: string;
+    originalFile: File;
+    processedFile: File | null;
+    originalSizeKb: number;
+    compressedSizeKb: number;
+    reductionPercent: number;
+    status: 'compressing' | 'ready' | 'uploading' | 'done' | 'error';
+    statusText: string;
+    doc_type: string;
+    party_role: 'buyer' | 'seller' | 'general';
+    doc_label: string;
+    deal_id: string;
+    issue_date: string;
+    expiry_date: string;
+    notes: string;
+    error?: string;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -237,6 +256,37 @@ const getExpiryBadge = (expiry: string | null) => {
 const getDocLabel = (type: string) => DOC_TYPES.find(d => d.value === type)?.label ?? type;
 const docTypeHasExpiry = (type: string) => DOC_TYPES.find(d => d.value === type)?.hasExpiry ?? false;
 
+const getDocTypeIcon = (type: string) => {
+    switch (type) {
+        case 'rc_book': return 'directions_car';
+        case 'insurance': return 'verified_user';
+        case 'puc': return 'eco';
+        case 'aadhaar':
+        case 'pan':
+        case 'voter_id':
+        case 'passport':
+        case 'driving_license':
+            return 'badge';
+        case 'sales_invoice':
+        case 'delivery_receipt':
+        case 'rto_receipt':
+        case 'cheque_copy':
+            return 'receipt_long';
+        case 'agreement':
+        case 'form_20':
+        case 'form_21':
+        case 'form_29':
+        case 'form_30':
+        case 'hypothecation_letter':
+        case 'loan_noc':
+        case 'bank_noc':
+        case 'noc':
+            return 'gavel';
+        default:
+            return 'description';
+    }
+};
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 type Tab = 'overview' | 'deals' | 'documents' | 'timeline' | 'logs';
@@ -275,6 +325,15 @@ const CustomerDetail = () => {
     const [uploadingFile, setUploadingFile] = useState(false);
     const [uploadStatusText, setUploadStatusText] = useState('');
     const [downloadingDocId, setDownloadingDocId] = useState<string | null>(null);
+
+    // Multi-file batch upload state
+    const [batchItems, setBatchItems] = useState<BatchDocItem[]>([]);
+    const [batchDefaultDealId, setBatchDefaultDealId] = useState<string>('');
+    const [batchDefaultPartyRole, setBatchDefaultPartyRole] = useState<'buyer' | 'seller' | 'general'>('buyer');
+    const [isBatchUploading, setIsBatchUploading] = useState(false);
+    const [batchOverallProgress, setBatchOverallProgress] = useState(0);
+    const [isDragOver, setIsDragOver] = useState(false);
+    const [uploadModalTab, setUploadModalTab] = useState<'batch' | 'single'>('batch');
 
     // Timeline state
     const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
@@ -373,14 +432,11 @@ const CustomerDetail = () => {
             allDeals = (data as CustomerDeal[]) || [];
         }
 
-        const existingInventoryIds = new Set(allDeals.map(d => d.inventory_id).filter(Boolean));
         const existingSaleIds = new Set(allDeals.map(d => d.sale_id).filter(Boolean));
 
         // Auto-detect any sales for this customer not yet in customer_deals
         const customerSales = sales.filter(s => s.customer_id === id);
-        const missingSales = customerSales.filter(s =>
-            !existingSaleIds.has(s.id) && (!s.inventory_id || !existingInventoryIds.has(s.inventory_id))
-        );
+        const missingSales = customerSales.filter(s => !existingSaleIds.has(s.id));
 
         if (missingSales.length > 0) {
             for (const sale of missingSales) {
@@ -420,7 +476,6 @@ const CustomerDetail = () => {
                     if (!insertErr && inserted) {
                         allDeals.push(inserted as CustomerDeal);
                         existingSaleIds.add(sale.id);
-                        if (sale.inventory_id) existingInventoryIds.add(sale.inventory_id);
                     }
                 } catch (e) {
                     console.warn('Auto-sync insert error:', e);
@@ -730,6 +785,213 @@ const CustomerDetail = () => {
         setIsAddingDeal(true);
     };
 
+    const detectDocType = (fileName: string): string => {
+        const lower = fileName.toLowerCase();
+        if (lower.includes('aadhaar') || lower.includes('aadhar')) return 'aadhaar';
+        if (lower.includes('pan')) return 'pan';
+        if (lower.includes('voter')) return 'voter_id';
+        if (lower.includes('passport')) return 'passport';
+        if (lower.includes('license') || lower.includes('licence') || lower.includes('driving')) return 'driving_license';
+        if (lower.includes('rc') || lower.includes('registration')) return 'rc_book';
+        if (lower.includes('insurance') || lower.includes('policy')) return 'insurance';
+        if (lower.includes('puc') || lower.includes('pollution')) return 'puc';
+        if (lower.includes('noc')) return 'noc';
+        if (lower.includes('form 20') || lower.includes('form20')) return 'form_20';
+        if (lower.includes('form 21') || lower.includes('form21')) return 'form_21';
+        if (lower.includes('form 29') || lower.includes('form29')) return 'form_29';
+        if (lower.includes('form 30') || lower.includes('form30')) return 'form_30';
+        if (lower.includes('delivery') || lower.includes('challan') || lower.includes('receipt')) return 'delivery_receipt';
+        if (lower.includes('invoice') || lower.includes('bill')) return 'sales_invoice';
+        if (lower.includes('rto')) return 'rto_receipt';
+        if (lower.includes('agreement') || lower.includes('contract')) return 'agreement';
+        if (lower.includes('cheque') || lower.includes('check')) return 'cheque_copy';
+        return 'other';
+    };
+
+    const handleBatchFileSelect = async (files: FileList | File[]) => {
+        const fileArray = Array.from(files);
+        if (fileArray.length === 0) return;
+
+        const newItems: BatchDocItem[] = fileArray.map(file => {
+            const detectedType = detectDocType(file.name);
+            const initialSizeKb = Math.round(file.size / 1024);
+            const baseLabel = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+            return {
+                id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                originalFile: file,
+                processedFile: null,
+                originalSizeKb: initialSizeKb,
+                compressedSizeKb: initialSizeKb,
+                reductionPercent: 0,
+                status: 'compressing',
+                statusText: 'Compressing…',
+                doc_type: detectedType,
+                party_role: batchDefaultPartyRole,
+                doc_label: baseLabel.replace(/[_-]/g, ' '),
+                deal_id: batchDefaultDealId || docForm.deal_id || '',
+                issue_date: '',
+                expiry_date: '',
+                notes: '',
+            };
+        });
+
+        setBatchItems(prev => [...prev, ...newItems]);
+
+        // Compress each item asynchronously
+        for (const item of newItems) {
+            try {
+                let processed: File;
+                let origSize = item.originalSizeKb;
+                let compSize = item.originalSizeKb;
+                let reduction = 0;
+
+                const isPdf = item.originalFile.type === 'application/pdf' || item.originalFile.name.toLowerCase().endsWith('.pdf');
+                if (isPdf) {
+                    const res = await compressPdf(item.originalFile, {
+                        targetMaxMb: 1.4,
+                        quality: 0.80,
+                        maxDimension: 1800,
+                        forceCompress: true,
+                        onProgress: (_pct, text) => {
+                            setBatchItems(curr => curr.map(b => b.id === item.id ? { ...b, statusText: text } : b));
+                        }
+                    });
+                    processed = res.file;
+                    origSize = Math.round(res.originalSizeMb * 1024);
+                    compSize = Math.round(processed.size / 1024);
+                    reduction = res.reductionPercent;
+                } else {
+                    const res = await compressImage(item.originalFile, {
+                        maxTargetKb: 600,
+                        maxDimension: 1920,
+                        initialQuality: 0.85,
+                        onProgress: (_pct, text) => {
+                            setBatchItems(curr => curr.map(b => b.id === item.id ? { ...b, statusText: text } : b));
+                        }
+                    });
+                    processed = res.file;
+                    origSize = res.originalSizeKb;
+                    compSize = res.compressedSizeKb;
+                    reduction = res.reductionPercent;
+                }
+
+                setBatchItems(curr => curr.map(b => b.id === item.id ? {
+                    ...b,
+                    processedFile: processed,
+                    originalSizeKb: origSize,
+                    compressedSizeKb: compSize,
+                    reductionPercent: reduction,
+                    status: 'ready',
+                    statusText: `Ready (${compSize} KB ≤ ${isPdf ? '1.4 MB' : '600 KB'})`,
+                } : b));
+            } catch (err: any) {
+                console.error('Batch compression error:', err);
+                setBatchItems(curr => curr.map(b => b.id === item.id ? {
+                    ...b,
+                    processedFile: item.originalFile,
+                    status: 'ready',
+                    statusText: 'Original file optimal',
+                } : b));
+            }
+        }
+    };
+
+    const handleBatchUploadSave = async () => {
+        if (!customer || batchItems.length === 0 || isBatchUploading) return;
+        setIsBatchUploading(true);
+        setBatchOverallProgress(0);
+
+        const isValidUuid = (val: string | null | undefined): boolean => {
+            if (!val) return false;
+            return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(val).trim());
+        };
+
+        let successCount = 0;
+        const errors: string[] = [];
+
+        for (let i = 0; i < batchItems.length; i++) {
+            const item = batchItems[i];
+            setBatchItems(curr => curr.map(b => b.id === item.id ? { ...b, status: 'uploading', statusText: 'Uploading…' } : b));
+
+            try {
+                const fileToUpload = item.processedFile || item.originalFile;
+                const ext = fileToUpload.name.split('.').pop() || 'pdf';
+                const path = `${customer.id}/${Date.now()}_${i}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+
+                const { error: uploadErr } = await supabase.storage
+                    .from('customer-documents')
+                    .upload(path, fileToUpload, { upsert: true });
+
+                if (uploadErr) throw uploadErr;
+
+                const { data: urlData } = supabase.storage
+                    .from('customer-documents')
+                    .getPublicUrl(path);
+
+                const fileUrl = urlData?.publicUrl || null;
+                const cleanDealId = isValidUuid(item.deal_id) ? item.deal_id.trim() : null;
+
+                const { error: insertErr } = await supabase.from('customer_documents').insert({
+                    customer_id: customer.id,
+                    deal_id: cleanDealId,
+                    doc_type: item.doc_type,
+                    doc_label: item.doc_label ? item.doc_label.trim() : null,
+                    party_role: item.party_role,
+                    file_url: fileUrl,
+                    file_name: item.originalFile.name,
+                    issue_date: toDateInputValue(item.issue_date) || null,
+                    expiry_date: toDateInputValue(item.expiry_date) || null,
+                    notes: item.notes ? item.notes.trim() : null,
+                    uploaded_by: profile?.id ?? user?.id ?? null,
+                });
+
+                if (insertErr) throw insertErr;
+
+                setBatchItems(curr => curr.map(b => b.id === item.id ? { ...b, status: 'done', statusText: 'Uploaded' } : b));
+                successCount++;
+            } catch (err: any) {
+                console.error('Failed to upload batch document:', err);
+                errors.push(`${item.originalFile.name}: ${err.message || 'Upload failed'}`);
+                setBatchItems(curr => curr.map(b => b.id === item.id ? { ...b, status: 'error', statusText: 'Failed', error: err.message } : b));
+            }
+
+            setBatchOverallProgress(Math.round(((i + 1) / batchItems.length) * 100));
+        }
+
+        setIsBatchUploading(false);
+
+        if (successCount > 0) {
+            addNotification({
+                title: 'Documents Attached',
+                message: `Successfully uploaded & compressed ${successCount} document${successCount !== 1 ? 's' : ''}`,
+                type: 'success',
+            });
+
+            if (profile) {
+                await supabase.from('audit_logs').insert({
+                    user_id: profile.id,
+                    action: 'Batch Documents Uploaded',
+                    target_type: 'Customer',
+                    target_name: customer.full_name,
+                    details: `Uploaded ${successCount} documents for ${customer.full_name}`,
+                });
+            }
+
+            fetchDocuments();
+            fetchDeals();
+
+            if (errors.length === 0) {
+                setIsAddingDoc(false);
+                setBatchItems([]);
+                setDocForm(emptyDocForm);
+            }
+        }
+
+        if (errors.length > 0) {
+            alert(`Some files could not be uploaded:\n${errors.join('\n')}`);
+        }
+    };
+
     const handleUploadFile = async (file: File): Promise<string | null> => {
         if (!id) return null;
         setUploadingFile(true);
@@ -737,20 +999,20 @@ const CustomerDetail = () => {
 
         let fileToUpload = file;
         if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
-            setUploadStatusText('Optimizing PDF (High Quality)…');
-            fileToUpload = await autoCompressPdf(file, (pct, text) => {
+            setUploadStatusText('Optimizing PDF (≤ 1.4 MB)…');
+            fileToUpload = await autoCompressPdf(file, (_pct, text) => {
                 setUploadStatusText(`Compressing PDF: ${text}`);
             });
-        } else if (file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp)$/i.test(file.name)) {
-            setUploadStatusText('Optimizing Photo (< 600 KB)…');
-            fileToUpload = await autoCompressImage(file, (pct, text) => {
+        } else if (file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp|heic)$/i.test(file.name)) {
+            setUploadStatusText('Optimizing Photo (≤ 600 KB)…');
+            fileToUpload = await autoCompressImage(file, (_pct, text) => {
                 setUploadStatusText(`Compressing Photo: ${text}`);
             });
         }
 
         setUploadStatusText('Uploading to storage…');
-        const ext = fileToUpload.name.split('.').pop();
-        const path = `${id}/${Date.now()}.${ext}`;
+        const ext = fileToUpload.name.split('.').pop() || 'pdf';
+        const path = `${id}/${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
         const { error } = await supabase.storage.from('customer-documents').upload(path, fileToUpload, { upsert: true });
         setUploadingFile(false);
         setUploadStatusText('');
@@ -761,6 +1023,7 @@ const CustomerDetail = () => {
 
     const openEditDoc = (doc: CustomerDocument) => {
         setEditingDoc(doc);
+        setUploadModalTab('single');
         setDocForm({
             deal_id: doc.deal_id || '',
             doc_type: doc.doc_type,
@@ -1035,6 +1298,13 @@ const CustomerDetail = () => {
                                     {criticalDocs.length} Expiry Alert{criticalDocs.length !== 1 ? 's' : ''}
                                 </Link>
                             )}
+                            <Link
+                                to="/admin/happy-customers"
+                                className="bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3 py-1.5 rounded-xl border border-white/30 flex items-center gap-1.5 transition-colors"
+                                title="Manage Delivery Celebrations & Stories"
+                            >
+                                <span className="material-symbols-outlined text-sm">celebration</span> Delivery Story
+                            </Link>
                             <a href={`tel:${customer.phone}`} className="size-9 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center transition-colors" title="Call">
                                 <span className="material-symbols-outlined text-white text-lg">call</span>
                             </a>
@@ -1561,6 +1831,10 @@ const CustomerDetail = () => {
                                                     <button
                                                         onClick={() => {
                                                             setIsAddingDoc(true);
+                                                            setEditingDoc(null);
+                                                            setUploadModalTab('batch');
+                                                            setBatchItems([]);
+                                                            setBatchDefaultDealId(deal.id);
                                                             setDocForm({ ...emptyDocForm, deal_id: deal.id });
                                                         }}
                                                         className="text-[11px] font-bold text-primary hover:text-primary-light bg-primary/5 hover:bg-primary/10 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors"
@@ -1576,6 +1850,10 @@ const CustomerDetail = () => {
                                                         <button
                                                             onClick={() => {
                                                                 setIsAddingDoc(true);
+                                                                setEditingDoc(null);
+                                                                setUploadModalTab('batch');
+                                                                setBatchItems([]);
+                                                                setBatchDefaultDealId(deal.id);
                                                                 setDocForm({ ...emptyDocForm, deal_id: deal.id });
                                                             }}
                                                             className="text-xs font-bold text-primary hover:underline inline-flex items-center gap-1"
@@ -1585,7 +1863,7 @@ const CustomerDetail = () => {
                                                         </button>
                                                     </div>
                                                 ) : (
-                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                                                         {dealDocs.map(doc => {
                                                             const badge = getExpiryBadge(doc.expiry_date);
                                                             const roleConfig = {
@@ -1593,19 +1871,35 @@ const CustomerDetail = () => {
                                                                 seller: { label: '🏷️ Seller', color: 'bg-amber-50 text-amber-700 border-amber-100' },
                                                                 general: { label: '🗂️ General', color: 'bg-slate-50 text-slate-600 border-slate-100' },
                                                             }[doc.party_role || 'general'];
+                                                            const docTypeName = getDocLabel(doc.doc_type);
+
                                                             return (
-                                                                <div key={doc.id} className="bg-slate-50 border border-slate-100 rounded-xl p-2.5 flex items-center justify-between gap-2 hover:border-slate-200 transition-colors">
+                                                                <div key={doc.id} className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 flex items-start justify-between gap-2.5 hover:border-slate-300 hover:bg-slate-50/80 transition-all">
                                                                     <div className="min-w-0 flex-1">
-                                                                        <div className="flex items-center gap-1.5 flex-wrap">
-                                                                            <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${roleConfig.color}`}>
+                                                                        {/* Badges row: Role + Document Type Badge */}
+                                                                        <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
+                                                                            <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${roleConfig.color}`}>
                                                                                 {roleConfig.label}
                                                                             </span>
-                                                                            <span className="text-xs font-bold text-slate-800 truncate">
-                                                                                {doc.doc_label || getDocLabel(doc.doc_type)}
+                                                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 border border-blue-200/80 flex items-center gap-1">
+                                                                                <span className="material-symbols-outlined text-[11px]">{getDocTypeIcon(doc.doc_type)}</span>
+                                                                                {docTypeName}
                                                                             </span>
                                                                         </div>
-                                                                        <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                                                            {doc.issue_date && <span className="text-[10px] text-slate-400">Issued: {formatDate(doc.issue_date)}</span>}
+
+                                                                        {/* Custom Label or Filename */}
+                                                                        <p className="text-xs font-black text-slate-800 truncate" title={doc.doc_label || doc.file_name || docTypeName}>
+                                                                            {doc.doc_label || doc.file_name || docTypeName}
+                                                                        </p>
+                                                                        {doc.file_name && doc.doc_label && doc.file_name !== doc.doc_label && (
+                                                                            <p className="text-[10px] text-slate-400 truncate mt-0.5">
+                                                                                File: {doc.file_name}
+                                                                            </p>
+                                                                        )}
+
+                                                                        {/* Date & Expiry */}
+                                                                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                                                            {doc.issue_date && <span className="text-[10px] text-slate-400 font-medium">Issued: {formatDate(doc.issue_date)}</span>}
                                                                             {badge && (
                                                                                 <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border flex items-center gap-0.5 ${badge.cls} ${badge.pulse ? 'animate-pulse' : ''}`}>
                                                                                     <span className="material-symbols-outlined text-[10px]">{badge.icon}</span>
@@ -1614,7 +1908,7 @@ const CustomerDetail = () => {
                                                                             )}
                                                                         </div>
                                                                     </div>
-                                                                    <div className="flex items-center gap-1 shrink-0">
+                                                                    <div className="flex items-center gap-1 shrink-0 pt-0.5">
                                                                         {doc.file_url && (
                                                                             <a
                                                                                 href={doc.file_url}
@@ -1687,7 +1981,14 @@ const CustomerDetail = () => {
                                 <p className="text-xs text-slate-400">Buyer docs, seller docs, general KYC — tracked per deal</p>
                             </div>
                             <button
-                                onClick={() => { setIsAddingDoc(true); setDocForm(emptyDocForm); }}
+                                onClick={() => {
+                                    setIsAddingDoc(true);
+                                    setEditingDoc(null);
+                                    setUploadModalTab('batch');
+                                    setBatchItems([]);
+                                    setBatchDefaultDealId('');
+                                    setDocForm(emptyDocForm);
+                                }}
                                 className="h-9 px-4 bg-primary text-white font-bold rounded-xl text-xs flex items-center gap-1.5 hover:bg-primary-light transition-colors"
                             >
                                 <span className="material-symbols-outlined text-sm">upload_file</span> Add Document
@@ -1749,130 +2050,7 @@ const CustomerDetail = () => {
                             </div>
                         </div>
 
-                        {/* Document Add Form */}
-                        {isAddingDoc && (
-                            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
-                                    <div className="bg-gradient-to-r from-primary to-primary-light px-6 pt-5 pb-6 shrink-0">
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <h2 className="text-lg font-black text-white">{editingDoc ? 'Edit Document' : 'Add Document'}</h2>
-                                                <p className="text-white/60 text-xs">{editingDoc ? 'Update document metadata, expiry date or replace file' : 'Attach buyer/seller/general document'}</p>
-                                            </div>
-                                            <button onClick={() => { setIsAddingDoc(false); setEditingDoc(null); setDocForm(emptyDocForm); }} className="size-8 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center">
-                                                <span className="material-symbols-outlined text-white text-lg">close</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <form onSubmit={handleSaveDoc} className="flex-1 overflow-y-auto p-6 space-y-4">
-                                        {/* Link to Deal */}
-                                        <div>
-                                            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Link to Deal (optional)</label>
-                                            <select value={docForm.deal_id} onChange={e => setDocForm({ ...docForm, deal_id: e.target.value })} className="w-full h-10 border border-slate-200 rounded-xl px-3 text-sm outline-none focus:ring-2 focus:ring-primary/10 bg-white">
-                                                <option value="">General (not deal-specific)</option>
-                                                {deals.map(d => {
-                                                    const dt = DEAL_TYPES.find(t => t.value === d.deal_type);
-                                                    return (
-                                                        <option key={d.id} value={d.id}>
-                                                            {dt?.label} — {d.car ? `${d.car.year} ${d.car.make} ${d.car.model}` : 'Vehicle TBD'} ({formatDate(d.deal_date || d.created_at)})
-                                                        </option>
-                                                    );
-                                                })}
-                                            </select>
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div>
-                                                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Document Type *</label>
-                                                <select required value={docForm.doc_type} onChange={e => setDocForm({ ...docForm, doc_type: e.target.value })} className="w-full h-10 border border-slate-200 rounded-xl px-3 text-sm outline-none focus:ring-2 focus:ring-primary/10 bg-white">
-                                                    {DOC_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Party Role *</label>
-                                                <select value={docForm.party_role} onChange={e => setDocForm({ ...docForm, party_role: e.target.value as any })} className="w-full h-10 border border-slate-200 rounded-xl px-3 text-sm outline-none focus:ring-2 focus:ring-primary/10 bg-white">
-                                                    <option value="buyer">Buyer's Document</option>
-                                                    <option value="seller">Seller's Document</option>
-                                                    <option value="general">General / KYC</option>
-                                                </select>
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Custom Label (optional)</label>
-                                            <input type="text" value={docForm.doc_label} onChange={e => setDocForm({ ...docForm, doc_label: e.target.value })} placeholder="e.g. Wife's Aadhaar, Previous Owner RC" className="w-full h-10 border border-slate-200 rounded-xl px-3 text-sm outline-none focus:ring-2 focus:ring-primary/10" />
-                                        </div>
-
-                                        {/* File Upload */}
-                                        <div>
-                                            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
-                                                {editingDoc?.file_url ? 'Replace File (optional)' : 'Upload File (PDF / Image)'}
-                                            </label>
-                                            <input
-                                                type="file"
-                                                accept=".pdf,.jpg,.jpeg,.png,.webp"
-                                                onChange={async e => {
-                                                    const file = e.target.files?.[0];
-                                                    if (!file) return;
-                                                    const url = await handleUploadFile(file);
-                                                    if (url) setDocForm({ ...docForm, file_url: url, file_name: file.name });
-                                                }}
-                                                className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
-                                            />
-                                            {uploadingFile && <p className="text-xs text-primary mt-1 flex items-center gap-1"><span className="size-3 border-2 border-primary border-t-transparent rounded-full animate-spin" /> {uploadStatusText || 'Uploading…'}</p>}
-                                            {docForm.file_url && !uploadingFile && (
-                                                <div className="mt-1 flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl px-3 py-1.5 text-xs text-slate-600">
-                                                    <span className="flex items-center gap-1 text-emerald-600 font-medium truncate">
-                                                        <span className="material-symbols-outlined text-xs">check_circle</span>
-                                                        {docForm.file_name || 'File attached'}
-                                                    </span>
-                                                    <a href={docForm.file_url} target="_blank" rel="noreferrer" className="text-primary hover:underline text-[11px] font-bold shrink-0 ml-2">
-                                                        Preview
-                                                    </a>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div>
-                                            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Or paste file URL</label>
-                                            <input type="url" value={docForm.file_url} onChange={e => setDocForm({ ...docForm, file_url: e.target.value })} placeholder="https://…" className="w-full h-10 border border-slate-200 rounded-xl px-3 text-sm outline-none focus:ring-2 focus:ring-primary/10" />
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div>
-                                                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Issue Date</label>
-                                                <input type="date" value={docForm.issue_date} onChange={e => setDocForm({ ...docForm, issue_date: e.target.value })} className="w-full h-10 border border-slate-200 rounded-xl px-3 text-sm outline-none focus:ring-2 focus:ring-primary/10" />
-                                            </div>
-                                            <div>
-                                                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
-                                                    Expiry Date {docTypeHasExpiry(docForm.doc_type) && <span className="text-red-400">*</span>}
-                                                </label>
-                                                <input
-                                                    type="date"
-                                                    value={docForm.expiry_date}
-                                                    onChange={e => setDocForm({ ...docForm, expiry_date: e.target.value })}
-                                                    required={docTypeHasExpiry(docForm.doc_type)}
-                                                    className={`w-full h-10 border rounded-xl px-3 text-sm outline-none focus:ring-2 focus:ring-primary/10 ${docTypeHasExpiry(docForm.doc_type) ? 'border-amber-200 bg-amber-50' : 'border-slate-200'}`}
-                                                />
-                                                {docTypeHasExpiry(docForm.doc_type) && <p className="text-[10px] text-amber-600 mt-0.5">Required for this document type — used for alerts</p>}
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Notes</label>
-                                            <textarea rows={2} value={docForm.notes} onChange={e => setDocForm({ ...docForm, notes: e.target.value })} placeholder="Add notes, document IDs, or comments..." className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/10 resize-none" />
-                                        </div>
-
-                                        <div className="flex gap-3 pt-2">
-                                            <button type="button" onClick={() => { setIsAddingDoc(false); setEditingDoc(null); setDocForm(emptyDocForm); }} className="flex-1 h-11 border border-slate-200 text-slate-600 font-semibold rounded-xl text-sm">Cancel</button>
-                                            <button type="submit" disabled={docSaving || uploadingFile} className="flex-1 h-11 bg-primary text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 disabled:opacity-60">
-                                                {docSaving ? <><span className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Saving…</> : (editingDoc ? 'Save Changes' : 'Save Document')}
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                        )}
+                        {/* Document Add Form moved to root */}
 
                         {/* Documents grouped by Deal */}
                         {docsLoading ? (
@@ -1911,26 +2089,34 @@ const CustomerDetail = () => {
                                                             {roleDocs.map(doc => {
                                                                 const badge = getExpiryBadge(doc.expiry_date);
                                                                 return (
-                                                                    <div key={doc.id} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50/60 transition-colors">
-                                                                        <div className="size-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                                                                            <span className="material-symbols-outlined text-primary text-sm">description</span>
+                                                                    <div key={doc.id} className="flex items-start gap-3.5 px-4 py-3.5 hover:bg-slate-50/70 transition-colors">
+                                                                        <div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
+                                                                            <span className="material-symbols-outlined text-lg">{getDocTypeIcon(doc.doc_type)}</span>
                                                                         </div>
                                                                         <div className="flex-1 min-w-0">
-                                                                            <p className="text-sm font-semibold text-slate-700">
-                                                                                {doc.doc_label || getDocLabel(doc.doc_type)}
-                                                                                {doc.doc_label && <span className="text-[10px] text-slate-400 ml-1">({getDocLabel(doc.doc_type)})</span>}
-                                                                            </p>
-                                                                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                                                                {doc.issue_date && <span className="text-[10px] text-slate-400">Issued: {formatDate(doc.issue_date)}</span>}
+                                                                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                                                                                <span className="text-xs font-bold text-blue-800 bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                                                                    <span className="material-symbols-outlined text-[12px]">{getDocTypeIcon(doc.doc_type)}</span>
+                                                                                    {getDocLabel(doc.doc_type)}
+                                                                                </span>
+                                                                                <span className="text-sm font-black text-slate-800 truncate">
+                                                                                    {doc.doc_label || doc.file_name || getDocLabel(doc.doc_type)}
+                                                                                </span>
+                                                                            </div>
+                                                                            {doc.file_name && doc.doc_label && doc.file_name !== doc.doc_label && (
+                                                                                <p className="text-[11px] text-slate-400 mt-0.5">File: {doc.file_name}</p>
+                                                                            )}
+                                                                            <div className="flex items-center gap-2.5 mt-1.5 flex-wrap">
+                                                                                {doc.issue_date && <span className="text-[10px] text-slate-400 font-medium">Issued: {formatDate(doc.issue_date)}</span>}
                                                                                 {badge && (
                                                                                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border flex items-center gap-0.5 ${badge.cls} ${badge.pulse ? 'animate-pulse' : ''}`}>
-                                                                                        <span className="material-symbols-outlined text-[10px]">{badge.icon}</span>
+                                                                                        <span className="material-symbols-outlined text-[11px]">{badge.icon}</span>
                                                                                         {badge.label}
                                                                                     </span>
                                                                                 )}
                                                                                 {doc.is_verified && <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-lg">✓ Verified</span>}
                                                                             </div>
-                                                                            {doc.notes && <p className="text-[10px] text-slate-400 mt-0.5 italic">{doc.notes}</p>}
+                                                                            {doc.notes && <p className="text-[10px] text-slate-400 mt-1 italic">{doc.notes}</p>}
                                                                         </div>
                                                                         <div className="flex items-center gap-1 shrink-0">
                                                                             {/* View File */}
@@ -2079,6 +2265,461 @@ const CustomerDetail = () => {
                     </div>
                 )}
             </div>
+
+            {/* Document Add / Edit Modal (Multi-File Batch + Single Document with Compression) */}
+            {isAddingDoc && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className={`bg-white rounded-3xl shadow-2xl w-full ${!editingDoc && uploadModalTab === 'batch' ? 'max-w-3xl' : 'max-w-lg'} max-h-[92vh] overflow-hidden flex flex-col transition-all duration-300`}>
+                        {/* Modal Header */}
+                        <div className="bg-gradient-to-r from-primary to-primary-light px-6 pt-5 pb-5 shrink-0">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h2 className="text-lg font-black text-white">
+                                            {editingDoc ? 'Edit Document' : 'Upload Customer & Deal Documents'}
+                                        </h2>
+                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/20 text-white border border-white/20">
+                                            Auto-Compress: PDF ≤1.4MB · Image ≤600KB
+                                        </span>
+                                    </div>
+                                    <p className="text-white/75 text-xs mt-0.5">
+                                        {editingDoc
+                                            ? 'Update document metadata, expiry date or replace file'
+                                            : 'Upload multiple PDFs and photos with automatic lossless compression'}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setIsAddingDoc(false);
+                                        setEditingDoc(null);
+                                        setDocForm(emptyDocForm);
+                                        setBatchItems([]);
+                                    }}
+                                    className="size-8 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center transition-colors text-white"
+                                >
+                                    <span className="material-symbols-outlined text-lg">close</span>
+                                </button>
+                            </div>
+
+                            {/* Mode Toggle when Adding */}
+                            {!editingDoc && (
+                                <div className="flex items-center gap-2 mt-4 bg-black/20 p-1 rounded-xl w-fit">
+                                    <button
+                                        type="button"
+                                        onClick={() => setUploadModalTab('batch')}
+                                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                            uploadModalTab === 'batch'
+                                                ? 'bg-white text-primary shadow-sm'
+                                                : 'text-white/80 hover:text-white'
+                                        }`}
+                                    >
+                                        <span className="material-symbols-outlined text-xs">folder_zip</span>
+                                        Multiple Files ({batchItems.length})
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setUploadModalTab('single')}
+                                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                            uploadModalTab === 'single'
+                                                ? 'bg-white text-primary shadow-sm'
+                                                : 'text-white/80 hover:text-white'
+                                        }`}
+                                    >
+                                        <span className="material-symbols-outlined text-xs">description</span>
+                                        Single Document & URL
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Modal Body */}
+                        {!editingDoc && uploadModalTab === 'batch' ? (
+                            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                                {/* Global Batch Linkage Defaults */}
+                                <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-3">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                        Default Linkage Settings for All Files
+                                    </p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
+                                                Link All To Deal
+                                            </label>
+                                            <select
+                                                value={batchDefaultDealId}
+                                                onChange={e => {
+                                                    const val = e.target.value;
+                                                    setBatchDefaultDealId(val);
+                                                    setBatchItems(prev => prev.map(b => ({ ...b, deal_id: val })));
+                                                }}
+                                                className="w-full h-9 border border-slate-200 rounded-xl px-3 text-xs outline-none focus:ring-2 focus:ring-primary/10 bg-white font-medium text-slate-700"
+                                            >
+                                                <option value="">General Documents (not deal-specific)</option>
+                                                {deals.map(d => {
+                                                    const dt = DEAL_TYPES.find(t => t.value === d.deal_type);
+                                                    return (
+                                                        <option key={d.id} value={d.id}>
+                                                            {dt?.label} — {d.car ? `${d.car.year} ${d.car.make} ${d.car.model}` : 'Vehicle TBD'} ({formatDate(d.deal_date || d.created_at)})
+                                                        </option>
+                                                    );
+                                                })}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
+                                                Default Party Role
+                                            </label>
+                                            <select
+                                                value={batchDefaultPartyRole}
+                                                onChange={e => {
+                                                    const val = e.target.value as any;
+                                                    setBatchDefaultPartyRole(val);
+                                                    setBatchItems(prev => prev.map(b => ({ ...b, party_role: val })));
+                                                }}
+                                                className="w-full h-9 border border-slate-200 rounded-xl px-3 text-xs outline-none focus:ring-2 focus:ring-primary/10 bg-white font-medium text-slate-700"
+                                            >
+                                                <option value="buyer">👤 Buyer's Document</option>
+                                                <option value="seller">🏷️ Seller's Document</option>
+                                                <option value="general">🗂️ General / KYC</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Drag & Drop Multi-file Dropzone */}
+                                <div
+                                    onDragOver={e => { e.preventDefault(); setIsDragOver(true); }}
+                                    onDragLeave={e => { e.preventDefault(); setIsDragOver(false); }}
+                                    onDrop={e => {
+                                        e.preventDefault();
+                                        setIsDragOver(false);
+                                        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                                            handleBatchFileSelect(e.dataTransfer.files);
+                                        }
+                                    }}
+                                    className={`relative border-2 border-dashed rounded-2xl p-6 text-center transition-all cursor-pointer ${
+                                        isDragOver
+                                            ? 'border-primary bg-primary/5 ring-4 ring-primary/10'
+                                            : 'border-slate-300 hover:border-primary hover:bg-slate-50/60'
+                                    }`}
+                                >
+                                    <input
+                                        type="file"
+                                        multiple
+                                        accept=".pdf,.jpg,.jpeg,.png,.webp,.heic"
+                                        onChange={e => {
+                                            if (e.target.files && e.target.files.length > 0) {
+                                                handleBatchFileSelect(e.target.files);
+                                            }
+                                        }}
+                                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                    />
+                                    <div className="flex flex-col items-center justify-center">
+                                        <div className="size-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-2">
+                                            <span className="material-symbols-outlined text-2xl">upload_file</span>
+                                        </div>
+                                        <p className="text-sm font-bold text-slate-800">
+                                            Drop multiple PDF documents or photos here
+                                        </p>
+                                        <p className="text-xs text-slate-400 mt-1">
+                                            Or <span className="text-primary font-bold hover:underline">browse from device</span> · Supports batch selection
+                                        </p>
+                                        <div className="flex items-center gap-2 mt-3 flex-wrap justify-center">
+                                            <span className="text-[10px] font-semibold bg-red-50 text-red-700 px-2 py-0.5 rounded-md border border-red-100">
+                                                PDF Max 1.4 MB
+                                            </span>
+                                            <span className="text-[10px] font-semibold bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md border border-blue-100">
+                                                Photos Max 600 KB
+                                            </span>
+                                            <span className="text-[10px] font-semibold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md border border-emerald-100">
+                                                Lossless Clarity Preserved
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Files Queue List */}
+                                {batchItems.length > 0 && (
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                                                <span className="material-symbols-outlined text-sm text-primary">checklist</span>
+                                                Queued Documents ({batchItems.length})
+                                            </p>
+                                            <button
+                                                type="button"
+                                                onClick={() => setBatchItems([])}
+                                                className="text-[11px] font-bold text-red-500 hover:text-red-700 transition-colors"
+                                            >
+                                                Clear Queue
+                                            </button>
+                                        </div>
+
+                                        <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+                                            {batchItems.map((item, idx) => {
+                                                const isPdf = item.originalFile.type === 'application/pdf' || item.originalFile.name.toLowerCase().endsWith('.pdf');
+                                                const hasExpiry = docTypeHasExpiry(item.doc_type);
+
+                                                return (
+                                                    <div
+                                                        key={item.id}
+                                                        className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-xs hover:border-slate-300 transition-all space-y-2.5"
+                                                    >
+                                                        <div className="flex items-start justify-between gap-2">
+                                                            <div className="flex items-center gap-2.5 min-w-0">
+                                                                <div className={`size-8 rounded-xl flex items-center justify-center shrink-0 ${
+                                                                    isPdf ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'
+                                                                }`}>
+                                                                    <span className="material-symbols-outlined text-sm">
+                                                                        {isPdf ? 'picture_as_pdf' : 'image'}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                    <p className="text-xs font-bold text-slate-800 truncate" title={item.originalFile.name}>
+                                                                        {item.originalFile.name}
+                                                                    </p>
+                                                                    <div className="flex items-center gap-2 mt-0.5 flex-wrap text-[10px]">
+                                                                        <span className="text-slate-400">
+                                                                            Original: {(item.originalSizeKb / 1024).toFixed(1)} MB ({item.originalSizeKb} KB)
+                                                                        </span>
+                                                                        {item.status === 'compressing' ? (
+                                                                            <span className="text-primary font-bold flex items-center gap-1">
+                                                                                <span className="size-2.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                                                                {item.statusText}
+                                                                            </span>
+                                                                        ) : item.status === 'ready' || item.status === 'done' ? (
+                                                                            <span className="text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-100">
+                                                                                Compressed: {item.compressedSizeKb} KB {item.reductionPercent > 0 ? `(-${item.reductionPercent}%)` : ''}
+                                                                            </span>
+                                                                        ) : null}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setBatchItems(curr => curr.filter(b => b.id !== item.id))}
+                                                                className="size-7 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 flex items-center justify-center transition-colors shrink-0"
+                                                                title="Remove file"
+                                                            >
+                                                                <span className="material-symbols-outlined text-sm">delete</span>
+                                                            </button>
+                                                        </div>
+
+                                                        {/* Document Metadata Form for this specific item */}
+                                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 border-t border-slate-100 text-xs">
+                                                            <div>
+                                                                <label className="text-[9px] font-bold text-slate-400 uppercase block mb-0.5">Document Type</label>
+                                                                <select
+                                                                    value={item.doc_type}
+                                                                    onChange={e => {
+                                                                        const val = e.target.value;
+                                                                        setBatchItems(curr => curr.map(b => b.id === item.id ? { ...b, doc_type: val } : b));
+                                                                    }}
+                                                                    className="w-full h-8 border border-slate-200 rounded-lg px-2 text-xs outline-none bg-white font-medium"
+                                                                >
+                                                                    {DOC_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                                                </select>
+                                                            </div>
+
+                                                            <div>
+                                                                <label className="text-[9px] font-bold text-slate-400 uppercase block mb-0.5">Party Role</label>
+                                                                <select
+                                                                    value={item.party_role}
+                                                                    onChange={e => {
+                                                                        const val = e.target.value as any;
+                                                                        setBatchItems(curr => curr.map(b => b.id === item.id ? { ...b, party_role: val } : b));
+                                                                    }}
+                                                                    className="w-full h-8 border border-slate-200 rounded-lg px-2 text-xs outline-none bg-white font-medium"
+                                                                >
+                                                                    <option value="buyer">Buyer</option>
+                                                                    <option value="seller">Seller</option>
+                                                                    <option value="general">General</option>
+                                                                </select>
+                                                            </div>
+
+                                                            <div>
+                                                                <label className="text-[9px] font-bold text-slate-400 uppercase block mb-0.5">
+                                                                    Expiry Date {hasExpiry && <span className="text-red-500 font-bold">*</span>}
+                                                                </label>
+                                                                <input
+                                                                    type="date"
+                                                                    value={item.expiry_date}
+                                                                    onChange={e => {
+                                                                        const val = e.target.value;
+                                                                        setBatchItems(curr => curr.map(b => b.id === item.id ? { ...b, expiry_date: val } : b));
+                                                                    }}
+                                                                    className={`w-full h-8 border rounded-lg px-2 text-xs outline-none ${
+                                                                        hasExpiry ? 'border-amber-300 bg-amber-50/50' : 'border-slate-200'
+                                                                    }`}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Batch Action Footer */}
+                                <div className="flex items-center gap-3 pt-3 border-t border-slate-100">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setIsAddingDoc(false);
+                                            setBatchItems([]);
+                                            setDocForm(emptyDocForm);
+                                        }}
+                                        className="flex-1 h-11 border border-slate-200 text-slate-600 font-semibold rounded-xl text-xs hover:bg-slate-50 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="button"
+                                        disabled={
+                                            batchItems.length === 0 ||
+                                            isBatchUploading ||
+                                            batchItems.some(b => b.status === 'compressing')
+                                        }
+                                        onClick={handleBatchUploadSave}
+                                        className="flex-2 h-11 bg-primary hover:bg-primary-light text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 disabled:opacity-50 transition-colors shadow-md shadow-primary/20"
+                                    >
+                                        {isBatchUploading ? (
+                                            <>
+                                                <span className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                Uploading {batchOverallProgress}%…
+                                            </>
+                                        ) : batchItems.some(b => b.status === 'compressing') ? (
+                                            <>
+                                                <span className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                Optimizing Files…
+                                            </>
+                                        ) : (
+                                            <>
+                                                <span className="material-symbols-outlined text-sm">cloud_upload</span>
+                                                Upload & Save All ({batchItems.length}) Documents
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            /* Single Document Form & Edit View */
+                            <form onSubmit={handleSaveDoc} className="flex-1 overflow-y-auto p-6 space-y-4">
+                                {/* Link to Deal */}
+                                <div>
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Link to Deal (optional)</label>
+                                    <select value={docForm.deal_id} onChange={e => setDocForm({ ...docForm, deal_id: e.target.value })} className="w-full h-10 border border-slate-200 rounded-xl px-3 text-sm outline-none focus:ring-2 focus:ring-primary/10 bg-white">
+                                        <option value="">General (not deal-specific)</option>
+                                        {deals.map(d => {
+                                            const dt = DEAL_TYPES.find(t => t.value === d.deal_type);
+                                            return (
+                                                <option key={d.id} value={d.id}>
+                                                    {dt?.label} — {d.car ? `${d.car.year} ${d.car.make} ${d.car.model}` : 'Vehicle TBD'} ({formatDate(d.deal_date || d.created_at)})
+                                                </option>
+                                            );
+                                        })}
+                                    </select>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Document Type *</label>
+                                        <select required value={docForm.doc_type} onChange={e => setDocForm({ ...docForm, doc_type: e.target.value })} className="w-full h-10 border border-slate-200 rounded-xl px-3 text-sm outline-none focus:ring-2 focus:ring-primary/10 bg-white">
+                                            {DOC_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Party Role *</label>
+                                        <select value={docForm.party_role} onChange={e => setDocForm({ ...docForm, party_role: e.target.value as any })} className="w-full h-10 border border-slate-200 rounded-xl px-3 text-sm outline-none focus:ring-2 focus:ring-primary/10 bg-white">
+                                            <option value="buyer">Buyer's Document</option>
+                                            <option value="seller">Seller's Document</option>
+                                            <option value="general">General / KYC</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Custom Label (optional)</label>
+                                    <input type="text" value={docForm.doc_label} onChange={e => setDocForm({ ...docForm, doc_label: e.target.value })} placeholder="e.g. Wife's Aadhaar, Previous Owner RC" className="w-full h-10 border border-slate-200 rounded-xl px-3 text-sm outline-none focus:ring-2 focus:ring-primary/10" />
+                                </div>
+
+                                {/* File Upload */}
+                                <div>
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
+                                        {editingDoc?.file_url ? 'Replace File (optional)' : 'Upload File (PDF / Image)'}
+                                    </label>
+                                    <input
+                                        type="file"
+                                        accept=".pdf,.jpg,.jpeg,.png,.webp,.heic"
+                                        onChange={async e => {
+                                            const file = e.target.files?.[0];
+                                            if (!file) return;
+                                            const url = await handleUploadFile(file);
+                                            if (url) setDocForm({ ...docForm, file_url: url, file_name: file.name });
+                                        }}
+                                        className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                                    />
+                                    {uploadingFile && (
+                                        <p className="text-xs text-primary mt-1.5 flex items-center gap-1.5 bg-primary/5 p-2 rounded-lg font-medium">
+                                            <span className="size-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                            {uploadStatusText || 'Uploading & Compressing…'}
+                                        </p>
+                                    )}
+                                    {docForm.file_url && !uploadingFile && (
+                                        <div className="mt-1.5 flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl px-3 py-1.5 text-xs text-slate-600">
+                                            <span className="flex items-center gap-1 text-emerald-600 font-medium truncate">
+                                                <span className="material-symbols-outlined text-xs">check_circle</span>
+                                                {docForm.file_name || 'File attached'}
+                                            </span>
+                                            <a href={docForm.file_url} target="_blank" rel="noreferrer" className="text-primary hover:underline text-[11px] font-bold shrink-0 ml-2">
+                                                Preview
+                                            </a>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Or paste file URL</label>
+                                    <input type="url" value={docForm.file_url} onChange={e => setDocForm({ ...docForm, file_url: e.target.value })} placeholder="https://…" className="w-full h-10 border border-slate-200 rounded-xl px-3 text-sm outline-none focus:ring-2 focus:ring-primary/10" />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Issue Date</label>
+                                        <input type="date" value={docForm.issue_date} onChange={e => setDocForm({ ...docForm, issue_date: e.target.value })} className="w-full h-10 border border-slate-200 rounded-xl px-3 text-sm outline-none focus:ring-2 focus:ring-primary/10" />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
+                                            Expiry Date {docTypeHasExpiry(docForm.doc_type) && <span className="text-red-400">*</span>}
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={docForm.expiry_date}
+                                            onChange={e => setDocForm({ ...docForm, expiry_date: e.target.value })}
+                                            required={docTypeHasExpiry(docForm.doc_type)}
+                                            className={`w-full h-10 border rounded-xl px-3 text-sm outline-none focus:ring-2 focus:ring-primary/10 ${docTypeHasExpiry(docForm.doc_type) ? 'border-amber-200 bg-amber-50' : 'border-slate-200'}`}
+                                        />
+                                        {docTypeHasExpiry(docForm.doc_type) && <p className="text-[10px] text-amber-600 mt-0.5">Required for this document type — used for alerts</p>}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Notes</label>
+                                    <textarea rows={2} value={docForm.notes} onChange={e => setDocForm({ ...docForm, notes: e.target.value })} placeholder="Add notes, document IDs, or comments..." className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/10 resize-none" />
+                                </div>
+
+                                <div className="flex gap-3 pt-2">
+                                    <button type="button" onClick={() => { setIsAddingDoc(false); setEditingDoc(null); setDocForm(emptyDocForm); setBatchItems([]); }} className="flex-1 h-11 border border-slate-200 text-slate-600 font-semibold rounded-xl text-sm">Cancel</button>
+                                    <button type="submit" disabled={docSaving || uploadingFile} className="flex-1 h-11 bg-primary text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 disabled:opacity-60">
+                                        {docSaving ? <><span className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Saving…</> : (editingDoc ? 'Save Changes' : 'Save Document')}
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
