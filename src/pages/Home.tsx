@@ -4,6 +4,7 @@ import { ArrowRight, Heart, Sparkles, ChevronRight, Landmark } from 'lucide-reac
 import { supabase } from '../lib/supabase';
 import { getPrimaryImage, formatPriceLakh } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
+import { useInquiryCart } from '../contexts/InquiryCartContext';
 import { FALLBACK_INVENTORY } from '../data/mockInventory';
 import HappyCustomersCarousel from '../components/home/HappyCustomersCarousel';
 
@@ -156,6 +157,7 @@ const Home = () => {
     const [selectedFilters, setSelectedFilters] = useState({ budget: '', brand: '', year: '' });
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { addToCart, isInCart, removeFromCart } = useInquiryCart();
 
     // Wishlist state
     const [wishlist, setWishlist] = useState<string[]>([]);
@@ -679,13 +681,14 @@ const Home = () => {
                             <div className="col-span-1 sm:col-span-2 lg:col-span-4 text-center py-10 text-slate-400 w-full">No vehicles have been added recently.</div>
                         ) : cars.map((car) => {
                             const isSaved = wishlist.includes(car.id);
+                            const inCart = isInCart(car.id);
                             return (
                                 <article key={car.id} className="min-w-[85%] sm:min-w-0 snap-center bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)] transition-all duration-300 group flex flex-col relative">
                                     <Link to={`/car/${car.id}`} className="flex flex-col flex-1">
                                         <div className="relative aspect-[16/11] overflow-hidden bg-slate-100">
                                             <img alt={`${car.make} ${car.model}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src={getPrimaryImage(car.images)} />
                                             {car.condition === 'Excellent' && (
-                                                <div className="absolute top-3 left-3 bg-primary text-white text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wider">
+                                                <div className="absolute top-3 left-3 bg-primary text-white text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wider shadow-sm">
                                                     Certified
                                                 </div>
                                             )}
@@ -708,12 +711,34 @@ const Home = () => {
                                         </div>
                                     </Link>
 
-                                    <button 
-                                        className={`absolute top-3 right-3 p-2 bg-white/90 rounded-full transition-colors shadow-sm backdrop-blur-sm z-10 ${isSaved ? 'text-red-500' : 'text-slate-400 hover:text-red-500'}`}
-                                        onClick={(e) => toggleWishlist(e, car.id)}
-                                    >
-                                        <Heart size={16} fill={isSaved ? 'currentColor' : 'none'} />
-                                    </button>
+                                    {/* Action buttons on image */}
+                                    <div className="absolute top-3 right-3 flex items-center gap-1.5 z-10">
+                                        <button 
+                                            title={inCart ? "Remove from Cart" : "Add to Inquiry Cart"}
+                                            className={`p-2 rounded-full transition-colors shadow-sm backdrop-blur-md active:scale-95 ${inCart ? 'bg-amber-500 text-white' : 'bg-white/90 text-slate-600 hover:text-amber-600'}`}
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                if (inCart) {
+                                                    removeFromCart(car.id);
+                                                } else {
+                                                    addToCart(car);
+                                                }
+                                            }}
+                                        >
+                                            <span className="material-symbols-outlined text-[16px] block">
+                                                {inCart ? 'check' : 'add_shopping_cart'}
+                                            </span>
+                                        </button>
+
+                                        <button 
+                                            className={`p-2 bg-white/90 rounded-full transition-colors shadow-sm backdrop-blur-md active:scale-95 ${isSaved ? 'text-red-500' : 'text-slate-400 hover:text-red-500'}`}
+                                            onClick={(e) => toggleWishlist(e, car.id)}
+                                            aria-label="Wishlist"
+                                        >
+                                            <Heart size={16} fill={isSaved ? 'currentColor' : 'none'} />
+                                        </button>
+                                    </div>
 
                                     <div className="p-4 pt-0 mt-auto">
                                         <div className="flex items-center justify-between pt-3 border-t border-slate-100">
@@ -721,9 +746,20 @@ const Home = () => {
                                                 <span className="text-[9px] text-slate-400 font-bold uppercase">Price</span>
                                                 <p className="text-lg font-black text-primary font-display tabular-nums">₹ {formatPriceLakh(car.price)} L</p>
                                             </div>
-                                            <Link to={`/car/${car.id}`} className="inline-flex items-center gap-1 bg-accent/10 hover:bg-accent text-accent hover:text-primary px-3.5 py-2 rounded-lg text-xs font-bold transition-all">
-                                                View <span className="material-symbols-outlined text-sm">arrow_outward</span>
-                                            </Link>
+                                            <div className="flex items-center gap-1.5">
+                                                <a
+                                                    href={`https://wa.me/919373721705?text=${encodeURIComponent(`Hi New Maharashtra Motors, I am interested in this car: ${car.year} ${car.make} ${car.model} (₹${formatPriceLakh(car.price)} Lakh)`)}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="size-8 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white flex items-center justify-center transition-colors active:scale-95"
+                                                    title="WhatsApp Inquiry"
+                                                >
+                                                    <span className="material-symbols-outlined text-[16px]">chat</span>
+                                                </a>
+                                                <Link to={`/car/${car.id}`} className="inline-flex items-center gap-1 bg-accent/10 hover:bg-accent text-accent hover:text-primary px-3 py-2 rounded-lg text-xs font-bold transition-all active:scale-95">
+                                                    View <span className="material-symbols-outlined text-sm">arrow_outward</span>
+                                                </Link>
+                                            </div>
                                         </div>
                                     </div>
                                 </article>

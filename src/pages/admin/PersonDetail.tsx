@@ -226,14 +226,44 @@ const UploadDocModal: React.FC<{ customerId: string; onClose: () => void; onSave
             }
 
             setStatusText('Uploading to storage…');
-            const ext = fileToUpload.name.split('.').pop();
-            const path = `${customerId}/${Date.now()}_${docType}.${ext}`;
-            const { error: uploadErr } = await supabase.storage
-                .from('customer-documents')
-                .upload(path, fileToUpload, { upsert: true });
-            if (uploadErr) throw uploadErr;
+            const ext = fileToUpload.name.split('.').pop() || 'pdf';
+            const cleanFileName = fileToUpload.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+            const path = `documents/${customerId}/${Date.now()}_${cleanFileName}`;
 
-            const { data: { publicUrl } } = supabase.storage.from('customer-documents').getPublicUrl(path);
+            let publicUrl = '';
+            // 1. Try 'customer-documents'
+            try {
+                const { error: err1 } = await supabase.storage
+                    .from('customer-documents')
+                    .upload(path, fileToUpload, { upsert: true });
+                if (!err1) {
+                    const { data } = supabase.storage.from('customer-documents').getPublicUrl(path);
+                    if (data?.publicUrl) publicUrl = data.publicUrl;
+                }
+            } catch { /* fallback */ }
+
+            // 2. Try 'car-images'
+            if (!publicUrl) {
+                try {
+                    const { error: err2 } = await supabase.storage
+                        .from('car-images')
+                        .upload(path, fileToUpload, { upsert: true });
+                    if (!err2) {
+                        const { data } = supabase.storage.from('car-images').getPublicUrl(path);
+                        if (data?.publicUrl) publicUrl = data.publicUrl;
+                    }
+                } catch { /* fallback */ }
+            }
+
+            // 3. Fallback: Base64 data URL
+            if (!publicUrl) {
+                publicUrl = await new Promise<string>((res, rej) => {
+                    const reader = new FileReader();
+                    reader.onload = () => res(reader.result as string);
+                    reader.onerror = rej;
+                    reader.readAsDataURL(fileToUpload);
+                });
+            }
 
             await supabase.from('customer_documents').insert({
                 customer_id: customerId,
@@ -242,7 +272,6 @@ const UploadDocModal: React.FC<{ customerId: string; onClose: () => void; onSave
                 party_role: partyRole,
                 file_name: fileToUpload.name,
                 file_url: publicUrl,
-                file_size_kb: Math.round(fileToUpload.size / 1024),
                 uploaded_by: profile?.id ?? user?.id ?? null,
             });
             onSaved();

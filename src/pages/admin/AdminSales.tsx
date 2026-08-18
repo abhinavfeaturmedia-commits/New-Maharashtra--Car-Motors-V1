@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { TrendingUp, Plus, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { TrendingUp, Plus, X, User } from 'lucide-react';
 import { useData } from '../../contexts/DataContext';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -409,6 +410,18 @@ const AdminSales = () => {
                                 <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
                                     <p className="text-xs font-bold text-amber-600 uppercase mb-1">Notes</p>
                                     <p className="text-sm text-amber-900 leading-relaxed">{detail.notes}</p>
+                                </div>
+                            )}
+
+                            {(detail.customer_id || detail.customer?.id) && (
+                                <div className="pt-2">
+                                    <Link
+                                        to={`/admin/customers/${detail.customer_id || detail.customer?.id}`}
+                                        className="w-full h-10 bg-primary hover:bg-primary-light text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                                    >
+                                        <User className="size-3.5" />
+                                        <span>Open Customer 360 CRM Profile</span>
+                                    </Link>
                                 </div>
                             )}
                         </div>

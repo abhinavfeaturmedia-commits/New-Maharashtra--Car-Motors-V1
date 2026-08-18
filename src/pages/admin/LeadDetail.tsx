@@ -1806,7 +1806,7 @@ const LeadDetail = () => {
                                         <Link to="/admin/sales" className="text-xs font-bold bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-xl border border-white/20 flex items-center gap-1 transition-all">
                                             <span className="material-symbols-outlined text-sm">point_of_sale</span> View Sale Ledger
                                         </Link>
-                                        <Link to="/admin/customers" className="text-xs font-bold bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 px-3 py-1.5 rounded-xl border border-emerald-400/30 flex items-center gap-1 transition-all">
+                                        <Link to={(linkedSales[0]?.customer_id || linkedSales[0]?.customer?.id) ? `/admin/customers/${linkedSales[0]?.customer_id || linkedSales[0]?.customer?.id}` : "/admin/customers"} className="text-xs font-bold bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 px-3 py-1.5 rounded-xl border border-emerald-400/30 flex items-center gap-1 transition-all">
                                             <span className="material-symbols-outlined text-sm">person</span> Customer 360 CRM
                                         </Link>
                                     </div>

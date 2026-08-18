@@ -71,15 +71,20 @@ const SellCar = () => {
                 <div className="absolute inset-0 bg-gradient-to-r from-primary via-primary/95 to-primary/80" />
                 <div className="relative z-10 container-main py-16 lg:py-24">
                     <span className="inline-flex items-center gap-2 bg-accent text-primary text-xs font-bold px-3 py-1.5 rounded-lg mb-6 uppercase"><span className="material-symbols-outlined text-sm">verified</span> Best Price Guaranteed</span>
-                    <h1 className="text-4xl lg:text-6xl font-black text-white font-display leading-tight mb-4">Sell your car in <span className="text-accent">30 minutes</span></h1>
-                    <p className="text-slate-400 text-lg max-w-lg mb-8">New Maharashtra Motors: Pune&apos;s most trusted vehicle sales & service. Instant payment, free RC transfer.</p>
-                    <div className="flex gap-3 max-w-lg">
-                        <input type="text" value={heroReg} onChange={e => setHeroReg(e.target.value)} placeholder="MH09 AB 1234" className="flex-1 h-12 bg-white/10 border border-white/20 text-white placeholder:text-white/50 rounded-xl px-5 text-sm outline-none backdrop-blur focus:ring-2 focus:ring-accent/30" />
+                    <h1 className="text-3xl sm:text-4xl lg:text-6xl font-black text-white font-display leading-tight mb-4">Sell your car in <span className="text-accent">30 minutes</span></h1>
+                    <p className="text-slate-400 text-sm sm:text-lg max-w-lg mb-6 sm:mb-8">New Maharashtra Motors: Pune&apos;s most trusted vehicle sales & service. Instant payment, free RC transfer.</p>
+                    <div className="flex flex-col sm:flex-row gap-3 max-w-lg">
+                        <input type="text" value={heroReg} onChange={e => setHeroReg(e.target.value)} placeholder="Enter Reg (e.g. MH12 AB 1234)" className="flex-1 h-12 bg-white/10 border border-white/20 text-white placeholder:text-white/50 rounded-xl px-4 text-sm outline-none backdrop-blur focus:ring-2 focus:ring-accent/30" />
                         <button onClick={() => {
                             document.getElementById('sell-form')?.scrollIntoView({ behavior: 'smooth' });
-                        }} className="h-12 flex items-center justify-center px-6 bg-accent text-primary font-bold rounded-xl hover:bg-accent-hover transition-all text-sm whitespace-nowrap border-0">Request Valuation</button>
+                        }} className="h-12 flex items-center justify-center px-6 bg-accent text-primary font-bold rounded-xl hover:bg-accent-hover transition-all text-sm whitespace-nowrap border-0 cursor-pointer active:scale-95">Request Valuation</button>
                     </div>
-                    <p className="text-xs text-slate-500 mt-3 flex items-center gap-1"><span className="material-symbols-outlined text-xs text-green-400">check_circle</span> 10,000+ Happy Customers in Pune</p>
+                    <div className="flex flex-wrap items-center gap-4 mt-4 text-xs text-slate-400">
+                        <span className="flex items-center gap-1"><span className="material-symbols-outlined text-xs text-green-400">check_circle</span> 10,000+ Happy Customers</span>
+                        <a href="https://wa.me/919373721705?text=Hi%2C%20I%20want%20to%20sell%20my%20car" target="_blank" rel="noopener noreferrer" className="text-emerald-400 font-bold hover:underline flex items-center gap-1">
+                            <span className="material-symbols-outlined text-sm">chat</span> Instant WhatsApp Valuation →
+                        </a>
+                    </div>
                 </div>
             </section>
 

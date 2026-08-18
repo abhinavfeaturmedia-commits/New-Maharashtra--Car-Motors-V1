@@ -179,7 +179,46 @@ const AdminDashboard = () => {
                         <h2 className="font-bold text-primary font-display text-base sm:text-lg">Recent Activity</h2>
                         <Link to="/admin/leads" className="text-xs sm:text-sm font-semibold text-accent hover:underline flex items-center gap-1">View All <span className="material-symbols-outlined text-sm">arrow_forward</span></Link>
                     </div>
-                    <div className="overflow-x-auto">
+                    {/* Mobile View: Tap-to-view Cards (Zero horizontal scroll) */}
+                    <div className="sm:hidden divide-y divide-slate-100">
+                        {loading ? (
+                            <div className="p-8 text-center text-slate-400 text-sm">Loading...</div>
+                        ) : recentLeads.length === 0 ? (
+                            <div className="p-8 text-center text-slate-400 text-sm">No leads yet.</div>
+                        ) : (
+                            recentLeads.map(lead => (
+                                <Link 
+                                    key={lead.id} 
+                                    to={`/admin/leads/${lead.id}`}
+                                    className="p-3.5 flex items-center justify-between gap-3 hover:bg-slate-50 active:bg-slate-100 transition-colors"
+                                >
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="size-9 rounded-full bg-gradient-to-br from-primary to-primary-light text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-2xs">
+                                            {avatar(lead.full_name)}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-semibold text-primary truncate">{lead.full_name}</p>
+                                            <p className="text-xs text-slate-400 truncate flex items-center gap-1.5 mt-0.5">
+                                                <span>{lead.phone || 'No phone'}</span>
+                                                <span>•</span>
+                                                <span className="font-medium text-slate-600">{fmtType(lead.type)}</span>
+                                            </p>
+                                            <p className="text-[10px] text-slate-400 mt-0.5">{fmtDate(lead.created_at)}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase ${statusColors[lead.status] || 'bg-slate-100 text-slate-600'}`}>
+                                            {lead.status.replace('_', ' ')}
+                                        </span>
+                                        <span className="material-symbols-outlined text-slate-300 text-base">chevron_right</span>
+                                    </div>
+                                </Link>
+                            ))
+                        )}
+                    </div>
+
+                    {/* Desktop View: Full Table */}
+                    <div className="hidden sm:block overflow-x-auto">
                         <table className="w-full min-w-[600px]">
                             <thead>
                                 <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-wide border-b border-slate-100">

@@ -57,6 +57,253 @@ const SkeletonRow = () => (
     </tr>
 );
 
+// ─── Mobile Car Card Component ───────────────────────────────────────────────
+interface MobileCarCardProps {
+    car: Car;
+    isSelected: boolean;
+    canManage: boolean;
+    searchQuery: string;
+    dealers: Dealer[];
+    shareCount: number;
+    deletingId: string | null;
+    onToggleSelect: () => void;
+    onStatusChange: (id: string, status: string) => void;
+    onShare: () => void;
+    onDownload: () => void;
+    onDelete: () => void;
+}
+
+const MobileCarCard: React.FC<MobileCarCardProps> = ({
+    car,
+    isSelected,
+    canManage,
+    searchQuery,
+    dealers,
+    shareCount,
+    deletingId,
+    onToggleSelect,
+    onStatusChange,
+    onShare,
+    onDownload,
+    onDelete,
+}) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+
+    return (
+        <div className={`bg-white rounded-2xl border transition-all shadow-xs overflow-hidden ${
+            isSelected ? 'border-primary/40 bg-primary/[0.02]' : 'border-slate-100 hover:border-slate-200'
+        }`}>
+            {/* ── Top Summary Header ── */}
+            <div className="p-3.5 space-y-2.5">
+                <div className="flex items-start gap-3">
+                    {/* Multi-select Checkbox */}
+                    {canManage && (
+                        <div className="pt-1">
+                            <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={onToggleSelect}
+                                className="rounded border-slate-300 text-primary focus:ring-primary size-4.5 cursor-pointer"
+                            />
+                        </div>
+                    )}
+
+                    {/* Thumbnail */}
+                    <div 
+                        onClick={() => setIsExpanded(v => !v)}
+                        className="size-16 sm:size-20 rounded-xl overflow-hidden bg-slate-100 shrink-0 cursor-pointer relative"
+                    >
+                        {car.thumbnail ? (
+                            <img src={car.thumbnail} alt={`${car.make} ${car.model}`} className="w-full h-full object-cover" />
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center text-slate-300">
+                                <span className="material-symbols-outlined text-2xl">directions_car</span>
+                            </div>
+                        )}
+                        {car.images && car.images.length > 0 && (
+                            <span className="absolute bottom-1 right-1 bg-black/60 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                                {car.images.length}
+                            </span>
+                        )}
+                    </div>
+
+                    {/* Info */}
+                    <div 
+                        onClick={() => setIsExpanded(v => !v)}
+                        className="flex-1 min-w-0 cursor-pointer"
+                    >
+                        <div className="flex items-start justify-between gap-1">
+                            <h3 className="text-sm font-bold text-slate-900 truncate leading-tight">
+                                {car.year} <HighlightText text={car.make} highlight={searchQuery} /> <HighlightText text={car.model} highlight={searchQuery} />
+                            </h3>
+                            <span className="text-sm font-black text-primary shrink-0">
+                                ₹{(car.price / 100000).toFixed(2)}L
+                            </span>
+                        </div>
+
+                        {car.variant && (
+                            <p className="text-xs text-slate-400 truncate">
+                                <HighlightText text={car.variant} highlight={searchQuery} />
+                            </p>
+                        )}
+
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                            {car.registration_no && (
+                                <span className="text-[10px] text-slate-600 font-mono bg-slate-100 px-1.5 py-0.5 rounded font-semibold">
+                                    <HighlightText text={car.registration_no} highlight={searchQuery} />
+                                </span>
+                            )}
+
+                            {/* Source badge */}
+                            {car.source === 'dealer' ? (
+                                <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 uppercase tracking-wide">
+                                    <span className="material-symbols-outlined text-[10px]">store</span>
+                                    {dealers.find(d => d.id === car.dealer_id)?.dealer_code || 'Dealer'}
+                                </span>
+                            ) : car.source === 'consignment' ? (
+                                <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 uppercase tracking-wide">
+                                    <span className="material-symbols-outlined text-[10px]">handshake</span>
+                                    {car.consignment_owner_name || 'Consignment'}
+                                </span>
+                            ) : (
+                                <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary uppercase tracking-wide">
+                                    <span className="material-symbols-outlined text-[10px]">home</span>
+                                    Purchased
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Specs Strip + Status */}
+                <div 
+                    onClick={() => setIsExpanded(v => !v)}
+                    className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 text-[11px] text-slate-500 cursor-pointer"
+                >
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <span>{car.fuel_type ?? '—'} · {car.transmission ?? '—'}</span>
+                        <span className="text-slate-300">•</span>
+                        <span>{car.mileage ? `${car.mileage.toLocaleString('en-IN')} km` : '—'}</span>
+                        {car.ownership && (
+                            <>
+                                <span className="text-slate-300">•</span>
+                                <span>{car.ownership === 1 ? '1st Owner' : car.ownership === 2 ? '2nd Owner' : `${car.ownership} Owners`}</span>
+                            </>
+                        )}
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${statusColors[car.status] ?? 'bg-slate-100 text-slate-500'}`}>
+                            {car.status}
+                        </span>
+                        <span className="material-symbols-outlined text-base text-slate-400">
+                            {isExpanded ? 'expand_less' : 'expand_more'}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            {/* ── Expanded Drawer ── */}
+            {isExpanded && (
+                <div className="bg-slate-50/80 p-3.5 border-t border-slate-100 space-y-3 animate-in fade-in duration-150">
+                    {/* Status Changer & Quick Info */}
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="bg-white p-2.5 rounded-xl border border-slate-200/80">
+                            <span className="text-[10px] text-slate-400 block font-semibold uppercase">Change Status</span>
+                            <select
+                                value={car.status}
+                                onChange={e => onStatusChange(car.id, e.target.value)}
+                                disabled={!canManage}
+                                className={`w-full mt-1 text-xs font-bold px-2 py-1 rounded-lg border-0 outline-none ${canManage ? 'cursor-pointer' : 'cursor-default opacity-80'} ${statusColors[car.status] ?? 'bg-slate-100 text-slate-500'}`}
+                            >
+                                {['available', 'reserved', 'sold', 'pending', 'archived'].map(s => (
+                                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 space-y-0.5">
+                            <span className="text-[10px] text-slate-400 block font-semibold uppercase">Vehicle Info</span>
+                            <p className="text-xs font-semibold text-slate-700">
+                                {car.body_type || 'Car'} {car.color ? `· ${car.color}` : ''}
+                            </p>
+                            <p className="text-[10px] text-slate-400">
+                                Added {new Date(car.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* 1-Tap Touch Action Bar */}
+                    <div className="flex items-center gap-1.5 pt-1">
+                        {/* WhatsApp Share Button */}
+                        <button
+                            onClick={onShare}
+                            className="flex-1 h-9 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-98 transition-transform cursor-pointer"
+                        >
+                            <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white shrink-0">
+                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
+                            </svg>
+                            <span>Share</span>
+                            {shareCount > 0 && (
+                                <span className="bg-white/25 text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full">
+                                    {shareCount}
+                                </span>
+                            )}
+                        </button>
+
+                        {/* Edit Button */}
+                        {canManage && (
+                            <Link
+                                to={`/admin/inventory/${car.id}/edit`}
+                                className="h-9 px-3 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center gap-1 active:scale-98 transition-transform"
+                                title="Edit"
+                            >
+                                <span className="material-symbols-outlined text-base text-slate-600">edit</span>
+                                <span>Edit</span>
+                            </Link>
+                        )}
+
+                        {/* Photos Download Button */}
+                        <button
+                            onClick={onDownload}
+                            className="h-9 px-3 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center gap-1 active:scale-98 transition-transform cursor-pointer"
+                            title="Download Photos"
+                        >
+                            <span className="material-symbols-outlined text-base text-slate-600">download</span>
+                        </button>
+
+                        {/* Live Website Link */}
+                        <Link
+                            to={`/car/${car.id}`}
+                            target="_blank"
+                            className="h-9 px-3 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center gap-1 active:scale-98 transition-transform"
+                            title="View on Website"
+                        >
+                            <span className="material-symbols-outlined text-base text-slate-600">open_in_new</span>
+                        </Link>
+
+                        {/* Delete Button */}
+                        {canManage && (
+                            <button
+                                onClick={onDelete}
+                                disabled={deletingId === car.id}
+                                className="h-9 px-3 rounded-xl bg-red-50 text-red-600 font-bold text-xs flex items-center justify-center gap-1 active:scale-98 transition-transform cursor-pointer hover:bg-red-100"
+                                title="Delete"
+                            >
+                                {deletingId === car.id ? (
+                                    <span className="size-4 border-2 border-red-300 border-t-red-500 rounded-full animate-spin" />
+                                ) : (
+                                    <span className="material-symbols-outlined text-base">delete</span>
+                                )}
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
 // ─── Component ───────────────────────────────────────────────────────────────
 const AdminInventory = () => {
     const { hasPermission } = useAuth();
@@ -414,121 +661,142 @@ const AdminInventory = () => {
             </div>
 
             {/* Search + Tabs */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex gap-1 border-b border-slate-200">
+            <div className="space-y-3">
+                {/* Horizontal Status Tabs */}
+                <div className="flex gap-1.5 overflow-x-auto pb-1 border-b border-slate-200 scrollbar-none">
                     {tabs.map(tab => (
-                        <button key={tab} onClick={() => setActiveTab(tab)}
-                            className={`px-4 py-2.5 text-sm font-medium border-b-2 capitalize transition-all ${activeTab === tab ? 'text-primary border-primary font-bold' : 'text-slate-500 border-transparent hover:text-primary'}`}
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            className={`px-3.5 py-2 text-xs font-semibold rounded-xl whitespace-nowrap transition-all shrink-0 cursor-pointer ${
+                                activeTab === tab
+                                    ? 'bg-primary text-white font-bold shadow-xs'
+                                    : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200/80'
+                            }`}
                         >
                             {tab === 'All' ? 'All' : tab.charAt(0).toUpperCase() + tab.slice(1)}{' '}
-                            <span className="text-xs text-slate-400 ml-0.5">({tabCount(tab)})</span>
+                            <span className={`text-[10px] ml-1 px-1.5 py-0.5 rounded-full ${activeTab === tab ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                {tabCount(tab)}
+                            </span>
                         </button>
                     ))}
                 </div>
-                <div className="flex gap-2">
-                    {/* Searchable Dealer Filter */}
-                    <div className="relative z-20" onBlur={e => {
-                        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                            setDealerFilterOpen(false);
-                        }
-                    }}>
-                        <button
-                            type="button"
-                            onClick={() => setDealerFilterOpen(p => !p)}
-                            className="h-10 border border-slate-200 rounded-xl px-3 text-sm text-slate-600 bg-white flex items-center justify-between gap-2 min-w-[160px] max-w-[220px] outline-none focus:ring-2 focus:ring-primary/10"
-                        >
-                            <span className="truncate">
-                                {dealerFilter === 'all' ? 'All Sources' :
-                                 dealerFilter === 'purchased' ? 'Purchased' :
-                                 dealerFilter === 'consignment' ? 'Consignment' :
-                                 dealerFilter === 'dealer' ? 'All Dealer Cars' :
-                                 dealers.find(d => d.id === dealerFilter) ? `${dealers.find(d => d.id === dealerFilter)?.dealer_code} — ${dealers.find(d => d.id === dealerFilter)?.name}` : 'All Sources'}
-                            </span>
-                            <span className="material-symbols-outlined text-[18px] text-slate-400">expand_more</span>
-                        </button>
-                        
-                        {dealerFilterOpen && (
-                            <div className="absolute top-full mt-1 right-0 sm:left-0 sm:right-auto w-64 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden flex flex-col">
-                                <div className="p-2 border-b border-slate-100">
-                                    <div className="relative">
-                                        <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[16px] pointer-events-none">search</span>
-                                        <input
-                                            autoFocus
-                                            type="text"
-                                            placeholder="Search dealers or sources..."
-                                            value={dealerFilterSearch}
-                                            onChange={e => setDealerFilterSearch(e.target.value)}
-                                            className="w-full h-8 bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 text-xs outline-none focus:ring-2 focus:ring-primary/10"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="max-h-60 overflow-y-auto py-1">
-                                    {(() => {
-                                        const q = dealerFilterSearch.toLowerCase().trim();
-                                        const options: Array<{ id: string; label: string; type: string; code?: string; name?: string }> = [
-                                            { id: 'all', label: 'All Sources', type: 'base' },
-                                            { id: 'purchased', label: 'Purchased', type: 'base' },
-                                            { id: 'consignment', label: 'Park & Sell', type: 'base' },
-                                            { id: 'dealer', label: 'All Dealer Cars', type: 'base' },
-                                            ...dealers.map(d => ({ id: d.id, label: `${d.dealer_code} — ${d.name}`, code: d.dealer_code, name: d.name, type: 'dealer' }))
-                                        ];
-                                        
-                                        const filtered = options.filter(o => 
-                                            !q || 
-                                            o.label.toLowerCase().includes(q) || 
-                                            (o.type === 'dealer' && (o.code?.toLowerCase().includes(q) || o.name?.toLowerCase().includes(q)))
-                                        );
 
-                                        if (filtered.length === 0) return <div className="px-3 py-2 text-xs text-slate-400">No results found</div>;
-                                        
-                                        return filtered.map(o => (
-                                            <button
-                                                key={o.id}
-                                                type="button"
-                                                onClick={() => {
-                                                    setDealerFilter(o.id);
-                                                    setDealerFilterOpen(false);
-                                                    setDealerFilterSearch('');
-                                                }}
-                                                className={`w-full text-left px-3 py-2.5 text-sm hover:bg-slate-50 transition-colors flex items-center justify-between ${
-                                                    dealerFilter === o.id ? 'bg-primary/5 text-primary font-semibold' : 'text-slate-700'
-                                                }`}
-                                            >
-                                                <span className="truncate">{o.label}</span>
-                                                {dealerFilter === o.id && <span className="material-symbols-outlined text-primary text-[16px]">check</span>}
-                                            </button>
-                                        ));
-                                    })()}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                    <div className="relative max-w-xs w-full">
+                {/* Filter and Search Bar */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                    {/* Search Input - Full Width on Mobile */}
+                    <div className="relative w-full sm:max-w-xs">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-base">search</span>
                         <input
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
                             placeholder="Search by make, model, reg…"
-                            className="w-full h-10 border border-slate-200 rounded-xl pl-9 pr-4 text-sm outline-none focus:ring-2 focus:ring-primary/10"
+                            className="w-full h-10 border border-slate-200 rounded-xl pl-9 pr-4 text-xs sm:text-sm bg-white outline-none focus:ring-2 focus:ring-primary/10 shadow-xs"
                         />
-                    </div>
-                    {/* Drawer Toggle Button */}
-                    <button
-                        onClick={() => setShowFilterDrawer(true)}
-                        className={`h-10 px-4 rounded-xl text-sm font-semibold flex items-center gap-2 border transition-all shrink-0 cursor-pointer ${
-                            activeFiltersCount > 0
-                                ? 'bg-primary/5 text-primary border-primary hover:bg-primary/10'
-                                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300 shadow-sm'
-                        }`}
-                    >
-                        <span className="material-symbols-outlined text-[18px]">filter_alt</span>
-                        <span>Filters</span>
-                        {activeFiltersCount > 0 && (
-                            <span className="flex items-center justify-center size-5 rounded-full bg-primary text-white text-[10px] font-bold">
-                                {activeFiltersCount}
-                            </span>
+                        {searchQuery && (
+                            <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                <span className="material-symbols-outlined text-sm">close</span>
+                            </button>
                         )}
-                    </button>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        {/* Searchable Dealer Filter */}
+                        <div className="relative z-20 flex-1 sm:flex-initial" onBlur={e => {
+                            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                                setDealerFilterOpen(false);
+                            }
+                        }}>
+                            <button
+                                type="button"
+                                onClick={() => setDealerFilterOpen(p => !p)}
+                                className="h-10 w-full sm:w-auto border border-slate-200 rounded-xl px-3 text-xs sm:text-sm text-slate-600 bg-white flex items-center justify-between gap-2 min-w-[140px] max-w-full sm:max-w-[220px] outline-none focus:ring-2 focus:ring-primary/10 shadow-xs cursor-pointer"
+                            >
+                                <span className="truncate">
+                                    {dealerFilter === 'all' ? 'All Sources' :
+                                     dealerFilter === 'purchased' ? 'Purchased' :
+                                     dealerFilter === 'consignment' ? 'Consignment' :
+                                     dealerFilter === 'dealer' ? 'All Dealer Cars' :
+                                     dealers.find(d => d.id === dealerFilter) ? `${dealers.find(d => d.id === dealerFilter)?.dealer_code} — ${dealers.find(d => d.id === dealerFilter)?.name}` : 'All Sources'}
+                                </span>
+                                <span className="material-symbols-outlined text-[18px] text-slate-400">expand_more</span>
+                            </button>
+                            
+                            {dealerFilterOpen && (
+                                <div className="absolute top-full mt-1 left-0 right-0 sm:right-auto sm:w-64 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden flex flex-col z-30">
+                                    <div className="p-2 border-b border-slate-100">
+                                        <div className="relative">
+                                            <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[16px] pointer-events-none">search</span>
+                                            <input
+                                                autoFocus
+                                                type="text"
+                                                placeholder="Search dealers or sources..."
+                                                value={dealerFilterSearch}
+                                                onChange={e => setDealerFilterSearch(e.target.value)}
+                                                className="w-full h-8 bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 text-xs outline-none focus:ring-2 focus:ring-primary/10"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="max-h-60 overflow-y-auto py-1">
+                                        {(() => {
+                                            const q = dealerFilterSearch.toLowerCase().trim();
+                                            const options: Array<{ id: string; label: string; type: string; code?: string; name?: string }> = [
+                                                { id: 'all', label: 'All Sources', type: 'base' },
+                                                { id: 'purchased', label: 'Purchased', type: 'base' },
+                                                { id: 'consignment', label: 'Park & Sell', type: 'base' },
+                                                { id: 'dealer', label: 'All Dealer Cars', type: 'base' },
+                                                ...dealers.map(d => ({ id: d.id, label: `${d.dealer_code} — ${d.name}`, code: d.dealer_code, name: d.name, type: 'dealer' }))
+                                            ];
+                                            
+                                            const filteredOptions = options.filter(o => 
+                                                !q || 
+                                                o.label.toLowerCase().includes(q) || 
+                                                (o.type === 'dealer' && (o.code?.toLowerCase().includes(q) || o.name?.toLowerCase().includes(q)))
+                                            );
+
+                                            if (filteredOptions.length === 0) return <div className="px-3 py-2 text-xs text-slate-400">No results found</div>;
+                                            
+                                            return filteredOptions.map(o => (
+                                                <button
+                                                    key={o.id}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setDealerFilter(o.id);
+                                                        setDealerFilterOpen(false);
+                                                        setDealerFilterSearch('');
+                                                    }}
+                                                    className={`w-full text-left px-3 py-2.5 text-xs sm:text-sm hover:bg-slate-50 transition-colors flex items-center justify-between ${
+                                                        dealerFilter === o.id ? 'bg-primary/5 text-primary font-semibold' : 'text-slate-700'
+                                                    }`}
+                                                >
+                                                    <span className="truncate">{o.label}</span>
+                                                    {dealerFilter === o.id && <span className="material-symbols-outlined text-primary text-[16px]">check</span>}
+                                                </button>
+                                            ));
+                                        })()}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Drawer Toggle Button */}
+                        <button
+                            onClick={() => setShowFilterDrawer(true)}
+                            className={`h-10 px-3.5 sm:px-4 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 sm:gap-2 border transition-all shrink-0 cursor-pointer ${
+                                activeFiltersCount > 0
+                                    ? 'bg-primary/5 text-primary border-primary hover:bg-primary/10'
+                                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300 shadow-xs'
+                            }`}
+                        >
+                            <span className="material-symbols-outlined text-[18px]">filter_alt</span>
+                            <span>Filters</span>
+                            {activeFiltersCount > 0 && (
+                                <span className="flex items-center justify-center size-5 rounded-full bg-primary text-white text-[10px] font-bold">
+                                    {activeFiltersCount}
+                                </span>
+                            )}
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -610,7 +878,7 @@ const AdminInventory = () => {
                     ))}
 
                     {priceMin && (
-                        <span className="inline-flex items-center gap-1 bg-white text-slate-700 text-xs font-semibold px-2.5 py-1 rounded-lg border border-slate-200 shadow-sm">
+                        <span key="min" className="inline-flex items-center gap-1 bg-white text-slate-700 text-xs font-semibold px-2.5 py-1 rounded-lg border border-slate-200 shadow-sm">
                             Min: ₹{priceMin}L
                             <button onClick={() => handlePriceChange('', priceMax)} className="hover:bg-slate-100 rounded-full p-0.5 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors ml-0.5">
                                 <span className="material-symbols-outlined text-sm">close</span>
@@ -619,7 +887,7 @@ const AdminInventory = () => {
                     )}
 
                     {priceMax && (
-                        <span className="inline-flex items-center gap-1 bg-white text-slate-700 text-xs font-semibold px-2.5 py-1 rounded-lg border border-slate-200 shadow-sm">
+                        <span key="max" className="inline-flex items-center gap-1 bg-white text-slate-700 text-xs font-semibold px-2.5 py-1 rounded-lg border border-slate-200 shadow-sm">
                             Max: ₹{priceMax}L
                             <button onClick={() => handlePriceChange(priceMin, '')} className="hover:bg-slate-100 rounded-full p-0.5 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors ml-0.5">
                                 <span className="material-symbols-outlined text-sm">close</span>
@@ -636,9 +904,90 @@ const AdminInventory = () => {
                 </div>
             )}
 
+            {/* ── Mobile View (< 640px): Tap-to-Expand Cards ── */}
+            <div className="sm:hidden space-y-3">
+                {canManage && filtered.length > 0 && (
+                    <div className="flex items-center justify-between bg-white px-4 py-2.5 rounded-xl border border-slate-100 shadow-xs">
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer">
+                            <input 
+                                type="checkbox"
+                                checked={selectedCarIds.length > 0 && selectedCarIds.length === filtered.length}
+                                onChange={(e) => {
+                                    if (e.target.checked) {
+                                        setSelectedCarIds(filtered.map(c => c.id));
+                                    } else {
+                                        setSelectedCarIds([]);
+                                    }
+                                }}
+                                className="rounded border-slate-300 text-primary focus:ring-primary size-4 cursor-pointer"
+                            />
+                            <span>Select All ({filtered.length})</span>
+                        </label>
+                        {selectedCarIds.length > 0 && (
+                            <span className="text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                                {selectedCarIds.length} Selected
+                            </span>
+                        )}
+                    </div>
+                )}
 
-            {/* Table */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-[var(--shadow-card)] overflow-hidden">
+                {loading ? (
+                    [...Array(3)].map((_, i) => (
+                        <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-xs space-y-3 animate-pulse">
+                            <div className="flex gap-3">
+                                <div className="size-16 rounded-xl bg-slate-100 shrink-0" />
+                                <div className="flex-1 space-y-2">
+                                    <div className="h-4 bg-slate-100 rounded w-3/4" />
+                                    <div className="h-3 bg-slate-100 rounded w-1/2" />
+                                </div>
+                            </div>
+                        </div>
+                    ))
+                ) : filtered.length === 0 ? (
+                    <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center shadow-xs">
+                        <span className="material-symbols-outlined text-4xl text-slate-200 mb-2 block">directions_car</span>
+                        <p className="text-slate-500 font-bold text-sm">
+                            {searchQuery ? `No vehicles match "${searchQuery}"` : 'No vehicles found'}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-1">Try resetting filters or searching with another term.</p>
+                        {canManage && (
+                            <Link to="/admin/inventory/new" className="inline-flex items-center gap-1 mt-3 px-4 py-2 bg-accent text-primary font-bold rounded-xl text-xs shadow-xs">
+                                <span className="material-symbols-outlined text-sm">add</span> Add Car
+                            </Link>
+                        )}
+                    </div>
+                ) : (
+                    filtered.map(car => {
+                        const isSelected = selectedCarIds.includes(car.id);
+                        return (
+                            <MobileCarCard
+                                key={car.id}
+                                car={car}
+                                isSelected={isSelected}
+                                canManage={canManage}
+                                searchQuery={searchQuery}
+                                dealers={dealers}
+                                shareCount={shareCounts[car.id] || 0}
+                                deletingId={deletingId}
+                                onToggleSelect={() => {
+                                    if (isSelected) {
+                                        setSelectedCarIds(selectedCarIds.filter(id => id !== car.id));
+                                    } else {
+                                        setSelectedCarIds([...selectedCarIds, car.id]);
+                                    }
+                                }}
+                                onStatusChange={handleStatusChange}
+                                onShare={() => setShareCarId(car.id)}
+                                onDownload={() => setDownloadCarId(car.id)}
+                                onDelete={() => handleDelete(car.id, car.make, car.model)}
+                            />
+                        );
+                    })
+                )}
+            </div>
+
+            {/* ── Desktop View (≥ 640px): Full Table ── */}
+            <div className="hidden sm:block bg-white rounded-2xl border border-slate-100 shadow-[var(--shadow-card)] overflow-hidden">
                 <div className="overflow-x-auto relative">
                 <table className="w-full min-w-[750px]">
                     <thead>
@@ -850,22 +1199,23 @@ const AdminInventory = () => {
 
             {/* Sticky Shared Action Bar */}
             {selectedCarIds.length > 0 && (
-                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900 text-white rounded-2xl px-6 py-4 flex items-center gap-6 shadow-2xl border border-slate-800 animate-slide-up">
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900 text-white rounded-2xl px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between sm:justify-start gap-3 sm:gap-6 shadow-2xl border border-slate-800 animate-slide-up w-[calc(100%-2rem)] sm:w-auto max-w-lg">
                     <span className="text-xs sm:text-sm font-semibold whitespace-nowrap">
-                        {selectedCarIds.length} {selectedCarIds.length === 1 ? 'car' : 'cars'} selected
+                        {selectedCarIds.length} {selectedCarIds.length === 1 ? 'car' : 'cars'}
                     </span>
-                    <div className="h-4 w-px bg-slate-700 shrink-0" />
+                    <div className="hidden sm:block h-4 w-px bg-slate-700 shrink-0" />
                     <button
                         onClick={() => setIsSharedModalOpen(true)}
-                        className="flex items-center gap-2 h-9 px-4 bg-accent text-primary rounded-xl text-xs font-bold hover:bg-accent/80 transition-colors shrink-0"
+                        className="flex items-center gap-1.5 sm:gap-2 h-9 px-3 sm:px-4 bg-accent text-primary rounded-xl text-xs font-bold hover:bg-accent/80 transition-colors shrink-0"
                     >
-                        <span className="material-symbols-outlined text-sm">share</span> Generate Shared Catalog
+                        <span className="material-symbols-outlined text-sm">share</span> 
+                        <span>Catalog</span>
                     </button>
                     <button
                         onClick={() => setSelectedCarIds([])}
                         className="text-xs text-slate-400 hover:text-white font-semibold whitespace-nowrap shrink-0"
                     >
-                        Deselect All
+                        Clear
                     </button>
                 </div>
             )}

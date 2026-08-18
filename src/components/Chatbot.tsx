@@ -273,16 +273,16 @@ Conversation Guideline:
     };
 
     return (
-        <div className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-50 flex flex-col items-end">
+        <div className="fixed bottom-20 lg:bottom-6 right-3 sm:right-6 z-40 flex flex-col items-end">
             {/* Chat Window Panel */}
             <AnimatePresence>
                 {isOpen && (
                     <motion.div
-                        initial={{ opacity: 0, y: 50, scale: 0.9 }}
+                        initial={{ opacity: 0, y: 30, scale: 0.92 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 50, scale: 0.9 }}
+                        exit={{ opacity: 0, y: 30, scale: 0.92 }}
                         transition={{ duration: 0.25, ease: 'easeOut' }}
-                        className="w-[92vw] sm:w-[380px] h-[500px] bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl border border-slate-100 flex flex-col overflow-hidden mb-4"
+                        className="w-[94vw] sm:w-[380px] max-h-[80vh] h-[480px] bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-slate-100 flex flex-col overflow-hidden mb-3.5"
                     >
                         {/* Header */}
                         <div className="bg-gradient-to-r from-primary to-primary-light p-4 text-white flex items-center justify-between shrink-0 shadow-md">
@@ -291,7 +291,7 @@ Conversation Guideline:
                                     <span className="material-symbols-outlined text-accent text-lg">smart_toy</span>
                                 </div>
                                 <div>
-                                    <h3 className="text-sm font-bold font-display leading-tight">SS Motors Assistant</h3>
+                                    <h3 className="text-sm font-bold font-display leading-tight">Maharashtra Motors Assistant</h3>
                                     <p className="text-[10px] text-green-300 flex items-center gap-1 mt-0.5">
                                         <span className="inline-block size-1.5 rounded-full bg-green-400 animate-ping" />
                                         {isAiOnline ? 'Online (AI Active)' : 'Online (Direct Assist)'}

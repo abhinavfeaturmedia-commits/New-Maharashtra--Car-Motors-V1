@@ -74,6 +74,301 @@ const formatQualityEmoji = (val: string | null | undefined) => {
     }
 };
 
+const formatLabel = (type: string) => {
+    switch (type) {
+        case 'contact': return 'General Contact';
+        case 'sell_car': return 'Sell Car';
+        case 'test_drive': return 'Test Drive';
+        case 'insurance': return 'Insurance';
+        case 'finance': return 'Finance';
+        case 'car_service': return 'Car Service';
+        case 'new': return 'New';
+        case 'contacted': return 'Contacted';
+        case 'negotiation': return 'Negotiation';
+        case 'closed_won': return 'Closed Won';
+        case 'closed_lost': return 'Closed Lost';
+        default: return type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
+};
+
+// ─── Mobile Lead Card Component ─────────────────────────────────────────────
+interface MobileLeadCardProps {
+    lead: Lead;
+    isSelected: boolean;
+    isAdmin: boolean;
+    currentUserId: string | undefined;
+    searchQuery: string;
+    staffMembers: StaffProfile[];
+    interestCount: number;
+    leadCars: Array<{ make: string; model: string; registration_no: string; dealer_code?: string; dealer_name?: string; notes?: string }>;
+    onToggleSelect: () => void;
+    onStatusChange: (id: string, newStatus: string) => void;
+    onAssignStaff: (id: string, staffId: string | null) => void;
+    onDelete: (id: string) => void;
+    onNavigate: () => void;
+}
+
+const MobileLeadCard: React.FC<MobileLeadCardProps> = ({
+    lead,
+    isSelected,
+    isAdmin,
+    currentUserId,
+    searchQuery,
+    staffMembers,
+    interestCount,
+    leadCars,
+    onToggleSelect,
+    onStatusChange,
+    onAssignStaff,
+    onDelete,
+    onNavigate,
+}) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+    const assignedName = staffMembers.find(s => s.id === lead.assigned_to)?.full_name || (lead.assigned_to ? 'Assigned' : 'Unassigned');
+
+    const formattedDate = lead.lead_date
+        ? new Date(lead.lead_date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+        : new Date(lead.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+
+    return (
+        <div className={`bg-white rounded-2xl border transition-all shadow-xs overflow-hidden ${
+            isSelected ? 'border-primary/40 bg-primary/[0.02]' : 'border-slate-100 hover:border-slate-200'
+        }`}>
+            {/* Top Summary Header */}
+            <div className="p-3.5 space-y-2.5">
+                <div className="flex items-start gap-3">
+                    {/* Admin Checkbox */}
+                    {isAdmin && (
+                        <div className="pt-1" onClick={e => e.stopPropagation()}>
+                            <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={onToggleSelect}
+                                className="rounded border-slate-300 text-primary focus:ring-primary size-4.5 cursor-pointer"
+                            />
+                        </div>
+                    )}
+
+                    {/* Customer Avatar */}
+                    <div 
+                        onClick={() => setIsExpanded(v => !v)}
+                        className="size-11 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/20 text-primary flex items-center justify-center font-black text-sm shrink-0 cursor-pointer shadow-xs"
+                    >
+                        {lead.full_name.charAt(0).toUpperCase()}
+                    </div>
+
+                    {/* Customer Name & Phone */}
+                    <div 
+                        onClick={() => setIsExpanded(v => !v)}
+                        className="flex-1 min-w-0 cursor-pointer"
+                    >
+                        <div className="flex items-start justify-between gap-1">
+                            <h3 className="text-sm font-bold text-slate-900 truncate leading-tight">
+                                <HighlightText text={lead.full_name} highlight={searchQuery} />
+                            </h3>
+                            <span className="text-[10px] font-bold text-slate-400 shrink-0">
+                                {formattedDate}
+                            </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-xs font-semibold text-slate-500 font-mono">
+                                <HighlightText text={lead.phone} highlight={searchQuery} />
+                            </span>
+                        </div>
+
+                        {/* Badges strip: Type + Quality */}
+                        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                            <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md">
+                                {formatLabel(lead.type)}
+                            </span>
+                            {lead.lead_quality && (
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200/60 rounded-md">
+                                    {formatQualityEmoji(lead.lead_quality)}
+                                </span>
+                            )}
+                            {lead.type === 'sell_car' && (lead.car_make || lead.car_model) && (
+                                <span className="text-[10px] font-semibold text-primary bg-primary/5 px-1.5 py-0.5 rounded">
+                                    {lead.car_make} {lead.car_model} {lead.car_year ? `(${lead.car_year})` : ''}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Inquiry Preview Snippet */}
+                {lead.message && (
+                    <div 
+                        onClick={() => setIsExpanded(v => !v)}
+                        className="bg-slate-50/70 p-2 rounded-xl text-xs text-slate-600 line-clamp-2 cursor-pointer border border-slate-100"
+                    >
+                        <span className="font-bold text-slate-500 text-[10px] uppercase block mb-0.5">Inquiry Details</span>
+                        <HighlightText text={lead.message} highlight={searchQuery} />
+                    </div>
+                )}
+
+                {/* Bottom Glanceable Strip: Assigned + Status + Chevron */}
+                <div 
+                    onClick={() => setIsExpanded(v => !v)}
+                    className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 text-[11px] text-slate-500 cursor-pointer"
+                >
+                    <div className="flex items-center gap-1.5 truncate">
+                        <span className="material-symbols-outlined text-[14px] text-slate-400">person</span>
+                        <span className={`font-semibold truncate ${lead.assigned_to ? 'text-slate-700' : 'text-red-600 italic'}`}>
+                            {assignedName}
+                        </span>
+                        {interestCount > 0 && (
+                            <span className="bg-blue-50 text-blue-600 text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1">
+                                {interestCount} car{interestCount > 1 ? 's' : ''}
+                            </span>
+                        )}
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${statusColors[lead.status] || 'bg-slate-100 text-slate-600'}`}>
+                            {lead.status.replace('_', ' ')}
+                        </span>
+                        <span className="material-symbols-outlined text-base text-slate-400">
+                            {isExpanded ? 'expand_less' : 'expand_more'}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Expanded Content Drawer */}
+            {isExpanded && (
+                <div className="bg-slate-50/80 p-3.5 border-t border-slate-100 space-y-3 animate-in fade-in duration-150">
+                    {/* Status & Staff Assignment Selectors */}
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                        {/* Status Select */}
+                        <div className="bg-white p-2.5 rounded-xl border border-slate-200/80">
+                            <span className="text-[10px] text-slate-400 block font-semibold uppercase">Lead Status</span>
+                            <select
+                                value={lead.status}
+                                onChange={e => onStatusChange(lead.id, e.target.value)}
+                                className={`w-full mt-1 text-xs font-bold px-2 py-1 rounded-lg border-0 outline-none cursor-pointer ${statusColors[lead.status] || 'bg-slate-100 text-slate-600'}`}
+                            >
+                                <option value="new">New</option>
+                                <option value="contacted">Contacted</option>
+                                <option value="negotiation">Negotiation</option>
+                                <option value="closed_won">Closed (Won)</option>
+                                <option value="closed_lost">Closed (Lost)</option>
+                            </select>
+                        </div>
+
+                        {/* Assign Staff Select (if Admin) or Read-only info */}
+                        <div className="bg-white p-2.5 rounded-xl border border-slate-200/80">
+                            <span className="text-[10px] text-slate-400 block font-semibold uppercase">Assigned Staff</span>
+                            {isAdmin ? (
+                                <select
+                                    value={lead.assigned_to ?? ''}
+                                    onChange={e => onAssignStaff(lead.id, e.target.value || null)}
+                                    className="w-full mt-1 text-xs font-bold px-2 py-1 rounded-lg border border-slate-200 outline-none cursor-pointer bg-slate-50 text-slate-700"
+                                >
+                                    <option value="">Unassigned</option>
+                                    {staffMembers.map(s => (
+                                        <option key={s.id} value={s.id}>{s.full_name || 'Staff'}</option>
+                                    ))}
+                                </select>
+                            ) : (
+                                <p className="text-xs font-bold text-slate-700 mt-1 truncate">
+                                    {assignedName}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Metadata & Interested Cars */}
+                    <div className="bg-white p-3 rounded-xl border border-slate-200/80 text-xs space-y-2">
+                        <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600">
+                            <div>
+                                <span className="text-slate-400 text-[10px] block uppercase">Source</span>
+                                <span className="font-semibold">{lead.source || 'Website'}</span>
+                            </div>
+                            {lead.budget && (
+                                <div>
+                                    <span className="text-slate-400 text-[10px] block uppercase">Budget</span>
+                                    <span className="font-semibold text-primary">{lead.budget}</span>
+                                </div>
+                            )}
+                            {lead.email && (
+                                <div className="col-span-2 truncate">
+                                    <span className="text-slate-400 text-[10px] block uppercase">Email</span>
+                                    <span className="font-medium text-slate-700">{lead.email}</span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Interested Vehicles list */}
+                        {leadCars.length > 0 && (
+                            <div className="border-t border-slate-100 pt-2 space-y-1">
+                                <span className="text-[10px] text-slate-400 font-bold uppercase block">Vehicles of Interest</span>
+                                {leadCars.map((car, idx) => (
+                                    <div key={idx} className="bg-blue-50/60 border border-blue-100/60 p-2 rounded-lg text-xs">
+                                        <p className="font-bold text-blue-900">
+                                            {car.make.toUpperCase()} {car.model.toUpperCase()}
+                                            {car.registration_no && <span className="text-blue-600 font-mono ml-1 font-normal">({car.registration_no})</span>}
+                                        </p>
+                                        {car.notes && <p className="text-[10px] text-slate-500 mt-0.5">{car.notes}</p>}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* 1-Tap Touch Action Bar */}
+                    <div className="flex items-center gap-1.5 pt-1">
+                        {/* Call Button */}
+                        <a
+                            href={`tel:${lead.phone}`}
+                            className="flex-1 h-9 rounded-xl bg-blue-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-98 transition-transform"
+                            title="Call Customer"
+                        >
+                            <span className="material-symbols-outlined text-base">call</span>
+                            <span>Call</span>
+                        </a>
+
+                        {/* WhatsApp Button */}
+                        <a
+                            href={`https://wa.me/${lead.phone.replace(/[^0-9]/g, '')}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex-1 h-9 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-98 transition-transform"
+                            title="WhatsApp Customer"
+                        >
+                            <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white shrink-0">
+                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
+                            </svg>
+                            <span>WhatsApp</span>
+                        </a>
+
+                        {/* Full Dossier Button */}
+                        <button
+                            onClick={onNavigate}
+                            className="h-9 px-3 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center gap-1 active:scale-98 transition-transform cursor-pointer"
+                            title="Open Dossier"
+                        >
+                            <span className="material-symbols-outlined text-base text-slate-600">visibility</span>
+                            <span>Dossier</span>
+                        </button>
+
+                        {/* Delete Button */}
+                        {(isAdmin || lead.assigned_to === currentUserId) && (
+                            <button
+                                onClick={() => onDelete(lead.id)}
+                                className="h-9 px-3 rounded-xl bg-red-50 text-red-600 font-bold text-xs flex items-center justify-center gap-1 active:scale-98 transition-transform cursor-pointer hover:bg-red-100"
+                                title="Delete Lead"
+                            >
+                                <span className="material-symbols-outlined text-base">delete</span>
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
 // ─── Component ─────────────────────────────────────────────────────────────────
 
 const AdminLeads = () => {
@@ -827,38 +1122,38 @@ const AdminLeads = () => {
             </div>
 
             {/* Staff Workload Dashboard */}
-            <div className="flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 shadow-sm">
-                <span className="material-symbols-outlined text-slate-400 text-sm">group</span>
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mr-2">Workload:</span>
+            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 shadow-sm overflow-x-auto scrollbar-none">
+                <span className="material-symbols-outlined text-slate-400 text-sm shrink-0">group</span>
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mr-1 shrink-0">Workload:</span>
                 {staffMembers.map(s => {
                     const count = leads.filter(l => l.assigned_to === s.id).length;
                     return (
-                        <div key={s.id} className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2 py-1 shadow-sm cursor-pointer hover:border-primary transition-colors" onClick={() => { setActiveStaffFilter(s.id); setCurrentPage(1); setSelectedLeads([]); }} title={`Filter by ${s.full_name}`}>
-                            <span className="text-xs font-bold text-primary">{s.full_name || 'Unknown'}</span>
+                        <div key={s.id} className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1 shadow-xs cursor-pointer hover:border-primary transition-colors shrink-0" onClick={() => { setActiveStaffFilter(s.id); setCurrentPage(1); setSelectedLeads([]); }} title={`Filter by ${s.full_name}`}>
+                            <span className="text-xs font-bold text-primary whitespace-nowrap">{s.full_name || 'Unknown'}</span>
                             <span className="text-[10px] font-black bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">{count}</span>
                         </div>
                     );
                 })}
-                <div className="flex items-center gap-1.5 bg-white border border-red-100 rounded-lg px-2 py-1 shadow-sm cursor-pointer hover:border-red-300 transition-colors" onClick={() => { setActiveStaffFilter('Unassigned'); setCurrentPage(1); setSelectedLeads([]); }} title="Filter by Unassigned">
-                    <span className="text-xs font-bold text-red-600">Unassigned</span>
+                <div className="flex items-center gap-1.5 bg-white border border-red-100 rounded-lg px-2.5 py-1 shadow-xs cursor-pointer hover:border-red-300 transition-colors shrink-0" onClick={() => { setActiveStaffFilter('Unassigned'); setCurrentPage(1); setSelectedLeads([]); }} title="Filter by Unassigned">
+                    <span className="text-xs font-bold text-red-600 whitespace-nowrap">Unassigned</span>
                     <span className="text-[10px] font-black bg-red-50 text-red-600 px-1.5 py-0.5 rounded">{leads.filter(l => !l.assigned_to).length}</span>
                 </div>
             </div>
 
             {/* Tabs & Bulk Actions */}
-            <div className="flex flex-col gap-4 border-b border-slate-200 pb-2">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div className="flex gap-1 overflow-x-auto pb-px w-full sm:w-auto">
+            <div className="flex flex-col gap-3 border-b border-slate-200 pb-2">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div className="flex gap-1 overflow-x-auto pb-1 w-full sm:w-auto scrollbar-none">
                         {filterTabs.map(tab => (
-                            <button key={tab} onClick={() => { setActiveFilter(tab); setCurrentPage(1); setSelectedLeads([]); }} className={`px-5 py-3 text-sm font-medium whitespace-nowrap transition-all border-b-2 ${activeFilter === tab ? 'text-primary border-primary font-bold' : 'text-slate-500 border-transparent hover:text-primary'}`}>
-                                {formatLabel(tab)} <span className="text-xs text-slate-400 ml-1">({tabCount(tab)})</span>
+                            <button key={tab} onClick={() => { setActiveFilter(tab); setCurrentPage(1); setSelectedLeads([]); }} className={`px-4 py-2 text-xs font-semibold whitespace-nowrap transition-all rounded-xl cursor-pointer shrink-0 ${activeFilter === tab ? 'bg-primary text-white font-bold shadow-xs' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200/80'}`}>
+                                {formatLabel(tab)} <span className={`text-[10px] ml-1 px-1.5 py-0.5 rounded-full ${activeFilter === tab ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>{tabCount(tab)}</span>
                             </button>
                         ))}
                     </div>
                     {selectedLeads.length > 0 && isAdmin && (
-                        <div className="flex items-center gap-3">
-                            <span className="text-sm font-bold text-primary">{selectedLeads.length} Selected</span>
-                            <button onClick={requestDeleteSelected} className="h-8 px-3 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-lg text-xs flex items-center gap-1 transition-colors">
+                        <div className="flex items-center justify-between w-full sm:w-auto bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 gap-3">
+                            <span className="text-xs font-bold text-primary">{selectedLeads.length} Selected</span>
+                            <button onClick={requestDeleteSelected} className="h-8 px-3 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-lg text-xs flex items-center gap-1 transition-colors cursor-pointer">
                                 <span className="material-symbols-outlined text-sm">delete</span> Delete
                             </button>
                         </div>
@@ -866,40 +1161,38 @@ const AdminLeads = () => {
                 </div>
 
                 {/* Status sub-tabs & Staff Filter */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full">
-                    <div className="flex gap-2 overflow-x-auto pb-2 w-full sm:w-auto">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
+                    <div className="flex gap-1.5 overflow-x-auto pb-1 w-full sm:w-auto scrollbar-none">
                         {statusTabs.map(status => (
                             <button
                                 key={status}
                                 onClick={() => { setActiveStatusFilter(status); setCurrentPage(1); setSelectedLeads([]); }}
-                                className={`px-3 py-1.5 text-xs font-semibold rounded-lg whitespace-nowrap transition-all border ${activeStatusFilter === status ? 'bg-primary text-white border-primary' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'}`}
+                                className={`px-3 py-1.5 text-xs font-semibold rounded-lg whitespace-nowrap transition-all border shrink-0 cursor-pointer ${activeStatusFilter === status ? 'bg-primary text-white border-primary' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'}`}
                             >
-                                {status === 'All Statuses' ? 'All Statuses' : formatLabel(status)} <span className="opacity-70 ml-1">({statusCount(status)})</span>
+                                {status === 'All Statuses' ? 'All Statuses' : formatLabel(status)} <span className="opacity-70 ml-1 text-[10px]">({statusCount(status)})</span>
                             </button>
                         ))}
                     </div>
                     
-                    {/* Staff Filter Dropdown */}
-                    <div className="shrink-0 mb-2 sm:mb-0">
+                    <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto">
+                        {/* Staff Filter Dropdown */}
                         <select
                             value={activeStaffFilter}
                             onChange={(e) => { setActiveStaffFilter(e.target.value); setCurrentPage(1); setSelectedLeads([]); }}
-                            className="h-9 px-3 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-primary/20 bg-slate-50 hover:bg-slate-100 transition-colors"
+                            className="h-9 px-2.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-primary/20 bg-white hover:bg-slate-50 transition-colors cursor-pointer w-full"
                         >
                             <option value="All Staff">All Staff</option>
                             <option value="Unassigned">Unassigned</option>
                             {staffMembers.map(s => (
-                                <option key={s.id} value={s.id}>{s.full_name || 'Unknown Staff'}</option>
+                                <option key={s.id} value={s.id}>{s.full_name || 'Staff'}</option>
                             ))}
                         </select>
-                    </div>
 
-                    {/* Quality Filter Dropdown */}
-                    <div className="shrink-0 mb-2 sm:mb-0">
+                        {/* Quality Filter Dropdown */}
                         <select
                             value={activeQualityFilter}
                             onChange={(e) => { setActiveQualityFilter(e.target.value); setCurrentPage(1); setSelectedLeads([]); }}
-                            className="h-9 px-3 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-primary/20 bg-slate-50 hover:bg-slate-100 transition-colors"
+                            className="h-9 px-2.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-primary/20 bg-white hover:bg-slate-50 transition-colors cursor-pointer w-full"
                         >
                             {qualityTabs.map(q => (
                                 <option key={q} value={q}>{q === 'All Types' ? 'All Lead Types' : formatQualityEmoji(q)}</option>
@@ -909,8 +1202,73 @@ const AdminLeads = () => {
                 </div>
             </div>
 
-            {/* Leads Table */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-[var(--shadow-card)] overflow-x-auto min-h-[400px]">
+            {/* ── Mobile View (< 640px): Tap-to-Expand Cards ── */}
+            <div className="sm:hidden space-y-3">
+                {isAdmin && paginatedLeads.length > 0 && (
+                    <div className="flex items-center justify-between bg-white px-4 py-2.5 rounded-xl border border-slate-100 shadow-xs">
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer">
+                            <input 
+                                type="checkbox"
+                                checked={paginatedLeads.length > 0 && selectedLeads.length === paginatedLeads.length}
+                                onChange={toggleSelectAll}
+                                className="rounded border-slate-300 text-primary focus:ring-primary size-4 cursor-pointer"
+                            />
+                            <span>Select All ({paginatedLeads.length})</span>
+                        </label>
+                        {selectedLeads.length > 0 && (
+                            <span className="text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                                {selectedLeads.length} Selected
+                            </span>
+                        )}
+                    </div>
+                )}
+
+                {loading ? (
+                    [...Array(3)].map((_, i) => (
+                        <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-xs space-y-3 animate-pulse">
+                            <div className="flex gap-3">
+                                <div className="size-11 rounded-2xl bg-slate-100 shrink-0" />
+                                <div className="flex-1 space-y-2">
+                                    <div className="h-4 bg-slate-100 rounded w-3/4" />
+                                    <div className="h-3 bg-slate-100 rounded w-1/2" />
+                                </div>
+                            </div>
+                        </div>
+                    ))
+                ) : paginatedLeads.length === 0 ? (
+                    <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center shadow-xs">
+                        <span className="material-symbols-outlined text-4xl text-slate-200 mb-2 block">people</span>
+                        <p className="text-slate-500 font-bold text-sm">
+                            {searchQuery ? `No leads match "${searchQuery}"` : 'No leads found'}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-1">
+                            {!isAdmin ? 'No leads are assigned to you yet.' : 'Try adjusting filters or search.'}
+                        </p>
+                    </div>
+                ) : (
+                    paginatedLeads.map(lead => (
+                        <MobileLeadCard
+                            key={lead.id}
+                            lead={lead}
+                            isSelected={selectedLeads.includes(lead.id)}
+                            isAdmin={isAdmin}
+                            currentUserId={user?.id}
+                            searchQuery={searchQuery}
+                            staffMembers={staffMembers}
+                            interestCount={interestCounts[lead.id] ?? 0}
+                            leadCars={leadCarMap[lead.id] || []}
+                            onToggleSelect={() => toggleSelectLead(lead.id)}
+                            onStatusChange={updateLeadStatus}
+                            onAssignStaff={updateLeadAssignment}
+                            onDelete={requestDeleteLead}
+                            onNavigate={() => navigate(`/admin/leads/${lead.id}${searchQuery.trim() ? `?search=${encodeURIComponent(searchQuery.trim())}` : ''}`)}
+                        />
+                    ))
+                )}
+            </div>
+
+            {/* ── Desktop View (≥ 640px): Full Table ── */}
+            <div className="hidden sm:block bg-white rounded-2xl border border-slate-100 shadow-[var(--shadow-card)] overflow-x-auto min-h-[400px]">
                 <table className="w-full min-w-[1100px]">
                     <thead>
                         <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-wide border-b border-slate-100 bg-slate-50/50">

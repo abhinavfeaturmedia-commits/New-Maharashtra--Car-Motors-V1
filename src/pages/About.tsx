@@ -1,16 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Phone, Mail, Award, Users, Car, Clock } from 'lucide-react';
+import { MapPin, Phone, Mail, Clock } from 'lucide-react';
 
 const STATS = [
     { value: '3203+', label: 'Cars Sold', icon: 'sell' },
     { value: '13+', label: 'Years in Business', icon: 'calendar_month' },
     { value: '4125+', label: 'Happy Customers', icon: 'sentiment_very_satisfied' },
     { value: '120pt', label: 'Quality Checklist', icon: 'checklist' },
-];
-
-const TEAM = [
-    { name: 'Amarsinh Malave', role: 'CEO & Founder', initials: 'AM', color: 'from-primary to-primary-light' },
 ];
 
 const VALUES = [
@@ -39,91 +35,81 @@ const About = () => {
                         <span className="inline-flex items-center gap-2 text-xs font-bold tracking-widest uppercase text-accent mb-4">
                             <span className="material-symbols-outlined text-sm">stars</span> Pune's Trusted Dealership
                         </span>
-                        <h1 className="text-4xl md:text-5xl font-black font-display leading-tight mb-6">
-                            Built on Trust,<br />Driven by Passion
+                        <h1 className="text-4xl sm:text-5xl font-black font-display leading-tight mb-6">
+                            Redefining Pre-Owned Car Buying in Pune
                         </h1>
-                        <p className="text-white/70 text-lg leading-relaxed max-w-xl">
-                            Since 2001, New Maharashtra Motors has been Pune's go-to destination for quality pre-owned vehicles, genuine spare parts, and comprehensive automotive services. We combine honest dealing with expert vehicle knowledge.
+                        <p className="text-white/70 text-lg leading-relaxed">
+                            Since 2011, New Maharashtra Motors has helped thousands of families find reliable, verified, and transparently priced pre-owned cars.
                         </p>
                     </div>
                 </div>
             </section>
 
             {/* Stats */}
-            <section className="py-12 border-b border-slate-100 bg-white">
+            <section className="bg-white py-12 border-b border-slate-100">
                 <div className="container-main">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                        {STATS.map(stat => (
-                            <div key={stat.label} className="text-center p-6 rounded-2xl bg-slate-50 border border-slate-100">
-                                <span className="material-symbols-outlined text-accent text-3xl mb-2 block">{stat.icon}</span>
-                                <p className="text-3xl font-black text-primary font-display mb-1 tabular-nums">{stat.value}</p>
-                                <p className="text-sm text-slate-500">{stat.label}</p>
+                        {STATS.map(s => (
+                            <div key={s.label} className="text-center p-4">
+                                <div className="size-12 bg-accent/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                                    <span className="material-symbols-outlined text-accent text-2xl">{s.icon}</span>
+                                </div>
+                                <p className="text-3xl font-black text-primary font-display">{s.value}</p>
+                                <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mt-1">{s.label}</p>
                             </div>
                         ))}
                     </div>
                 </div>
             </section>
 
-            {/* Our Story */}
+            {/* Story */}
             <section className="py-16 bg-white">
                 <div className="container-main">
                     <div className="grid lg:grid-cols-2 gap-12 items-center">
                         <div>
                             <span className="text-xs font-bold text-accent uppercase tracking-widest flex items-center gap-2 mb-3">
-                                <span className="material-symbols-outlined text-sm">history</span> Our Story
+                                <span className="material-symbols-outlined text-sm">auto_stories</span> Our Story
                             </span>
-                            <h2 className="text-3xl font-black text-primary font-display mb-6">From a Small Lot to Pune's Most Trusted Name</h2>
-                            <div className="space-y-4 text-slate-600 leading-relaxed">
+                            <h2 className="text-3xl font-black text-primary font-display mb-6">
+                                13+ Years of Building Trust, One Car at a Time
+                            </h2>
+                            <div className="space-y-4 text-slate-600 leading-relaxed text-sm">
                                 <p>
-                                    New Maharashtra Motors was founded in 2001 with a simple mission: to make buying and servicing vehicles as trustworthy and transparent as buying a new one.
+                                    Founded in 2011 in Kasarwadi, Pimpri-Chinchwad, New Maharashtra Motors began with a single mission: to eliminate the ambiguity and mistrust commonly associated with the pre-owned automobile industry in India.
                                 </p>
                                 <p>
-                                    In our early years, we expanded from genuine automotive spare parts distribution into full-scale pre-owned vehicle sales and servicing. Today, we're proud to serve thousands of satisfied customers across Pune and the surrounding region.
+                                    Over the past 13 years, we have grown from a modest dealership into one of Pune's most recommended used car showrooms. Our secret? A strict 120-point inspection protocol, complete paper transparency, and a relentless focus on customer satisfaction after the keys are handed over.
                                 </p>
                                 <p>
-                                    Every car in our inventory undergoes a rigorous 120-point inspection. We never sell cars or parts we wouldn't feel comfortable providing to our own family members. That's the New Maharashtra Motors promise.
+                                    Whether you're buying your first hatchback, upgrading to an SUV for the family, or selling your current vehicle at fair market value — we ensure every interaction is straightforward, dignified, and honest.
                                 </p>
-                            </div>
-                            <div className="mt-8 flex flex-wrap gap-3">
-                                <Link to="/inventory" className="h-12 px-6 bg-primary text-white font-bold rounded-xl hover:bg-primary-light transition-colors text-sm flex items-center gap-2 shadow-sm">
-                                    <span className="material-symbols-outlined text-lg">directions_car</span> View Our Inventory
-                                </Link>
-                                <Link to="/contact" className="h-12 px-6 border border-slate-200 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 transition-colors text-sm flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-lg">call</span> Contact Us
-                                </Link>
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-primary rounded-2xl p-6 text-white space-y-2 col-span-2">
-                                <span className="material-symbols-outlined text-accent text-3xl">format_quote</span>
-                                <p className="text-lg font-medium leading-relaxed text-white/90 italic">
-                                    "We don't just sell cars — we help families make one of the most important financial decisions of their lives. That responsibility keeps us honest every single day."
-                                </p>
-                                <p className="text-sm text-white/60 font-semibold">— Founder, New Maharashtra Motors</p>
-                            </div>
-                            <div className="bg-accent/10 rounded-2xl p-6 flex flex-col justify-center items-center text-center">
-                                <Car size={36} className="text-accent mb-3" />
-                                <p className="text-2xl font-black text-primary font-display">2001</p>
-                                <p className="text-sm text-slate-500">Established</p>
-                            </div>
-                            <div className="bg-slate-50 rounded-2xl p-6 flex flex-col justify-center items-center text-center">
-                                <Award size={36} className="text-primary mb-3" />
-                                <p className="text-2xl font-black text-primary font-display">100%</p>
-                                <p className="text-sm text-slate-500">Certified Cars</p>
+                        <div className="relative">
+                            <div className="rounded-3xl overflow-hidden shadow-2xl bg-primary aspect-[4/3] flex items-center justify-center relative">
+                                <div className="absolute inset-0 bg-gradient-to-tr from-primary to-primary-light opacity-90" />
+                                <div className="relative text-center p-8 text-white">
+                                    <div className="size-20 bg-accent/20 rounded-3xl flex items-center justify-center mx-auto mb-4 border border-accent/30">
+                                        <span className="material-symbols-outlined text-accent text-4xl">verified_user</span>
+                                    </div>
+                                    <p className="text-2xl font-black font-display mb-2">100% Certified</p>
+                                    <p className="text-white/70 text-sm max-w-xs mx-auto">Every car comes with clean paperwork, verified odometer, and zero accident guarantee.</p>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </section>
 
-            {/* Our Values */}
-            <section className="py-16 bg-slate-50 border-y border-slate-100">
+            {/* Values */}
+            <section className="py-16 bg-slate-50">
                 <div className="container-main">
                     <div className="text-center max-w-xl mx-auto mb-12">
                         <span className="text-xs font-bold text-accent uppercase tracking-widest flex items-center justify-center gap-2 mb-3">
-                            <span className="material-symbols-outlined text-sm">favorite</span> What We Stand For
+                            <span className="material-symbols-outlined text-sm">diamond</span> Our Principles
                         </span>
-                        <h2 className="text-3xl font-black text-primary font-display">Our Core Values</h2>
+                        <h2 className="text-3xl font-black text-primary font-display">What Sets Us Apart</h2>
+                        <p className="text-slate-500 mt-3">The values that guide every car we inspect, buy, and sell.</p>
                     </div>
                     <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
                         {VALUES.map(v => (
@@ -135,40 +121,6 @@ const About = () => {
                                 <p className="text-sm text-slate-500 leading-relaxed">{v.desc}</p>
                             </div>
                         ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* Team */}
-            <section className="py-16 bg-white">
-                <div className="container-main">
-                    <div className="text-center max-w-xl mx-auto mb-12">
-                        <span className="text-xs font-bold text-accent uppercase tracking-widest flex items-center justify-center gap-2 mb-3">
-                            <span className="material-symbols-outlined text-sm">group</span> The People Behind the Brand
-                        </span>
-                        <h2 className="text-3xl font-black text-primary font-display">Meet Our Founder</h2>
-                        <p className="text-slate-500 mt-3">The visionary leader who built Pune's most trusted used car dealership from the ground up.</p>
-                    </div>
-
-                    {/* Single founder card — centered, premium */}
-                    <div className="flex justify-center">
-                        <div className="bg-white rounded-3xl border border-slate-100 shadow-[var(--shadow-card-hover)] p-10 flex flex-col items-center text-center max-w-sm w-full">
-                            {/* Avatar */}
-                            <div className="size-24 rounded-2xl bg-gradient-to-br from-primary to-primary-light text-white flex items-center justify-center text-3xl font-black font-display mb-5 shadow-lg">
-                                AM
-                            </div>
-                            {/* Badge */}
-                            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-accent uppercase tracking-widest bg-accent/10 px-3 py-1 rounded-full mb-3">
-                                <span className="material-symbols-outlined text-sm">stars</span> Founder
-                            </span>
-                            <h3 className="text-xl font-black text-primary font-display">Amarsinh Malave</h3>
-                            <p className="text-slate-500 text-sm mt-1 font-medium">CEO &amp; Founder</p>
-                            <div className="mt-5 pt-5 border-t border-slate-100 w-full">
-                                <p className="text-sm text-slate-500 leading-relaxed italic">
-                                    "Our promise is simple — every customer drives home with confidence and a car they can trust."
-                                </p>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </section>

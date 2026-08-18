@@ -262,18 +262,35 @@ const Inventory = () => {
     );
 
     return (
-        <div className="container-main py-4 sm:py-8">
+        <div className="container-main py-3 sm:py-8">
             <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
-                {/* Mobile Filter Toggle */}
-                <div className="lg:hidden flex items-center justify-between bg-white p-4 rounded-xl border border-slate-100 shadow-sm mb-2">
+                {/* Mobile Sticky Quick Filter & Actions Bar */}
+                <div className="lg:hidden sticky top-14 z-30 bg-white/95 backdrop-blur-md px-3.5 py-2.5 rounded-2xl border border-slate-200/90 shadow-[0_4px_20px_rgba(0,0,0,0.06)] flex items-center justify-between gap-2 mb-2">
                     <button 
-                        onClick={() => setShowFilters(!showFilters)}
-                        className="flex items-center gap-2 text-sm font-bold text-primary"
+                        onClick={() => setShowFilters(true)}
+                        className="flex items-center gap-1.5 h-9 px-3.5 bg-primary text-white text-xs font-bold rounded-xl shadow-xs active:scale-95 transition-all cursor-pointer"
                     >
-                        <span className="material-symbols-outlined">filter_list</span>
-                        {showFilters ? 'Hide Filters' : 'Show Filters'}
+                        <span className="material-symbols-outlined text-[18px]">tune</span>
+                        <span>Filters</span>
+                        {(selectedBrands.length + selectedYears.length + (selectedBudget ? 1 : 0) + selectedBodyTypes.length + selectedTransmissions.length) > 0 && (
+                            <span className="size-4 rounded-full bg-amber-400 text-slate-900 text-[10px] font-black flex items-center justify-center">
+                                {selectedBrands.length + selectedYears.length + (selectedBudget ? 1 : 0) + selectedBodyTypes.length + selectedTransmissions.length}
+                            </span>
+                        )}
                     </button>
-                    <span className="text-xs text-slate-400 font-medium">{displayCars.length} Cars Found</span>
+
+                    <div className="flex items-center gap-2">
+                        <select 
+                            value={sortBy} 
+                            onChange={e => setSortBy(e.target.value)} 
+                            className="h-9 bg-slate-100 border border-slate-200 rounded-xl px-2.5 text-xs font-bold text-slate-800 outline-none"
+                        >
+                            <option value="newest">Newest First</option>
+                            <option value="price-low">Price: Low to High</option>
+                            <option value="price-high">Price: High to Low</option>
+                        </select>
+                        <span className="text-xs text-slate-400 font-bold whitespace-nowrap">{displayCars.length} Cars</span>
+                    </div>
                 </div>
 
                 {/* Desktop Filters Sidebar */}
@@ -304,24 +321,27 @@ const Inventory = () => {
                                 initial={{ y: '100%' }}
                                 animate={{ y: 0 }}
                                 exit={{ y: '100%' }}
-                                transition={{ type: 'spring', damping: 25, stiffness: 250 }}
-                                className="lg:hidden fixed inset-x-0 bottom-0 top-[15%] z-[70] bg-white rounded-t-3xl p-6 overflow-y-auto shadow-2xl flex flex-col"
+                                transition={{ type: 'spring', damping: 25, stiffness: 280 }}
+                                className="lg:hidden fixed inset-x-0 bottom-0 top-[10%] z-[70] bg-white rounded-t-3xl p-5 overflow-y-auto shadow-2xl flex flex-col"
                             >
-                                <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
-                                    <h3 className="font-bold text-primary font-display text-lg">Filters</h3>
-                                    <div className="flex items-center gap-4">
-                                        <button onClick={() => { setSelectedBrands([]); setSelectedYears([]); setSelectedBudget(''); setSelectedBodyTypes([]); setSelectedTransmissions([]); }} className="text-xs font-semibold text-accent hover:text-accent-hover transition-colors">Clear All</button>
-                                        <button onClick={() => setShowFilters(false)} className="p-1.5 bg-slate-50 text-slate-400 hover:text-primary rounded-full flex items-center justify-center">
+                                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="font-bold text-primary font-display text-lg">Filter Inventory</h3>
+                                        <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">{displayCars.length} matches</span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <button onClick={() => { setSelectedBrands([]); setSelectedYears([]); setSelectedBudget(''); setSelectedBodyTypes([]); setSelectedTransmissions([]); }} className="text-xs font-semibold text-amber-600 hover:text-amber-700">Reset</button>
+                                        <button onClick={() => setShowFilters(false)} className="size-8 bg-slate-100 text-slate-600 rounded-full flex items-center justify-center">
                                             <X size={18} />
                                         </button>
                                     </div>
                                 </div>
-                                <div className="space-y-5 flex-1 pb-16">
+                                <div className="space-y-4 flex-1 py-4">
                                     {renderFiltersContent()}
                                 </div>
-                                <div className="sticky bottom-0 bg-white pt-4 pb-2 border-t border-slate-100 mt-auto">
-                                    <button onClick={() => setShowFilters(false)} className="w-full h-12 bg-primary text-white font-bold rounded-xl hover:bg-primary-light transition-all shadow-md text-sm">
-                                        Apply & View {displayCars.length} Results
+                                <div className="sticky bottom-0 bg-white pt-3 pb-safe border-t border-slate-100 mt-auto">
+                                    <button onClick={() => setShowFilters(false)} className="w-full h-12 bg-primary text-white font-bold rounded-xl active:scale-98 transition-all shadow-md text-sm">
+                                        Show {displayCars.length} Available Vehicles
                                     </button>
                                 </div>
                             </motion.div>
@@ -570,8 +590,17 @@ const Inventory = () => {
                                                     Est. EMI from ₹{Math.round((car.price * 0.8 * 0.1) / 12).toLocaleString('en-IN')}/mo
                                                 </span>
                                             </div>
-                                            <div className="flex gap-2">
-                                                <Link to={`/book-test-drive?car=${car.id}`} className="flex-1 h-10 flex items-center justify-center text-xs font-semibold text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">
+                                            <div className="flex items-center gap-1.5">
+                                                <a
+                                                    href={`https://wa.me/919373721705?text=${encodeURIComponent(`Hi New Maharashtra Motors, I am inquiring about this vehicle: ${car.year} ${car.make} ${car.model} (₹${formatPriceLakh(car.price)} Lakh)`)}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="size-10 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white flex items-center justify-center transition-colors active:scale-95 shrink-0"
+                                                    title="Inquire on WhatsApp"
+                                                >
+                                                    <span className="material-symbols-outlined text-[18px]">chat</span>
+                                                </a>
+                                                <Link to={`/book-test-drive?car=${car.id}`} className="flex-1 h-10 flex items-center justify-center text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 active:scale-95 transition-all whitespace-nowrap">
                                                     Test Drive
                                                 </Link>
                                                 <button
@@ -584,10 +613,10 @@ const Inventory = () => {
                                                             addToCart(car);
                                                         }
                                                     }}
-                                                    className={`flex-1 h-10 flex items-center justify-center text-xs font-semibold rounded-xl transition-all duration-200 gap-1.5 ${isInCart(car.id) ? 'bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100/70' : 'bg-primary text-white hover:bg-primary-light'}`}
+                                                    className={`flex-1 h-10 flex items-center justify-center text-xs font-semibold rounded-xl transition-all duration-200 gap-1 active:scale-95 whitespace-nowrap ${isInCart(car.id) ? 'bg-amber-500 text-white shadow-sm' : 'bg-primary text-white hover:bg-primary-light'}`}
                                                 >
                                                     <span className="material-symbols-outlined text-sm">{isInCart(car.id) ? 'done' : 'folder_special'}</span>
-                                                    {isInCart(car.id) ? 'In Inquiry' : 'Add to Inquiry'}
+                                                    {isInCart(car.id) ? 'In Cart' : 'Inquire'}
                                                 </button>
                                             </div>
                                         </div>

@@ -156,6 +156,11 @@ const DealerManagement = () => {
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
     const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
+    // Mobile Expandable Card state (Zero horizontal scroll)
+    const [expandedDealerId, setExpandedDealerId] = useState<string | null>(null);
+    const [expandedCarId, setExpandedCarId] = useState<string | null>(null);
+    const [expandedSettlementId, setExpandedSettlementId] = useState<string | null>(null);
+
     // Modals
     const [showDealerModal, setShowDealerModal] = useState(false);
     const [editingDealer, setEditingDealer] = useState<Dealer | null>(null);
@@ -428,17 +433,27 @@ const DealerManagement = () => {
                 ))}
             </div>
 
-            {/* Tabs */}
-            <div className="flex gap-1 border-b border-slate-200">
+            {/* Tabs (Responsive without horizontal scroll) */}
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-1.5 p-1.5 bg-slate-100/80 sm:bg-transparent sm:border-b sm:border-slate-200 rounded-2xl sm:rounded-none">
                 {tabs.map(tab => (
                     <button
                         key={tab.key}
                         onClick={() => { setActiveTab(tab.key); setSearch(''); setFilterDealer('all'); setFilterStatus('all'); }}
-                        className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold border-b-2 transition-all ${activeTab === tab.key ? 'text-primary border-primary font-bold bg-primary/5 rounded-t-xl' : 'text-slate-500 border-transparent hover:text-primary hover:bg-slate-50 rounded-t-xl'}`}
+                        className={`flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 px-3 sm:px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold rounded-xl sm:rounded-t-xl sm:rounded-b-none sm:border-b-2 transition-all ${
+                            activeTab === tab.key 
+                                ? 'bg-white sm:bg-primary/5 text-primary sm:border-primary font-bold shadow-xs sm:shadow-none' 
+                                : 'text-slate-500 hover:text-primary hover:bg-white/50 sm:hover:bg-slate-50 border-transparent'
+                        }`}
                     >
-                        <span className="material-symbols-outlined text-[18px]">{tab.icon}</span>
-                        {tab.label}
-                        {tab.count !== null && <span className={`text-xs px-2 py-0.5 rounded-full ${activeTab === tab.key ? 'bg-primary text-white font-bold' : 'bg-slate-100 text-slate-500 font-semibold'}`}>{tab.count}</span>}
+                        <span className="material-symbols-outlined text-base sm:text-[18px]">{tab.icon}</span>
+                        <span className="truncate">{tab.label}</span>
+                        {tab.count !== null && (
+                            <span className={`text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full ${
+                                activeTab === tab.key ? 'bg-primary text-white font-bold' : 'bg-slate-200/80 text-slate-600 font-semibold'
+                            }`}>
+                                {tab.count}
+                            </span>
+                        )}
                     </button>
                 ))}
             </div>
@@ -646,113 +661,289 @@ const DealerManagement = () => {
                             })}
                         </div>
                     ) : (
-                        /* Dealer List Datatable View (with true sequence) */
-                        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                            <div className="overflow-x-auto">
-                                <table className="w-full min-w-[900px] border-collapse">
-                                    <thead>
-                                        <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 bg-slate-50/50">
-                                            <th className="text-left px-6 py-4">Code</th>
-                                            <th className="text-left px-6 py-4">Dealer Name</th>
-                                            <th className="text-left px-6 py-4">Contact Info</th>
-                                            <th className="text-left px-6 py-4">Location</th>
-                                            <th className="text-center px-6 py-4">Inventory Stats</th>
-                                            <th className="text-left px-6 py-4">Status</th>
-                                            <th className="text-right px-6 py-4">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {filteredDealers.map(dealer => {
-                                            const carCount = getDealerCarCount(dealer.id);
-                                            const soldCount = getDealerSoldCount(dealer.id);
-                                            const pendingPayouts = settlements.filter(s => s.dealer_id === dealer.id && s.status === 'pending').length;
-                                            return (
-                                                <tr key={dealer.id} className="hover:bg-slate-50/30 transition-colors group">
-                                                    <td className="px-6 py-4 font-mono text-xs font-bold text-slate-600">
-                                                        {dealer.dealer_code}
-                                                    </td>
-                                                    <td className="px-6 py-4">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className={`size-8 rounded-lg bg-gradient-to-br ${getAvatarGradient(dealer.name)} flex items-center justify-center font-black text-white text-xs shadow-xs shrink-0`}>
-                                                                {dealer.name.charAt(0).toUpperCase()}
-                                                            </div>
-                                                            <div>
-                                                                <p className="font-semibold text-primary text-sm hover:underline cursor-pointer" onClick={() => openEditDealer(dealer)}>
-                                                                    <HighlightText text={dealer.name} highlight={search} />
-                                                                </p>
-                                                                {dealer.gst_number && (
-                                                                    <p className="text-[9px] text-slate-400 font-mono mt-0.5 uppercase">GST: {dealer.gst_number}</p>
-                                                                )}
-                                                            </div>
+                        /* Dealer List View: Mobile Expandable Cards + Desktop Datatable */
+                        <div className="space-y-3">
+                            {/* Mobile View: Tap-to-expand Cards (Zero Horizontal Scroll) */}
+                            <div className="sm:hidden space-y-3">
+                                {filteredDealers.map(dealer => {
+                                    const isExpanded = expandedDealerId === dealer.id;
+                                    const carCount = getDealerCarCount(dealer.id);
+                                    const soldCount = getDealerSoldCount(dealer.id);
+                                    const pendingPayouts = settlements.filter(s => s.dealer_id === dealer.id && s.status === 'pending').length;
+                                    
+                                    return (
+                                        <div 
+                                            key={dealer.id}
+                                            className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden transition-all duration-200"
+                                        >
+                                            {/* Card Header (Tap to Expand / View all details) */}
+                                            <div 
+                                                onClick={() => setExpandedDealerId(prev => prev === dealer.id ? null : dealer.id)}
+                                                className="p-4 cursor-pointer hover:bg-slate-50/50 active:bg-slate-50 transition-colors"
+                                            >
+                                                <div className="flex items-start justify-between gap-3 mb-2">
+                                                    <div className="flex items-center gap-3 min-w-0">
+                                                        <div className={`size-10 rounded-xl bg-gradient-to-br ${getAvatarGradient(dealer.name)} flex items-center justify-center font-black text-white text-sm shadow-xs shrink-0`}>
+                                                            {dealer.name.charAt(0).toUpperCase()}
                                                         </div>
-                                                    </td>
-                                                    <td className="px-6 py-4 text-xs text-slate-500">
-                                                        <div className="space-y-0.5">
-                                                            {dealer.contact_person && <p className="font-medium text-slate-700">{dealer.contact_person}</p>}
-                                                            <div className="flex items-center gap-2">
-                                                                {dealer.phone && <a href={`tel:${dealer.phone}`} className="hover:text-primary transition-colors">{dealer.phone}</a>}
-                                                                {dealer.whatsapp_number && (
-                                                                    <a href={`https://wa.me/91${dealer.whatsapp_number.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="text-green-500 hover:text-green-600 transition-colors flex items-center" title="Send WhatsApp">
-                                                                        <svg className="size-3.5 fill-current" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.424 2.5 1.14 3.473l-.744 2.718 2.79-.731a5.717 5.717 0 002.582.617h.002c3.18 0 5.766-2.586 5.767-5.767a5.772 5.772 0 00-5.769-5.774zm3.435 8.16c-.1.285-.572.545-.826.58-.24.032-.552.058-1.284-.24-.925-.378-1.503-1.32-1.55-1.382-.047-.062-.394-.523-.394-1.002 0-.479.25-.713.34-.81.089-.096.196-.12.261-.12.066 0 .132.001.189.004.06.002.138-.023.216.166.089.215.305.744.344.821.039.078.065.169.013.273-.052.104-.078.169-.156.26-.078.09-.163.2-.234.273-.078.078-.16.163-.069.32.091.156.405.67.87 1.085.6.535 1.107.7 1.267.78.16.08.254.065.349-.046.096-.11.411-.479.522-.642.11-.162.221-.137.371-.081.15.056.953.45 1.117.531.163.081.272.122.311.19.039.068.039.394-.061.679zM12 .003C5.384.003.007 5.378.007 12a11.93 11.93 0 001.821 6.272L.022 24l5.894-1.547a11.95 11.95 0 006.087 1.63c6.613 0 11.99-5.378 11.99-12S18.616.003 12.001.003z"/></svg>
-                                                                    </a>
-                                                                )}
-                                                            </div>
+                                                        <div className="min-w-0">
+                                                            <p className="font-bold text-primary text-sm truncate">
+                                                                <HighlightText text={dealer.name} highlight={search} />
+                                                            </p>
+                                                            <p className="text-[11px] font-bold text-slate-400 font-mono tracking-wider">
+                                                                <HighlightText text={dealer.dealer_code} highlight={search} />
+                                                            </p>
                                                         </div>
-                                                    </td>
-                                                    <td className="px-6 py-4 text-xs text-slate-500 font-medium">
-                                                        {dealer.city ? <HighlightText text={dealer.city} highlight={search} /> : '—'}
-                                                    </td>
-                                                    <td className="px-6 py-4">
-                                                        <div className="flex items-center justify-center gap-3 text-xs">
-                                                            <button 
-                                                                onClick={() => { setActiveTab('inventory'); setFilterDealer(dealer.id); }}
-                                                                className="px-2.5 py-1 bg-slate-50 hover:bg-primary hover:text-white border border-slate-200 rounded-lg font-bold text-slate-600 transition-all"
-                                                                title="View Inventory"
-                                                            >
-                                                                {carCount} listed
-                                                            </button>
-                                                            <span className="text-slate-400 font-semibold">{soldCount} sold</span>
-                                                            {pendingPayouts > 0 ? (
-                                                                <button 
-                                                                    onClick={() => { setActiveTab('financials'); setFilterDealer(dealer.id); setFilterStatus('pending'); }}
-                                                                    className="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-100 rounded-md font-bold transition-colors animate-pulse"
-                                                                    title="Click to view pending settlements"
-                                                                >
-                                                                    {pendingPayouts} pending
-                                                                </button>
-                                                            ) : (
-                                                                <span className="text-slate-300">0 pending</span>
-                                                            )}
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-6 py-4">
-                                                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${statusColors[dealer.status]}`}>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 shrink-0">
+                                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${statusColors[dealer.status]}`}>
                                                             {dealer.status}
                                                         </span>
-                                                    </td>
-                                                    <td className="px-6 py-4 text-right">
-                                                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                                                            <button
-                                                                onClick={() => openEditDealer(dealer)}
-                                                                className="size-8 flex items-center justify-center hover:bg-slate-100 rounded-lg text-slate-500 hover:text-primary transition-colors"
-                                                                title="Edit"
+                                                        <span className={`material-symbols-outlined text-slate-400 transition-transform duration-200 ${isExpanded ? 'rotate-180 text-primary' : ''}`}>
+                                                            expand_more
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Compact info strip */}
+                                                <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100/80">
+                                                    <div className="flex items-center gap-1.5 truncate">
+                                                        <span className="material-symbols-outlined text-slate-400 text-sm">location_on</span>
+                                                        <span className="truncate">{dealer.city || 'No city'}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 font-medium text-slate-600 shrink-0">
+                                                        <span className="text-primary font-bold">{carCount} listed</span>
+                                                        <span>•</span>
+                                                        <span className="text-green-600 font-semibold">{soldCount} sold</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Expanded Detailed Information Section */}
+                                            {isExpanded && (
+                                                <div className="p-4 bg-slate-50/70 border-t border-slate-100 space-y-4 animate-in fade-in duration-150">
+                                                    {/* Contact & Registration Information */}
+                                                    <div className="space-y-2 text-xs bg-white p-3.5 rounded-xl border border-slate-200/70 shadow-2xs">
+                                                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Dealer & Contact Details</p>
+                                                        
+                                                        {dealer.contact_person && (
+                                                            <div className="flex items-center justify-between py-1 border-b border-slate-50">
+                                                                <span className="text-slate-400">Contact Person:</span>
+                                                                <span className="font-semibold text-slate-800">{dealer.contact_person}</span>
+                                                            </div>
+                                                        )}
+
+                                                        {dealer.phone && (
+                                                            <div className="flex items-center justify-between py-1 border-b border-slate-50">
+                                                                <span className="text-slate-400">Phone:</span>
+                                                                <a 
+                                                                    href={`tel:${dealer.phone}`} 
+                                                                    className="font-semibold text-blue-600 flex items-center gap-1 hover:underline"
+                                                                >
+                                                                    <span className="material-symbols-outlined text-sm">call</span>
+                                                                    {dealer.phone}
+                                                                </a>
+                                                            </div>
+                                                        )}
+
+                                                        {dealer.whatsapp_number && (
+                                                            <div className="flex items-center justify-between py-1 border-b border-slate-50">
+                                                                <span className="text-slate-400">WhatsApp:</span>
+                                                                <a 
+                                                                    href={`https://wa.me/91${dealer.whatsapp_number.replace(/\D/g, '')}`} 
+                                                                    target="_blank" 
+                                                                    rel="noreferrer" 
+                                                                    className="font-bold text-green-600 flex items-center gap-1 hover:underline"
+                                                                >
+                                                                    <span className="material-symbols-outlined text-sm">chat</span>
+                                                                    {dealer.whatsapp_number}
+                                                                </a>
+                                                            </div>
+                                                        )}
+
+                                                        {dealer.email && (
+                                                            <div className="flex items-center justify-between py-1 border-b border-slate-50">
+                                                                <span className="text-slate-400">Email:</span>
+                                                                <span className="font-medium text-slate-700">{dealer.email}</span>
+                                                            </div>
+                                                        )}
+
+                                                        {dealer.address && (
+                                                            <div className="flex items-start justify-between py-1 border-b border-slate-50">
+                                                                <span className="text-slate-400 shrink-0">Address:</span>
+                                                                <span className="font-medium text-slate-700 text-right ml-2">{dealer.address}</span>
+                                                            </div>
+                                                        )}
+
+                                                        {dealer.gst_number && (
+                                                            <div className="flex items-center justify-between py-1">
+                                                                <span className="text-slate-400">GSTIN:</span>
+                                                                <span className="font-mono font-bold text-slate-700 uppercase">{dealer.gst_number}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Interactive Stats Grid */}
+                                                    <div>
+                                                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Performance & Settlements</p>
+                                                        <div className="grid grid-cols-3 gap-2">
+                                                            <div 
+                                                                onClick={() => { setActiveTab('inventory'); setFilterDealer(dealer.id); }}
+                                                                className="bg-white p-2.5 rounded-xl border border-slate-200/80 text-center cursor-pointer active:scale-95 transition-transform"
                                                             >
-                                                                <span className="material-symbols-outlined text-lg">edit</span>
-                                                            </button>
-                                                            <button
-                                                                onClick={() => deleteDealer(dealer)}
-                                                                className="size-8 flex items-center justify-center hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition-colors"
-                                                                title="Delete"
+                                                                <p className="text-lg font-black text-primary">{carCount}</p>
+                                                                <p className="text-[9px] font-bold text-slate-400 uppercase">Listed</p>
+                                                            </div>
+                                                            <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 text-center">
+                                                                <p className="text-lg font-black text-green-600">{soldCount}</p>
+                                                                <p className="text-[9px] font-bold text-slate-400 uppercase">Sold</p>
+                                                            </div>
+                                                            <div 
+                                                                onClick={() => {
+                                                                    setActiveTab('financials');
+                                                                    setFilterDealer(dealer.id);
+                                                                    setFilterStatus(pendingPayouts > 0 ? 'pending' : 'all');
+                                                                }}
+                                                                className={`p-2.5 rounded-xl border text-center cursor-pointer active:scale-95 transition-transform ${
+                                                                    pendingPayouts > 0 ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-white border-slate-200/80'
+                                                                }`}
                                                             >
-                                                                <span className="material-symbols-outlined text-lg">delete</span>
-                                                            </button>
+                                                                <p className={`text-lg font-black ${pendingPayouts > 0 ? 'text-amber-600' : 'text-slate-400'}`}>{pendingPayouts}</p>
+                                                                <p className="text-[9px] font-bold text-slate-400 uppercase">Pending</p>
+                                                            </div>
                                                         </div>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
+                                                    </div>
+
+                                                    {/* Action Buttons */}
+                                                    <div className="flex items-center gap-2 pt-1">
+                                                        <button
+                                                            onClick={() => openEditDealer(dealer)}
+                                                            className="flex-1 h-10 bg-slate-900 text-white text-xs font-bold rounded-xl hover:bg-slate-800 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-xs"
+                                                        >
+                                                            <span className="material-symbols-outlined text-base">edit</span> Edit Dealer
+                                                        </button>
+                                                        <button
+                                                            onClick={() => deleteDealer(dealer)}
+                                                            className="h-10 px-4 bg-red-50 border border-red-200 text-red-600 text-xs font-bold rounded-xl hover:bg-red-100 active:scale-[0.98] transition-all flex items-center justify-center gap-1"
+                                                        >
+                                                            <span className="material-symbols-outlined text-base">delete</span> Delete
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Desktop View: Wide Datatable */}
+                            <div className="hidden sm:block bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full min-w-[900px] border-collapse">
+                                        <thead>
+                                            <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 bg-slate-50/50">
+                                                <th className="text-left px-6 py-4">Code</th>
+                                                <th className="text-left px-6 py-4">Dealer Name</th>
+                                                <th className="text-left px-6 py-4">Contact Info</th>
+                                                <th className="text-left px-6 py-4">Location</th>
+                                                <th className="text-center px-6 py-4">Inventory Stats</th>
+                                                <th className="text-left px-6 py-4">Status</th>
+                                                <th className="text-right px-6 py-4">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {filteredDealers.map(dealer => {
+                                                const carCount = getDealerCarCount(dealer.id);
+                                                const soldCount = getDealerSoldCount(dealer.id);
+                                                const pendingPayouts = settlements.filter(s => s.dealer_id === dealer.id && s.status === 'pending').length;
+                                                return (
+                                                    <tr key={dealer.id} className="hover:bg-slate-50/30 transition-colors group">
+                                                        <td className="px-6 py-4 font-mono text-xs font-bold text-slate-600">
+                                                            {dealer.dealer_code}
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className={`size-8 rounded-lg bg-gradient-to-br ${getAvatarGradient(dealer.name)} flex items-center justify-center font-black text-white text-xs shadow-xs shrink-0`}>
+                                                                    {dealer.name.charAt(0).toUpperCase()}
+                                                                </div>
+                                                                <div>
+                                                                    <p className="font-semibold text-primary text-sm hover:underline cursor-pointer" onClick={() => openEditDealer(dealer)}>
+                                                                        <HighlightText text={dealer.name} highlight={search} />
+                                                                    </p>
+                                                                    {dealer.gst_number && (
+                                                                        <p className="text-[9px] text-slate-400 font-mono mt-0.5 uppercase">GST: {dealer.gst_number}</p>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-xs text-slate-500">
+                                                            <div className="space-y-0.5">
+                                                                {dealer.contact_person && <p className="font-medium text-slate-700">{dealer.contact_person}</p>}
+                                                                <div className="flex items-center gap-2">
+                                                                    {dealer.phone && <a href={`tel:${dealer.phone}`} className="hover:text-primary transition-colors">{dealer.phone}</a>}
+                                                                    {dealer.whatsapp_number && (
+                                                                        <a href={`https://wa.me/91${dealer.whatsapp_number.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="text-green-500 hover:text-green-600 transition-colors flex items-center" title="Send WhatsApp">
+                                                                            <svg className="size-3.5 fill-current" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.424 2.5 1.14 3.473l-.744 2.718 2.79-.731a5.717 5.717 0 002.582.617h.002c3.18 0 5.766-2.586 5.767-5.767a5.772 5.772 0 00-5.769-5.774zm3.435 8.16c-.1.285-.572.545-.826.58-.24.032-.552.058-1.284-.24-.925-.378-1.503-1.32-1.55-1.382-.047-.062-.394-.523-.394-1.002 0-.479.25-.713.34-.81.089-.096.196-.12.261-.12.066 0 .132.001.189.004.06.002.138-.023.216.166.089.215.305.744.344.821.039.078.065.169.013.273-.052.104-.078.169-.156.26-.078.09-.163.2-.234.273-.078.078-.16.163-.069.32.091.156.405.67.87 1.085.6.535 1.107.7 1.267.78.16.08.254.065.349-.046.096-.11.411-.479.522-.642.11-.162.221-.137.371-.081.15.056.953.45 1.117.531.163.081.272.122.311.19.039.068.039.394-.061.679zM12 .003C5.384.003.007 5.378.007 12a11.93 11.93 0 001.821 6.272L.022 24l5.894-1.547a11.95 11.95 0 006.087 1.63c6.613 0 11.99-5.378 11.99-12S18.616.003 12.001.003z"/></svg>
+                                                                        </a>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-xs text-slate-500 font-medium">
+                                                            {dealer.city ? <HighlightText text={dealer.city} highlight={search} /> : '—'}
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex items-center justify-center gap-3 text-xs">
+                                                                <button 
+                                                                    onClick={() => { setActiveTab('inventory'); setFilterDealer(dealer.id); }}
+                                                                    className="px-2.5 py-1 bg-slate-50 hover:bg-primary hover:text-white border border-slate-200 rounded-lg font-bold text-slate-600 transition-all"
+                                                                    title="View Inventory"
+                                                                >
+                                                                    {carCount} listed
+                                                                </button>
+                                                                <span className="text-slate-400 font-semibold">{soldCount} sold</span>
+                                                                {pendingPayouts > 0 ? (
+                                                                    <button 
+                                                                        onClick={() => { setActiveTab('financials'); setFilterDealer(dealer.id); setFilterStatus('pending'); }}
+                                                                        className="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-100 rounded-md font-bold transition-colors animate-pulse"
+                                                                        title="Click to view pending settlements"
+                                                                    >
+                                                                        {pendingPayouts} pending
+                                                                    </button>
+                                                                ) : (
+                                                                    <span className="text-slate-300">0 pending</span>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${statusColors[dealer.status]}`}>
+                                                                {dealer.status}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-right">
+                                                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                                                <button
+                                                                    onClick={() => openEditDealer(dealer)}
+                                                                    className="size-8 flex items-center justify-center hover:bg-slate-100 rounded-lg text-slate-500 hover:text-primary transition-colors"
+                                                                    title="Edit"
+                                                                >
+                                                                    <span className="material-symbols-outlined text-lg">edit</span>
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => deleteDealer(dealer)}
+                                                                    className="size-8 flex items-center justify-center hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition-colors"
+                                                                    title="Delete"
+                                                                >
+                                                                    <span className="material-symbols-outlined text-lg">delete</span>
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -773,75 +964,202 @@ const DealerManagement = () => {
                         </select>
                     </div>
 
-                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                        <div className="overflow-x-auto relative">
-                            <table className="w-full min-w-[700px]">
-                            <thead>
-                                <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-wide border-b border-slate-100 bg-slate-50/50">
-                                    <th className="text-left px-6 py-4">Vehicle</th>
-                                    <th className="text-left px-6 py-4">Dealer</th>
-                                    <th className="text-left px-6 py-4">Asking Price</th>
-                                    <th className="text-left px-6 py-4">Dealer Cost</th>
-                                    <th className="text-left px-6 py-4">Commission</th>
-                                    <th className="text-left px-6 py-4">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {loading ? (
-                                    <tr><td colSpan={6} className="py-10 text-center text-slate-400">Loading…</td></tr>
-                                ) : filteredCars.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={6} className="py-16 text-center">
-                                            <span className="material-symbols-outlined text-4xl text-slate-200 mb-3 block">directions_car</span>
-                                            <p className="text-slate-400 font-medium text-sm">No dealer cars found</p>
-                                            <p className="text-xs text-slate-300 mt-1">Add a new car and tag it as a dealer car.</p>
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    filteredCars.map(car => {
-                                        const dealer = getDealerById(car.dealer_id || '');
-                                        return (
-                                            <tr key={car.id} className="hover:bg-slate-50/30 transition-colors group">
-                                                <td className="px-6 py-4.5">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="size-11 rounded-lg overflow-hidden bg-slate-100 shrink-0 shadow-xs border border-slate-150">
-                                                            {car.thumbnail
-                                                                ? <img src={car.thumbnail} alt="" className="w-full h-full object-cover" />
-                                                                : <div className="w-full h-full flex items-center justify-center bg-slate-50"><span className="material-symbols-outlined text-slate-300 text-lg">directions_car</span></div>
-                                                            }
+                    <div className="space-y-3">
+                        {/* Mobile View: Tap-to-expand Vehicle Cards (Zero horizontal scroll) */}
+                        <div className="sm:hidden space-y-3">
+                            {loading ? (
+                                <div className="py-10 text-center text-slate-400 bg-white rounded-2xl border border-slate-100 p-6">Loading…</div>
+                            ) : filteredCars.length === 0 ? (
+                                <div className="py-14 text-center bg-white rounded-2xl border border-slate-100 p-6">
+                                    <span className="material-symbols-outlined text-4xl text-slate-200 mb-2 block">directions_car</span>
+                                    <p className="text-slate-500 font-bold text-sm">No dealer cars found</p>
+                                    <p className="text-xs text-slate-400 mt-1">Add a new car and tag it as a dealer car.</p>
+                                </div>
+                            ) : (
+                                filteredCars.map(car => {
+                                    const isExpanded = expandedCarId === car.id;
+                                    const dealer = getDealerById(car.dealer_id || '');
+                                    
+                                    return (
+                                        <div 
+                                            key={car.id}
+                                            className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden transition-all duration-200"
+                                        >
+                                            {/* Header */}
+                                            <div 
+                                                onClick={() => setExpandedCarId(prev => prev === car.id ? null : car.id)}
+                                                className="p-4 cursor-pointer hover:bg-slate-50/50 active:bg-slate-50 transition-colors"
+                                            >
+                                                <div className="flex items-start justify-between gap-3 mb-2">
+                                                    <div className="flex items-center gap-3 min-w-0">
+                                                        <div className="size-12 rounded-xl overflow-hidden bg-slate-100 shrink-0 shadow-2xs border border-slate-200/80">
+                                                            {car.thumbnail ? (
+                                                                <img src={car.thumbnail} alt="" className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <div className="w-full h-full flex items-center justify-center bg-slate-50 text-slate-300">
+                                                                    <span className="material-symbols-outlined text-xl">directions_car</span>
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                        <div>
-                                                            <Link 
-                                                                to={`/admin/inventory/${car.id}/edit`} 
-                                                                className="text-sm font-semibold text-primary hover:text-amber-600 hover:underline transition-colors flex items-center gap-1.5"
-                                                            >
+                                                        <div className="min-w-0">
+                                                            <p className="font-bold text-primary text-sm truncate">
                                                                 {car.year} <HighlightText text={car.make} highlight={search} /> <HighlightText text={car.model} highlight={search} />
-                                                                <span className="material-symbols-outlined text-xs opacity-0 group-hover:opacity-100 transition-opacity">open_in_new</span>
-                                                            </Link>
-                                                            {car.registration_no && <p className="text-[10px] text-slate-400 font-mono mt-0.5"><HighlightText text={car.registration_no} highlight={search} /></p>}
+                                                            </p>
+                                                            <p className="text-[11px] font-bold text-slate-400 font-mono">
+                                                                {car.registration_no || 'Unregistered'}
+                                                            </p>
                                                         </div>
                                                     </div>
-                                                </td>
-                                                <td className="px-6 py-4.5">
-                                                    {dealer ? (
-                                                        <div>
-                                                            <p className="text-sm font-semibold text-primary hover:underline cursor-pointer" onClick={() => { setActiveTab('dealers'); setSearch(dealer.dealer_code); }}>{dealer.name}</p>
-                                                            <p className="text-[10px] font-mono text-slate-400 mt-0.5">{dealer.dealer_code}</p>
-                                                        </div>
-                                                    ) : <span className="text-slate-300 text-sm">—</span>}
-                                                </td>
-                                                <td className="px-5 py-3.5 text-sm text-slate-600">{formatCurrency(car.dealer_commission)}</td>
-                                                <td className="px-5 py-3.5">
-                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${carStatusColors[car.status] ?? 'bg-slate-100 text-slate-500'}`}>
-                                                        {car.status}
+                                                    <div className="flex items-center gap-2 shrink-0">
+                                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${carStatusColors[car.status] ?? 'bg-slate-100 text-slate-600'}`}>
+                                                            {car.status}
+                                                        </span>
+                                                        <span className={`material-symbols-outlined text-slate-400 transition-transform duration-200 ${isExpanded ? 'rotate-180 text-primary' : ''}`}>
+                                                            expand_more
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Price & Dealer snippet */}
+                                                <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100">
+                                                    <span className="text-slate-500 font-medium truncate">
+                                                        Dealer: <strong className="text-slate-800">{dealer ? dealer.name : '—'}</strong>
                                                     </span>
+                                                    <span className="font-bold text-primary shrink-0">
+                                                        {formatCurrency(car.price)}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            {/* Expanded Detailed Breakdown */}
+                                            {isExpanded && (
+                                                <div className="p-4 bg-slate-50/70 border-t border-slate-100 space-y-3 animate-in fade-in duration-150 text-xs">
+                                                    <div className="bg-white p-3.5 rounded-xl border border-slate-200/70 shadow-2xs space-y-2">
+                                                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Pricing & Commission Details</p>
+                                                        
+                                                        <div className="flex items-center justify-between py-1 border-b border-slate-50">
+                                                            <span className="text-slate-400">Asking Price:</span>
+                                                            <span className="font-bold text-slate-800">{formatCurrency(car.price)}</span>
+                                                        </div>
+                                                        <div className="flex items-center justify-between py-1 border-b border-slate-50">
+                                                            <span className="text-slate-400">Dealer Cost:</span>
+                                                            <span className="font-medium text-slate-700">{formatCurrency(car.dealer_asking_price)}</span>
+                                                        </div>
+                                                        <div className="flex items-center justify-between py-1 border-b border-slate-50">
+                                                            <span className="text-slate-400">Commission:</span>
+                                                            <span className="font-bold text-green-600">{formatCurrency(car.dealer_commission)}</span>
+                                                        </div>
+                                                        {dealer && (
+                                                            <div className="flex items-center justify-between py-1">
+                                                                <span className="text-slate-400">Dealer Code:</span>
+                                                                <span className="font-mono font-bold text-primary">{dealer.dealer_code}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="flex items-center gap-2 pt-1">
+                                                        <Link
+                                                            to={`/admin/inventory/${car.id}/edit`}
+                                                            className="flex-1 h-10 bg-slate-900 text-white font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-xs hover:bg-slate-800 transition-colors"
+                                                        >
+                                                            <span className="material-symbols-outlined text-base">edit</span> Edit Vehicle
+                                                        </Link>
+                                                        {dealer && (
+                                                            <button
+                                                                onClick={() => { setActiveTab('dealers'); setSearch(dealer.dealer_code); }}
+                                                                className="h-10 px-3.5 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-100 transition-colors"
+                                                            >
+                                                                View Dealer
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+
+                        {/* Desktop View: Wide Datatable */}
+                        <div className="hidden sm:block bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                            <div className="overflow-x-auto relative">
+                                <table className="w-full min-w-[700px]">
+                                    <thead>
+                                        <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-wide border-b border-slate-100 bg-slate-50/50">
+                                            <th className="text-left px-6 py-4">Vehicle</th>
+                                            <th className="text-left px-6 py-4">Dealer</th>
+                                            <th className="text-left px-6 py-4">Asking Price</th>
+                                            <th className="text-left px-6 py-4">Dealer Cost</th>
+                                            <th className="text-left px-6 py-4">Commission</th>
+                                            <th className="text-left px-6 py-4">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {loading ? (
+                                            <tr><td colSpan={6} className="py-10 text-center text-slate-400">Loading…</td></tr>
+                                        ) : filteredCars.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={6} className="py-16 text-center">
+                                                    <span className="material-symbols-outlined text-4xl text-slate-200 mb-3 block">directions_car</span>
+                                                    <p className="text-slate-400 font-medium text-sm">No dealer cars found</p>
+                                                    <p className="text-xs text-slate-300 mt-1">Add a new car and tag it as a dealer car.</p>
                                                 </td>
                                             </tr>
-                                        );
-                                    })
-                                )}
-                            </tbody>
-                        </table>
+                                        ) : (
+                                            filteredCars.map(car => {
+                                                const dealer = getDealerById(car.dealer_id || '');
+                                                return (
+                                                    <tr key={car.id} className="hover:bg-slate-50/30 transition-colors group">
+                                                        <td className="px-6 py-4.5">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="size-11 rounded-lg overflow-hidden bg-slate-100 shrink-0 shadow-xs border border-slate-150">
+                                                                    {car.thumbnail
+                                                                        ? <img src={car.thumbnail} alt="" className="w-full h-full object-cover" />
+                                                                        : <div className="w-full h-full flex items-center justify-center bg-slate-50"><span className="material-symbols-outlined text-slate-300 text-lg">directions_car</span></div>
+                                                                    }
+                                                                </div>
+                                                                <div>
+                                                                    <Link 
+                                                                        to={`/admin/inventory/${car.id}/edit`} 
+                                                                        className="text-sm font-semibold text-primary hover:text-amber-600 hover:underline transition-colors flex items-center gap-1.5"
+                                                                    >
+                                                                        {car.year} <HighlightText text={car.make} highlight={search} /> <HighlightText text={car.model} highlight={search} />
+                                                                        <span className="material-symbols-outlined text-xs opacity-0 group-hover:opacity-100 transition-opacity">open_in_new</span>
+                                                                    </Link>
+                                                                    {car.registration_no && <p className="text-[10px] text-slate-400 font-mono mt-0.5"><HighlightText text={car.registration_no} highlight={search} /></p>}
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4.5">
+                                                            {dealer ? (
+                                                                <div>
+                                                                    <p className="text-sm font-semibold text-primary hover:underline cursor-pointer" onClick={() => { setActiveTab('dealers'); setSearch(dealer.dealer_code); }}>{dealer.name}</p>
+                                                                    <p className="text-[10px] font-mono text-slate-400 mt-0.5">{dealer.dealer_code}</p>
+                                                                </div>
+                                                            ) : <span className="text-slate-300 text-sm">—</span>}
+                                                        </td>
+                                                        <td className="px-5 py-3.5 text-sm font-semibold text-slate-800">{formatCurrency(car.price)}</td>
+                                                        <td className="px-5 py-3.5 text-sm text-slate-600">
+                                                            {car.dealer_asking_price ? (
+                                                                <div>
+                                                                    <p className="font-semibold text-slate-700">{formatCurrency(car.dealer_asking_price)}</p>
+                                                                </div>
+                                                            ) : <span className="text-slate-300 text-sm">—</span>}
+                                                        </td>
+                                                        <td className="px-5 py-3.5 text-sm text-slate-600">{formatCurrency(car.dealer_commission)}</td>
+                                                        <td className="px-5 py-3.5">
+                                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${carStatusColors[car.status] ?? 'bg-slate-100 text-slate-500'}`}>
+                                                                {car.status}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -876,66 +1194,175 @@ const DealerManagement = () => {
                         </select>
                     </div>
 
-                    <div className="bg-white rounded-2xl border border-slate-100 shadow-[var(--shadow-card)] overflow-hidden">
-                        <div className="overflow-x-auto relative">
-                            <table className="w-full min-w-[650px]">
-                            <thead>
-                                <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-wide border-b border-slate-100">
-                                    <th className="text-left px-5 py-3">Dealer</th>
-                                    <th className="text-left px-5 py-3">Car</th>
-                                    <th className="text-left px-5 py-3">Amount</th>
-                                    <th className="text-left px-5 py-3">Date</th>
-                                    <th className="text-left px-5 py-3">Status</th>
-                                    <th className="text-left px-5 py-3">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {loading ? (
-                                    <tr><td colSpan={6} className="py-10 text-center text-slate-400">Loading…</td></tr>
-                                ) : filteredSettlements.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={6} className="py-16 text-center">
-                                            <span className="material-symbols-outlined text-4xl text-slate-200 mb-3 block">payments</span>
-                                            <p className="text-slate-400 font-medium text-sm">No settlements yet</p>
-                                            <button onClick={openAddSettlement} className="inline-flex items-center gap-1 mt-3 text-sm font-semibold text-primary hover:underline">
-                                                <span className="material-symbols-outlined text-base">add</span> Record first settlement
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    filteredSettlements.map(s => (
-                                        <tr key={s.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors">
-                                            <td className="px-5 py-3.5">
-                                                <p className="text-sm font-semibold text-primary">{s.dealer?.name || '—'}</p>
-                                                <p className="text-[10px] font-mono text-slate-400">{s.dealer?.dealer_code}</p>
-                                            </td>
-                                            <td className="px-5 py-3.5 text-sm text-slate-600">
-                                                {s.car ? `${s.car.year} ${s.car.make} ${s.car.model}` : '—'}
-                                            </td>
-                                            <td className="px-5 py-3.5 text-sm font-bold text-primary">{formatCurrency(s.amount)}</td>
-                                            <td className="px-5 py-3.5 text-xs text-slate-500">{formatDate(s.settlement_date)}</td>
-                                            <td className="px-5 py-3.5">
-                                                <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase ${s.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                                                    {s.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-5 py-3.5">
-                                                <div className="flex gap-1">
-                                                    {s.status === 'pending' && (
-                                                        <button onClick={() => markSettlementPaid(s)} className="h-8 px-3 text-xs font-bold bg-green-50 text-green-700 hover:bg-green-100 rounded-lg transition-colors flex items-center gap-1">
-                                                            <span className="material-symbols-outlined text-sm">check</span> Mark Paid
-                                                        </button>
-                                                    )}
-                                                    <button onClick={() => openEditSettlement(s)} className="p-1.5 hover:bg-slate-100 rounded-lg" title="Edit">
-                                                        <span className="material-symbols-outlined text-slate-400 text-base">edit</span>
-                                                    </button>
+                    <div className="space-y-3">
+                        {/* Mobile View: Tap-to-expand Settlement Cards (Zero horizontal scroll) */}
+                        <div className="sm:hidden space-y-3">
+                            {loading ? (
+                                <div className="py-10 text-center text-slate-400 bg-white rounded-2xl border border-slate-100 p-6">Loading…</div>
+                            ) : filteredSettlements.length === 0 ? (
+                                <div className="py-14 text-center bg-white rounded-2xl border border-slate-100 p-6">
+                                    <span className="material-symbols-outlined text-4xl text-slate-200 mb-2 block">payments</span>
+                                    <p className="text-slate-500 font-bold text-sm">No settlements yet</p>
+                                    <button onClick={openAddSettlement} className="inline-flex items-center gap-1 mt-3 text-xs font-bold text-primary hover:underline">
+                                        <span className="material-symbols-outlined text-base">add</span> Record first settlement
+                                    </button>
+                                </div>
+                            ) : (
+                                filteredSettlements.map(s => {
+                                    const isExpanded = expandedSettlementId === s.id;
+                                    
+                                    return (
+                                        <div 
+                                            key={s.id}
+                                            className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden transition-all duration-200"
+                                        >
+                                            {/* Header (Tap to expand) */}
+                                            <div 
+                                                onClick={() => setExpandedSettlementId(prev => prev === s.id ? null : s.id)}
+                                                className="p-4 cursor-pointer hover:bg-slate-50/50 active:bg-slate-50 transition-colors"
+                                            >
+                                                <div className="flex items-start justify-between gap-3 mb-2">
+                                                    <div className="min-w-0">
+                                                        <p className="text-sm font-bold text-primary truncate">
+                                                            {s.dealer?.name || 'Unknown Dealer'}
+                                                        </p>
+                                                        <p className="text-[10px] font-mono font-bold text-slate-400">
+                                                            {s.dealer?.dealer_code}
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 shrink-0">
+                                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${s.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                            {s.status}
+                                                        </span>
+                                                        <span className={`material-symbols-outlined text-slate-400 transition-transform duration-200 ${isExpanded ? 'rotate-180 text-primary' : ''}`}>
+                                                            expand_more
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                            </td>
+
+                                                <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100">
+                                                    <span className="text-slate-400 font-medium">{formatDate(s.settlement_date)}</span>
+                                                    <span className="text-sm font-black text-primary">{formatCurrency(s.amount)}</span>
+                                                </div>
+                                            </div>
+
+                                            {/* Expanded Detailed Breakdown */}
+                                            {isExpanded && (
+                                                <div className="p-4 bg-slate-50/70 border-t border-slate-100 space-y-3 animate-in fade-in duration-150 text-xs">
+                                                    <div className="bg-white p-3.5 rounded-xl border border-slate-200/70 shadow-2xs space-y-2">
+                                                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Settlement Summary</p>
+                                                        
+                                                        <div className="flex items-center justify-between py-1 border-b border-slate-50">
+                                                            <span className="text-slate-400">Vehicle / Listing:</span>
+                                                            <span className="font-semibold text-slate-800 text-right">
+                                                                {s.car ? `${s.car.year} ${s.car.make} ${s.car.model}` : 'General / Direct Settlement'}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex items-center justify-between py-1 border-b border-slate-50">
+                                                            <span className="text-slate-400">Amount:</span>
+                                                            <span className="font-black text-sm text-primary">{formatCurrency(s.amount)}</span>
+                                                        </div>
+                                                        <div className="flex items-center justify-between py-1 border-b border-slate-50">
+                                                            <span className="text-slate-400">Date:</span>
+                                                            <span className="font-medium text-slate-700">{formatDate(s.settlement_date)}</span>
+                                                        </div>
+                                                        {s.notes && (
+                                                            <div className="pt-1">
+                                                                <span className="text-slate-400 block mb-0.5">Notes:</span>
+                                                                <p className="text-slate-600 bg-slate-50 p-2 rounded-lg text-[11px]">{s.notes}</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Actions */}
+                                                    <div className="flex items-center gap-2 pt-1">
+                                                        {s.status === 'pending' && (
+                                                            <button
+                                                                onClick={() => markSettlementPaid(s)}
+                                                                className="flex-1 h-10 bg-green-600 text-white font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-xs hover:bg-green-700 transition-colors"
+                                                            >
+                                                                <span className="material-symbols-outlined text-base">check</span> Mark Paid
+                                                            </button>
+                                                        )}
+                                                        <button
+                                                            onClick={() => openEditSettlement(s)}
+                                                            className={`h-10 px-4 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-100 transition-colors flex items-center justify-center gap-1 ${
+                                                                s.status !== 'pending' ? 'flex-1' : ''
+                                                            }`}
+                                                        >
+                                                            <span className="material-symbols-outlined text-base">edit</span> Edit
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+
+                        {/* Desktop View: Wide Datatable */}
+                        <div className="hidden sm:block bg-white rounded-2xl border border-slate-100 shadow-[var(--shadow-card)] overflow-hidden">
+                            <div className="overflow-x-auto relative">
+                                <table className="w-full min-w-[650px]">
+                                    <thead>
+                                        <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-wide border-b border-slate-100">
+                                            <th className="text-left px-5 py-3">Dealer</th>
+                                            <th className="text-left px-5 py-3">Car</th>
+                                            <th className="text-left px-5 py-3">Amount</th>
+                                            <th className="text-left px-5 py-3">Date</th>
+                                            <th className="text-left px-5 py-3">Status</th>
+                                            <th className="text-left px-5 py-3">Actions</th>
                                         </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
+                                    </thead>
+                                    <tbody>
+                                        {loading ? (
+                                            <tr><td colSpan={6} className="py-10 text-center text-slate-400">Loading…</td></tr>
+                                        ) : filteredSettlements.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={6} className="py-16 text-center">
+                                                    <span className="material-symbols-outlined text-4xl text-slate-200 mb-3 block">payments</span>
+                                                    <p className="text-slate-400 font-medium text-sm">No settlements yet</p>
+                                                    <button onClick={openAddSettlement} className="inline-flex items-center gap-1 mt-3 text-sm font-semibold text-primary hover:underline">
+                                                        <span className="material-symbols-outlined text-base">add</span> Record first settlement
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            filteredSettlements.map(s => (
+                                                <tr key={s.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors">
+                                                    <td className="px-5 py-3.5">
+                                                        <p className="text-sm font-semibold text-primary">{s.dealer?.name || '—'}</p>
+                                                        <p className="text-[10px] font-mono text-slate-400">{s.dealer?.dealer_code}</p>
+                                                    </td>
+                                                    <td className="px-5 py-3.5 text-sm text-slate-600">
+                                                        {s.car ? `${s.car.year} ${s.car.make} ${s.car.model}` : '—'}
+                                                    </td>
+                                                    <td className="px-5 py-3.5 text-sm font-bold text-primary">{formatCurrency(s.amount)}</td>
+                                                    <td className="px-5 py-3.5 text-xs text-slate-500">{formatDate(s.settlement_date)}</td>
+                                                    <td className="px-5 py-3.5">
+                                                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase ${s.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                            {s.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-5 py-3.5">
+                                                        <div className="flex gap-1">
+                                                            {s.status === 'pending' && (
+                                                                <button onClick={() => markSettlementPaid(s)} className="h-8 px-3 text-xs font-bold bg-green-50 text-green-700 hover:bg-green-100 rounded-lg transition-colors flex items-center gap-1">
+                                                                    <span className="material-symbols-outlined text-sm">check</span> Mark Paid
+                                                                </button>
+                                                            )}
+                                                            <button onClick={() => openEditSettlement(s)} className="p-1.5 hover:bg-slate-100 rounded-lg" title="Edit">
+                                                                <span className="material-symbols-outlined text-slate-400 text-base">edit</span>
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>

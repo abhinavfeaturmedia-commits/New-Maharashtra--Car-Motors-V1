@@ -44,6 +44,18 @@ export interface ShiftConfig {
     is_default: boolean;
 }
 
+const DEFAULT_SHIFT: ShiftConfig = {
+    id: 'default-standard-shift',
+    name: 'Standard Shift',
+    department: null,
+    user_id: null,
+    start_time: '09:30:00',
+    end_time: '18:30:00',
+    late_threshold: 15,
+    half_day_hours: 4.5,
+    is_default: true,
+};
+
 interface AttendanceContextValue {
     todayRecord: AttendanceRecord | null;
     todayBreaks: AttendanceBreak[];
@@ -51,7 +63,7 @@ interface AttendanceContextValue {
     sessionId: string | null;
     isClocked: boolean;
     isOnBreak: boolean;
-    shift: ShiftConfig | null;
+    shift: ShiftConfig;
     loading: boolean;
     clockIn: () => Promise<{ error?: string }>;
     clockOut: () => Promise<{ error?: string }>;
@@ -71,7 +83,7 @@ const AttendanceContext = createContext<AttendanceContextValue>({
     sessionId: null,
     isClocked: false,
     isOnBreak: false,
-    shift: null,
+    shift: DEFAULT_SHIFT,
     loading: true,
     clockIn: async () => ({}),
     clockOut: async () => ({}),
@@ -93,8 +105,8 @@ const todayDate = () => {
 
 /** Parse "HH:MM:SS" time string into { hours, minutes } */
 const parseTime = (t: string) => {
-    const [h, m] = t.split(':').map(Number);
-    return { hours: h, minutes: m };
+    const [h, m] = (t || '09:30:00').split(':').map(Number);
+    return { hours: Number.isFinite(h) ? h : 9, minutes: Number.isFinite(m) ? m : 30 };
 };
 
 /** Returns current date's ISO without time */
@@ -103,50 +115,48 @@ const nowISO = () => new Date().toISOString();
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const { user, profile, isAdmin, isStaff } = useAuth();
+    const { user, profile, isAdmin, isStaff, isOwner } = useAuth();
 
     const [todayRecord, setTodayRecord] = useState<AttendanceRecord | null>(null);
     const [todayBreaks, setTodayBreaks] = useState<AttendanceBreak[]>([]);
     const [activeBreak, setActiveBreak] = useState<AttendanceBreak | null>(null);
     const [sessionId, setSessionId] = useState<string | null>(null);
-    const [shift, setShift] = useState<ShiftConfig | null>(null);
+    const [shift, setShift] = useState<ShiftConfig>(DEFAULT_SHIFT);
     const [loading, setLoading] = useState(true);
     const [todaySessionMinutes, setTodaySessionMinutes] = useState(0);
     const [dbSessionMinutes, setDbSessionMinutes] = useState(0);
-    const [isOnLeaveToday, setIsOnLeaveToday] = useState(false);
+    const [, setIsOnLeaveToday] = useState(false);
 
     const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const sessionStartRef = useRef<Date | null>(null);
-    const sessionIdRef = useRef<string | null>(null); // Always-fresh sessionId ref
+    const sessionIdRef = useRef<string | null>(null);
 
-    // ─── KEY FIX: Refs that always hold the LATEST values ─────────────────────
-    // These are updated in sync with state changes, so async callbacks always
-    // read fresh data without depending on useCallback closure staleness.
+    // Refs for fresh access in async callbacks
     const userRef = useRef(user);
     const profileRef = useRef(profile);
-    const shiftRef = useRef<ShiftConfig | null>(null);
+    const shiftRef = useRef<ShiftConfig>(DEFAULT_SHIFT);
     const todayRecordRef = useRef<AttendanceRecord | null>(null);
     const activeBreakRef = useRef<AttendanceBreak | null>(null);
 
-    // Keep refs in sync with state / props on every render
     useEffect(() => { userRef.current = user; }, [user]);
     useEffect(() => { profileRef.current = profile; }, [profile]);
     useEffect(() => { activeBreakRef.current = activeBreak; }, [activeBreak]);
 
-    // Guard: init runs exactly once per user session
+    // Guard: init runs once per user session
     const initDoneRef = useRef(false);
 
-    const isEligible = isAdmin || isStaff;
-
-    // ─── Core async helpers (no useCallback — they read from refs) ────────────
+    // ─── Core async helpers ───────────────────────────────────────────────────
 
     /**
-     * Fetches the applicable shift using the CURRENT profile ref.
-     * Returns the shift directly so callers don't need to wait for state.
+     * Fetches the applicable shift from DB or falls back to DEFAULT_SHIFT.
      */
-    const doFetchShift = async (): Promise<ShiftConfig | null> => {
+    const doFetchShift = async (): Promise<ShiftConfig> => {
         const prof = profileRef.current;
-        if (!prof) return null;
+        if (!prof) {
+            setShift(DEFAULT_SHIFT);
+            shiftRef.current = DEFAULT_SHIFT;
+            return DEFAULT_SHIFT;
+        }
 
         try {
             const orConditions = [`user_id.eq.${prof.id}`, `is_default.eq.true`];
@@ -159,43 +169,42 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 .select('*')
                 .or(orConditions.join(','));
 
-            if (error) {
-                console.error('doFetchShift error:', error);
-                return null;
-            }
-
-            if (data && data.length > 0) {
+            if (!error && data && data.length > 0) {
                 const sorted = [...data].sort((a, b) => {
                     if (a.user_id === prof.id) return -1;
                     if (b.user_id === prof.id) return 1;
                     if (prof.department && a.department === prof.department) return -1;
                     if (prof.department && b.department === prof.department) return 1;
-                    return a.is_default ? 1 : -1;
+                    return a.is_default ? -1 : 1;
                 });
-                const resolved = sorted[0] as ShiftConfig;
+                const resolved = (sorted[0] || DEFAULT_SHIFT) as ShiftConfig;
                 setShift(resolved);
                 shiftRef.current = resolved;
                 return resolved;
             }
-            return null;
         } catch (err) {
             console.error('Exception in doFetchShift:', err);
-            return null;
         }
+
+        setShift(DEFAULT_SHIFT);
+        shiftRef.current = DEFAULT_SHIFT;
+        return DEFAULT_SHIFT;
     };
 
     /**
-     * Fetches today's record using the CURRENT user ref.
-     * Returns { record, isOnLeave } directly.
+     * Fetches today's record and active breaks.
      */
     const doRefreshToday = async (): Promise<{ record: AttendanceRecord | null; isOnLeave: boolean }> => {
         const uid = userRef.current?.id;
-        if (!uid) { setLoading(false); return { record: null, isOnLeave: false }; }
+        if (!uid) { 
+            setLoading(false); 
+            return { record: null, isOnLeave: false }; 
+        }
 
         try {
             const today = todayDate();
 
-            // Fetch today's attendance record
+            // 1. Fetch today's attendance record
             const { data: record, error: recError } = await supabase
                 .from('attendance_records')
                 .select('*')
@@ -205,19 +214,17 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
             if (recError) console.error('doRefreshToday record error:', recError);
 
-            const resolvedRecord = record as AttendanceRecord | null;
+            const resolvedRecord = (record || null) as AttendanceRecord | null;
             setTodayRecord(resolvedRecord);
             todayRecordRef.current = resolvedRecord;
 
-            // Fetch breaks if record exists
-            if (resolvedRecord) {
-                const { data: breaks, error: breakError } = await supabase
+            // 2. Fetch breaks if record exists
+            if (resolvedRecord?.id) {
+                const { data: breaks } = await supabase
                     .from('attendance_breaks')
                     .select('*')
                     .eq('record_id', resolvedRecord.id)
                     .order('break_start', { ascending: true });
-
-                if (breakError) console.error('doRefreshToday breaks error:', breakError);
 
                 const breakList = (breaks ?? []) as AttendanceBreak[];
                 setTodayBreaks(breakList);
@@ -230,9 +237,9 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 activeBreakRef.current = null;
             }
 
-            // Check approved leave for today
+            // 3. Check approved leave for today
             let isOnLeave = false;
-            const { data: leaves, error: leaveError } = await supabase
+            const { data: leaves } = await supabase
                 .from('leave_requests')
                 .select('id')
                 .eq('user_id', uid)
@@ -241,18 +248,15 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 .gte('end_date', today)
                 .limit(1);
 
-            if (leaveError) console.error('doRefreshToday leave error:', leaveError);
             if (leaves && leaves.length > 0) isOnLeave = true;
             setIsOnLeaveToday(isOnLeave);
 
-            // Fetch session totals
-            const { data: sessions, error: sessionError } = await supabase
+            // 4. Fetch session totals
+            const { data: sessions } = await supabase
                 .from('attendance_sessions')
                 .select('id, duration_minutes')
                 .eq('user_id', uid)
                 .eq('date', today);
-
-            if (sessionError) console.error('doRefreshToday sessions error:', sessionError);
 
             const completedDB = (sessions ?? [])
                 .filter(s => s.id !== sessionIdRef.current)
@@ -274,8 +278,7 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
 
     /**
-     * Performs the clock-in DB write with freshly-supplied data.
-     * Uses shiftCfg and existingRecord passed directly — no stale closures.
+     * Performs clock-in DB write with shift config.
      */
     const doClockIn = async (
         shiftCfg: ShiftConfig,
@@ -283,40 +286,81 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     ): Promise<{ error?: string }> => {
         const uid = userRef.current?.id;
         if (!uid) return { error: 'Not authenticated.' };
-        // Idempotent: already clocked in
-        if (existingRecord?.clock_in) return {};
+        if (existingRecord?.clock_in && !existingRecord?.clock_out) return {}; // Already clocked in
 
         try {
             const now = new Date();
             const today = todayDate();
 
             const { hours: sh, minutes: sm } = parseTime(shiftCfg.start_time);
-            const shiftStartMs = sh * 60 + sm;
-            const nowMs = now.getHours() * 60 + now.getMinutes();
-            const isLate = nowMs > shiftStartMs + shiftCfg.late_threshold;
+            const shiftStartMins = sh * 60 + sm;
+            const nowMins = now.getHours() * 60 + now.getMinutes();
+            const isLate = nowMins > shiftStartMins + (shiftCfg.late_threshold || 15);
             const status: AttendanceRecord['status'] = isLate ? 'late' : 'present';
 
-            const { data, error } = await supabase
-                .from('attendance_records')
-                .upsert({
-                    user_id: uid,
-                    date: today,
-                    clock_in: now.toISOString(),
-                    status,
-                    is_late: isLate,
-                    shift_id: shiftCfg.id,
-                }, { onConflict: 'user_id,date' })
-                .select()
-                .single();
+            // Clean shift ID if it's a UUID
+            const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(shiftCfg.id);
 
-            if (error) {
-                console.error('doClockIn DB error:', error);
-                return { error: error.message };
+            const payload: any = {
+                user_id: uid,
+                staff_id: uid,
+                date: today,
+                clock_in: now.toISOString(),
+                clock_out: null,
+                status,
+                is_late: isLate,
+                total_hours_worked: 0,
+                updated_at: now.toISOString(),
+            };
+
+            if (isUUID) {
+                payload.shift_id = shiftCfg.id;
             }
 
-            const newRecord = data as AttendanceRecord;
-            setTodayRecord(newRecord);
-            todayRecordRef.current = newRecord;
+            let newRecord: AttendanceRecord | null = null;
+
+            if (existingRecord?.id) {
+                const { data, error } = await supabase
+                    .from('attendance_records')
+                    .update(payload)
+                    .eq('id', existingRecord.id)
+                    .select()
+                    .single();
+
+                if (error) {
+                    console.error('doClockIn update DB error:', error);
+                    return { error: error.message };
+                }
+                newRecord = data as AttendanceRecord;
+            } else {
+                const { data, error } = await supabase
+                    .from('attendance_records')
+                    .upsert(payload, { onConflict: 'user_id,date' })
+                    .select()
+                    .single();
+
+                if (error) {
+                    // Fallback to insert if upsert had conflict specification issue
+                    const { data: insertData, error: insertError } = await supabase
+                        .from('attendance_records')
+                        .insert(payload)
+                        .select()
+                        .single();
+
+                    if (insertError) {
+                        console.error('doClockIn insert DB error:', error, insertError);
+                        return { error: error.message || insertError.message };
+                    }
+                    newRecord = insertData as AttendanceRecord;
+                } else {
+                    newRecord = data as AttendanceRecord;
+                }
+            }
+
+            if (newRecord) {
+                setTodayRecord(newRecord);
+                todayRecordRef.current = newRecord;
+            }
 
             // Audit log (non-critical)
             try {
@@ -337,38 +381,36 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
 
     // ─── Public API callbacks ─────────────────────────────────────────────────
-    // These use refs so they always have fresh data, regardless of render cycle.
 
     const refreshToday = useCallback(
         () => doRefreshToday(),
-        [] // eslint-disable-line react-hooks/exhaustive-deps
+        []
     );
 
     const clockIn = useCallback(async (): Promise<{ error?: string }> => {
-        const currentShift = shiftRef.current;
+        const currentShift = shiftRef.current || DEFAULT_SHIFT;
         const currentRecord = todayRecordRef.current;
-        if (!userRef.current || !currentShift) {
-            return { error: 'Not authenticated or shift not loaded.' };
+        if (!userRef.current) {
+            return { error: 'Not authenticated.' };
         }
         return doClockIn(currentShift, currentRecord);
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, []);
 
     const clockOut = useCallback(async (): Promise<{ error?: string }> => {
         const uid = userRef.current?.id;
         const rec = todayRecordRef.current;
-        const currentShift = shiftRef.current;
+        const currentShift = shiftRef.current || DEFAULT_SHIFT;
 
-        if (!uid || !rec) return { error: 'No clock-in record found.' };
+        if (!uid || !rec) return { error: 'No clock-in record found for today.' };
         if (rec.clock_out) return { error: 'Already clocked out today.' };
-        if (!currentShift) return { error: 'Shift configuration not loaded.' };
 
         try {
             const now = new Date();
-            const clockInTime = new Date(rec.clock_in!);
-            const totalMs = now.getTime() - clockInTime.getTime();
+            const clockInTime = rec.clock_in ? new Date(rec.clock_in) : now;
+            const totalMs = Math.max(0, now.getTime() - clockInTime.getTime());
             const breakMs = (rec.break_minutes ?? 0) * 60000;
             const workedMs = Math.max(0, totalMs - breakMs);
-            const hoursWorked = workedMs / 3600000;
+            const hoursWorked = Math.round((workedMs / 3600000) * 100) / 100;
 
             const { hours: eh, minutes: em } = parseTime(currentShift.end_time);
             const shiftEnd = new Date(clockInTime);
@@ -379,9 +421,11 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             const isEarlyDeparture = now.getTime() < (shiftEnd.getTime() - 15 * 60 * 1000);
 
             let status: AttendanceRecord['status'] = rec.status;
-            if (hoursWorked < currentShift.half_day_hours) status = 'half_day';
+            if (hoursWorked < (currentShift.half_day_hours || 4.5)) {
+                status = 'half_day';
+            }
 
-            // Final cumulative session minutes
+            // Calculate total system session minutes
             let finalSessionMinutes = todaySessionMinutes;
             if (sessionStartRef.current) {
                 const finalLiveSession = Math.floor((Date.now() - sessionStartRef.current.getTime()) / 60000);
@@ -401,11 +445,12 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 .from('attendance_records')
                 .update({
                     clock_out: now.toISOString(),
-                    total_hours_worked: Math.round(hoursWorked * 100) / 100,
+                    total_hours_worked: hoursWorked,
                     overtime_minutes: overtimeMins,
                     is_early_departure: isEarlyDeparture,
                     status,
                     total_session_minutes: finalSessionMinutes,
+                    updated_at: now.toISOString(),
                 })
                 .eq('id', rec.id);
 
@@ -414,7 +459,7 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             // Close any open break
             if (activeBreakRef.current) await endBreak();
 
-            // End session
+            // End active system session
             if (sessionIdRef.current && sessionStartRef.current) {
                 const duration = Math.floor((Date.now() - sessionStartRef.current.getTime()) / 60000);
                 await supabase
@@ -431,7 +476,7 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     action: 'Clock Out',
                     target_type: 'Attendance',
                     target_name: todayDate(),
-                    details: `Clocked out at ${now.toLocaleTimeString('en-IN')} — ${hoursWorked.toFixed(2)}h worked`,
+                    details: `Clocked out at ${now.toLocaleTimeString('en-IN')} — ${hoursWorked}h worked`,
                 });
             } catch { /* non-critical */ }
 
@@ -440,7 +485,7 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             console.error('Exception in clockOut:', err);
             return { error: err.message || 'An unexpected error occurred during clock-out.' };
         }
-    }, [todaySessionMinutes]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [todaySessionMinutes]);
 
     // ─── Break Management ─────────────────────────────────────────────────────
 
@@ -460,7 +505,7 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             activeBreakRef.current = data as AttendanceBreak;
             setTodayBreaks(prev => [...prev, data as AttendanceBreak]);
         }
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, []);
 
     const endBreak = useCallback(async () => {
         const ab = activeBreakRef.current;
@@ -469,7 +514,7 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
         const now = new Date();
         const start = new Date(ab.break_start);
-        const durationMins = Math.round((now.getTime() - start.getTime()) / 60000);
+        const durationMins = Math.max(1, Math.round((now.getTime() - start.getTime()) / 60000));
 
         await supabase
             .from('attendance_breaks')
@@ -480,14 +525,14 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             const newBreakTotal = (rec.break_minutes ?? 0) + durationMins;
             await supabase
                 .from('attendance_records')
-                .update({ break_minutes: newBreakTotal })
+                .update({ break_minutes: newBreakTotal, updated_at: now.toISOString() })
                 .eq('id', rec.id);
         }
 
         setActiveBreak(null);
         activeBreakRef.current = null;
         await doRefreshToday();
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, []);
 
     // ─── Heartbeat & Session Helpers ──────────────────────────────────────────
 
@@ -526,7 +571,7 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         } catch (err) {
             console.error('Exception in sendHeartbeat:', err);
         }
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, []);
 
     const startSession = async (uid: string): Promise<string | null> => {
         sessionStartRef.current = new Date();
@@ -538,11 +583,7 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 .select()
                 .single();
 
-            if (error) {
-                console.error('startSession insert error:', error);
-                return null;
-            }
-            if (data) {
+            if (!error && data) {
                 sessionIdRef.current = data.id;
                 setSessionId(data.id);
                 return data.id;
@@ -553,9 +594,7 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         return null;
     };
 
-    // ─── Lifecycle: ONE effect, runs once per user login ─────────────────────
-    // The key insight: we read profile/user from REFS inside the async init()
-    // so there is zero stale-closure risk, regardless of React render timing.
+    // ─── Lifecycle Init ───────────────────────────────────────────────────────
 
     useEffect(() => {
         if (!user) {
@@ -563,12 +602,13 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             return;
         }
 
-        // Prevent double-fire (StrictMode, re-renders, etc.)
         if (initDoneRef.current) return;
 
-        // Wait until profile is actually loaded (isAdmin/isStaff come from profile)
-        // If profile is null but user is set, this effect will re-run when profile loads
-        if (!isAdmin && !isStaff) {
+        // Verify that user is staff/admin/owner
+        const role = profile?.role;
+        const isEligible = isAdmin || isStaff || isOwner || role === 'admin' || role === 'staff' || role === 'owner';
+        
+        if (!isEligible && profile) {
             setLoading(false);
             return;
         }
@@ -577,38 +617,38 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
         const init = async () => {
             try {
-                // Step 1: fetch shift — reads profileRef.current (always fresh)
+                // Step 1: fetch shift
                 const resolvedShift = await doFetchShift();
 
-                // Step 2: fetch today's record — reads userRef.current (always fresh)
+                // Step 2: fetch today's attendance record
                 const { record: resolvedRecord, isOnLeave } = await doRefreshToday();
 
-                // Step 3: auto clock-in with freshly-fetched data
+                // Step 3: auto clock-in on login if not on leave and not yet clocked in
                 if (resolvedShift && !isOnLeave && !resolvedRecord?.clock_in) {
                     const result = await doClockIn(resolvedShift, resolvedRecord);
                     if (result.error) {
-                        console.warn('Auto clock-in failed:', result.error);
+                        console.warn('Auto clock-in notice:', result.error);
                     }
                 }
 
-                // Step 4: start system-time session
+                // Step 4: start active system session
                 await startSession(userRef.current!.id);
             } catch (err) {
                 console.error('Error in attendance init:', err);
+            } finally {
                 setLoading(false);
             }
         };
 
         init();
 
-        // Heartbeat every 5 minutes
-        heartbeatRef.current = setInterval(sendHeartbeat, 5 * 60 * 1000);
+        // Heartbeat every 3 minutes
+        heartbeatRef.current = setInterval(sendHeartbeat, 3 * 60 * 1000);
 
         const handleUnload = () => {
             const sid = sessionIdRef.current;
             if (!sid || !sessionStartRef.current) return;
             const duration = Math.floor((Date.now() - sessionStartRef.current.getTime()) / 60000);
-            // Use sendBeacon for reliability on page close
             supabase
                 .from('attendance_sessions')
                 .update({ session_end: nowISO(), duration_minutes: duration, is_active: false })
@@ -620,47 +660,33 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             if (heartbeatRef.current) clearInterval(heartbeatRef.current);
             window.removeEventListener('beforeunload', handleUnload);
         };
-    }, [user, isAdmin, isStaff]); // Re-runs when profile loads (isAdmin/isStaff change)
+    }, [user, profile, isAdmin, isStaff, isOwner]);
 
-    // Reset initDoneRef when user changes (logout → login as different user)
+    // Reset when user logs out
     useEffect(() => {
         if (!user) {
             initDoneRef.current = false;
             sessionIdRef.current = null;
             sessionStartRef.current = null;
-            shiftRef.current = null;
+            shiftRef.current = DEFAULT_SHIFT;
             todayRecordRef.current = null;
             activeBreakRef.current = null;
         }
     }, [user]);
 
-    // Live update of todaySessionMinutes every 10s
+    // Live update of session minutes every 10s
     useEffect(() => {
         const updateLiveMins = () => {
             const liveMins = sessionStartRef.current
                 ? Math.floor((Date.now() - sessionStartRef.current.getTime()) / 60000)
                 : 0;
-            setTodaySessionMinutes(prev => {
-                const base = dbSessionMinutes;
-                return base + liveMins;
-            });
+            setTodaySessionMinutes(dbSessionMinutes + liveMins);
         };
 
         updateLiveMins();
         const id = setInterval(updateLiveMins, 10000);
         return () => clearInterval(id);
     }, [dbSessionMinutes]);
-
-    // Re-register heartbeat when sessionId updates
-    useEffect(() => {
-        const sid = sessionId;
-        if (!sid) return;
-        if (heartbeatRef.current) clearInterval(heartbeatRef.current);
-        heartbeatRef.current = setInterval(sendHeartbeat, 5 * 60 * 1000);
-        return () => { if (heartbeatRef.current) clearInterval(heartbeatRef.current); };
-    }, [sessionId, sendHeartbeat]);
-
-    // ─── Derived ──────────────────────────────────────────────────────────────
 
     const isClocked = !!todayRecord?.clock_in && !todayRecord?.clock_out;
     const isOnBreak = !!activeBreak;
@@ -686,7 +712,5 @@ export const AttendanceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         </AttendanceContext.Provider>
     );
 };
-
-// ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export const useAttendance = () => useContext(AttendanceContext);

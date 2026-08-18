@@ -1523,31 +1523,62 @@ const CarDetails = () => {
             </AnimatePresence>
 
             {/* Sticky Bottom CTA Bar for Mobile */}
-            <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-t border-white/20 shadow-[0_-10px_30px_rgba(15,23,41,0.08)] px-4 py-3 flex items-center justify-between">
-                <div className="flex flex-col">
-                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider leading-none mb-1">Total Price</span>
+            <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-xl border-t border-slate-200/90 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] px-3.5 py-2.5 pb-safe flex items-center justify-between gap-2.5">
+                <div className="flex flex-col shrink-0">
+                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider leading-none mb-0.5">Price</span>
                     <div className="flex items-baseline gap-0.5">
-                        <span className="text-xl font-black text-primary font-display">₹ {formatPriceLakh(car.price)}</span>
-                        <span className="text-xs font-black text-primary font-display">L</span>
+                        <span className="text-base sm:text-lg font-black text-primary font-display tabular-nums">₹ {formatPriceLakh(car.price)}</span>
+                        <span className="text-[10px] font-bold text-slate-500 font-display">L</span>
                     </div>
                 </div>
-                <div className="flex gap-2 flex-1 max-w-[72%] justify-end">
+
+                <div className="flex items-center gap-1.5 flex-1 justify-end">
+                    {/* Call Dealer */}
+                    <a 
+                        href="tel:+919373721705"
+                        className="size-10 flex items-center justify-center rounded-xl bg-slate-100 text-slate-800 border border-slate-200 active:scale-95 transition-all shrink-0"
+                        title="Call Showroom"
+                        aria-label="Call Showroom"
+                    >
+                        <span className="material-symbols-outlined text-[18px]">call</span>
+                    </a>
+
+                    {/* WhatsApp */}
+                    <a 
+                        href={`https://wa.me/919373721705?text=${encodeURIComponent(`Hello New Maharashtra Motors! I am interested in the ${car.year} ${car.make} ${car.model} (₹${formatPriceLakh(car.price)} Lakh) listed on your website.`)}`} 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        className="size-10 flex items-center justify-center rounded-xl bg-emerald-500 text-white shadow-sm active:scale-95 transition-all shrink-0"
+                        title="Chat on WhatsApp"
+                        aria-label="Chat on WhatsApp"
+                    >
+                        <MessageSquare size={18} />
+                    </a>
+
+                    {/* Add to Inquiry Cart */}
+                    <button
+                        onClick={() => {
+                            if (isInCart(car.id)) {
+                                setIsCartOpen(true);
+                            } else {
+                                addToCart(car);
+                            }
+                        }}
+                        className={`size-10 flex items-center justify-center rounded-xl transition-all shrink-0 active:scale-95 ${isInCart(car.id) ? 'bg-amber-500 text-white shadow-sm' : 'bg-slate-100 text-slate-700 border border-slate-200'}`}
+                        title={isInCart(car.id) ? "View in Inquiry Cart" : "Add to Inquiry Cart"}
+                        aria-label="Inquiry Cart"
+                    >
+                        <span className="material-symbols-outlined text-[18px]">{isInCart(car.id) ? 'check' : 'folder_special'}</span>
+                    </button>
+
+                    {/* Book Test Drive */}
                     <Link 
                         to={`/book-test-drive?car=${car.id}`} 
-                        className="flex-1 h-11 flex items-center justify-center gap-1.5 bg-accent text-primary font-black rounded-xl text-[11px] shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                        className="flex-1 h-10 flex items-center justify-center gap-1 bg-amber-600 hover:bg-amber-700 text-white font-black rounded-xl text-xs shadow-md shadow-amber-600/20 active:scale-95 transition-all whitespace-nowrap"
                     >
                         <span className="material-symbols-outlined text-[15px] font-bold">directions_car</span>
                         Book Drive
                     </Link>
-                    <a 
-                        href={`https://wa.me/919823237975?text=I'm interested in the ${car.year} ${car.make} ${car.model} (ID: ${car.id})`} 
-                        target="_blank" 
-                        rel="noreferrer" 
-                        className="flex-1 h-11 flex items-center justify-center gap-1.5 bg-[#25D366] text-white font-black rounded-xl text-[11px] shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
-                    >
-                        <span className="material-symbols-outlined text-[15px] font-bold">forum</span>
-                        WhatsApp
-                    </a>
                 </div>
             </div>
 

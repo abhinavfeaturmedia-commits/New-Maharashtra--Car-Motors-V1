@@ -6,13 +6,13 @@ export interface Car {
     model: string;
     year: number;
     price: number;
-    fuel_type: string;
-    transmission: string;
-    mileage: number;
-    images: string[];
-    status: string;
-    created_at: string;
-    condition: string;
+    fuel_type?: string;
+    transmission?: string;
+    mileage?: number;
+    images?: string[];
+    status?: string;
+    created_at?: string;
+    condition?: string;
     body_type?: string;
 }
 

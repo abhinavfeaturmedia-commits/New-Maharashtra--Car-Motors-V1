@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useNotifications } from '../../contexts/NotificationContext';
 import { useData } from '../../contexts/DataContext';
 import { 
     Plus, 
     Search, 
-    Star, 
     Sparkles, 
     Upload, 
     Trash2, 
@@ -15,14 +13,13 @@ import {
     X, 
     Eye, 
     EyeOff, 
-    Car, 
     Calendar, 
-    MapPin, 
-    Award,
     Image as ImageIcon,
     LayoutGrid,
-    ListFilter,
-    Table as TableIcon
+    Table as TableIcon,
+    Maximize2,
+    ArrowUpDown,
+    Check
 } from 'lucide-react';
 import HighlightText from '../../components/ui/HighlightText';
 
@@ -46,18 +43,6 @@ export interface CustomerDelivery {
     created_at: string;
 }
 
-const PRESET_TAGS = [
-    'Certified Pre-Owned',
-    'Verified Buyer',
-    'Family SUV',
-    'First Car',
-    'Doorstep Delivery',
-    'Luxury Upgrade',
-    '7 Seater',
-    'Happy Family',
-    'Off-Road 4x4'
-];
-
 const emptyDeliveryForm = {
     customer_id: '',
     inventory_id: '',
@@ -67,11 +52,8 @@ const emptyDeliveryForm = {
     registration_no: '',
     delivery_date: new Date().toISOString().slice(0, 10),
     photo_url: '',
-    review_quote: '',
-    rating: 5,
     is_featured: true,
     display_order: 0,
-    tags: ['Certified Pre-Owned', 'Verified Buyer'] as string[]
 };
 
 const AdminHappyCustomers: React.FC = () => {
@@ -82,7 +64,7 @@ const AdminHappyCustomers: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-    const [filterTab, setFilterTab] = useState<'all' | 'featured' | 'five_star'>('all');
+    const [filterTab, setFilterTab] = useState<'all' | 'featured' | 'hidden'>('all');
 
     // Modal state
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -91,6 +73,7 @@ const AdminHappyCustomers: React.FC = () => {
     const [uploadingImage, setUploadingImage] = useState(false);
     const [saving, setSaving] = useState(false);
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
     // Fetch deliveries from Supabase
     const fetchDeliveries = async () => {
@@ -108,7 +91,7 @@ const AdminHappyCustomers: React.FC = () => {
             console.error('Failed to fetch deliveries:', err);
             addNotification({
                 title: 'Error loading deliveries',
-                message: err.message || 'Failed to load customer delivery stories.',
+                message: err.message || 'Failed to load customer delivery photos.',
                 type: 'error'
             });
         } finally {
@@ -125,20 +108,19 @@ const AdminHappyCustomers: React.FC = () => {
         const q = search.toLowerCase().trim();
         return deliveries.filter(d => {
             if (filterTab === 'featured' && !d.is_featured) return false;
-            if (filterTab === 'five_star' && d.rating < 5) return false;
+            if (filterTab === 'hidden' && d.is_featured) return false;
             if (!q) return true;
 
             return (
-                d.customer_name.toLowerCase().includes(q) ||
-                d.car_title.toLowerCase().includes(q) ||
+                (d.customer_name && d.customer_name.toLowerCase().includes(q)) ||
+                (d.car_title && d.car_title.toLowerCase().includes(q)) ||
                 (d.registration_no && d.registration_no.toLowerCase().includes(q)) ||
-                (d.customer_city && d.customer_city.toLowerCase().includes(q)) ||
-                (d.review_quote && d.review_quote.toLowerCase().includes(q))
+                (d.customer_city && d.customer_city.toLowerCase().includes(q))
             );
         });
     }, [deliveries, search, filterTab]);
 
-    // Handle Image Selection with Compression
+    // Handle Image Selection with Canvas Compression
     const handleImageUpload = async (file: File) => {
         if (!file.type.startsWith('image/')) {
             alert('Please upload a valid image file (JPG, PNG, WebP).');
@@ -263,17 +245,6 @@ const AdminHappyCustomers: React.FC = () => {
         }
     };
 
-    // Toggle Tag helper
-    const handleToggleTag = (tag: string) => {
-        setForm(prev => {
-            const exists = prev.tags.includes(tag);
-            return {
-                ...prev,
-                tags: exists ? prev.tags.filter(t => t !== tag) : [...prev.tags, tag]
-            };
-        });
-    };
-
     // Open Modal for Create or Edit
     const handleOpenModal = (item?: CustomerDelivery) => {
         if (item) {
@@ -281,17 +252,14 @@ const AdminHappyCustomers: React.FC = () => {
             setForm({
                 customer_id: item.customer_id || '',
                 inventory_id: item.inventory_id || '',
-                customer_name: item.customer_name,
+                customer_name: item.customer_name || '',
                 customer_city: item.customer_city || 'Pune',
-                car_title: item.car_title,
+                car_title: item.car_title || '',
                 registration_no: item.registration_no || '',
-                delivery_date: item.delivery_date,
-                photo_url: item.photo_url,
-                review_quote: item.review_quote || '',
-                rating: item.rating || 5,
+                delivery_date: item.delivery_date || new Date().toISOString().slice(0, 10),
+                photo_url: item.photo_url || '',
                 is_featured: item.is_featured,
                 display_order: item.display_order || 0,
-                tags: item.tags || ['Certified Pre-Owned', 'Verified Buyer']
             });
         } else {
             setEditingId(null);
@@ -303,35 +271,28 @@ const AdminHappyCustomers: React.FC = () => {
     // Save Delivery Record
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!form.customer_name.trim()) {
-            alert('Please provide customer name.');
-            return;
-        }
-        if (!form.car_title.trim()) {
-            alert('Please provide vehicle title.');
-            return;
-        }
         if (!form.photo_url.trim()) {
-            alert('Please upload or provide a delivery photograph URL.');
+            alert('Please upload or provide a celebration photo URL.');
             return;
         }
 
         setSaving(true);
         try {
+            const customerName = form.customer_name.trim() || 'Happy Customer';
+            const carTitle = form.car_title.trim() || 'Certified Delivery';
+
             const payload = {
                 customer_id: form.customer_id || null,
                 inventory_id: form.inventory_id || null,
-                customer_name: form.customer_name.trim(),
+                customer_name: customerName,
                 customer_city: form.customer_city?.trim() || 'Pune',
-                car_title: form.car_title.trim(),
+                car_title: carTitle,
                 registration_no: form.registration_no?.trim() || null,
                 delivery_date: form.delivery_date || new Date().toISOString().slice(0, 10),
                 photo_url: form.photo_url.trim(),
-                review_quote: form.review_quote?.trim() || null,
-                rating: Number(form.rating) || 5,
                 is_featured: Boolean(form.is_featured),
                 display_order: Number(form.display_order) || 0,
-                tags: form.tags,
+                rating: 5,
                 updated_at: new Date().toISOString()
             };
 
@@ -343,8 +304,8 @@ const AdminHappyCustomers: React.FC = () => {
 
                 if (error) throw error;
                 addNotification({
-                    title: 'Delivery Story Updated',
-                    message: `Updated delivery story for ${form.customer_name}.`,
+                    title: 'Delivery Photo Updated',
+                    message: `Updated carousel photo for ${customerName}.`,
                     type: 'success'
                 });
             } else {
@@ -354,8 +315,8 @@ const AdminHappyCustomers: React.FC = () => {
 
                 if (error) throw error;
                 addNotification({
-                    title: 'Delivery Story Created',
-                    message: `Added new delivery celebration for ${form.customer_name}.`,
+                    title: 'Delivery Photo Added',
+                    message: `Added new photo for homepage carousel.`,
                     type: 'success'
                 });
             }
@@ -365,7 +326,7 @@ const AdminHappyCustomers: React.FC = () => {
         } catch (err: any) {
             console.error('Failed to save delivery:', err);
             addNotification({
-                title: 'Error Saving Story',
+                title: 'Error Saving Photo',
                 message: err.message || 'Could not save customer delivery record.',
                 type: 'error'
             });
@@ -374,7 +335,7 @@ const AdminHappyCustomers: React.FC = () => {
         }
     };
 
-    // Toggle Featured Status directly
+    // Toggle Featured Status directly with 1 click
     const handleToggleFeatured = async (id: string, currentVal: boolean) => {
         try {
             const { error } = await supabase
@@ -386,8 +347,8 @@ const AdminHappyCustomers: React.FC = () => {
 
             setDeliveries(prev => prev.map(d => d.id === id ? { ...d, is_featured: !currentVal } : d));
             addNotification({
-                title: !currentVal ? 'Featured on Homepage' : 'Removed from Featured',
-                message: !currentVal ? 'This delivery story will now appear in the homepage carousel.' : 'Story hidden from homepage.',
+                title: !currentVal ? 'Active on Carousel' : 'Hidden from Carousel',
+                message: !currentVal ? 'Photo is now active on the homepage carousel.' : 'Photo hidden from homepage.',
                 type: 'info'
             });
         } catch (err: any) {
@@ -397,7 +358,7 @@ const AdminHappyCustomers: React.FC = () => {
 
     // Delete Delivery Record
     const handleDelete = async (id: string) => {
-        if (!window.confirm('Are you sure you want to delete this delivery story?')) return;
+        if (!window.confirm('Are you sure you want to delete this delivery photo?')) return;
         setDeletingId(id);
         try {
             const { error } = await supabase
@@ -409,15 +370,15 @@ const AdminHappyCustomers: React.FC = () => {
 
             setDeliveries(prev => prev.filter(d => d.id !== id));
             addNotification({
-                title: 'Delivery Story Deleted',
-                message: 'Story removed successfully.',
+                title: 'Photo Deleted',
+                message: 'Delivery photo removed successfully.',
                 type: 'success'
             });
         } catch (err: any) {
-            console.error('Failed to delete story:', err);
+            console.error('Failed to delete photo:', err);
             addNotification({
                 title: 'Delete Failed',
-                message: err.message || 'Could not delete story.',
+                message: err.message || 'Could not delete photo.',
                 type: 'error'
             });
         } finally {
@@ -434,10 +395,10 @@ const AdminHappyCustomers: React.FC = () => {
                 <div>
                     <h1 className="text-2xl font-black text-primary font-display flex items-center gap-2">
                         <span className="material-symbols-outlined text-accent text-3xl">celebration</span>
-                        Happy Customers & Delivery Showcase
+                        Happy Customers Carousel Photos
                     </h1>
                     <p className="text-slate-500 text-sm mt-0.5">
-                        Manage customer handover photographs, 5-star testimonials, and homepage carousel stories.
+                        Manage handover celebration photos and posters displayed in the homepage carousel.
                     </p>
                 </div>
 
@@ -447,7 +408,7 @@ const AdminHappyCustomers: React.FC = () => {
                         className="h-10 px-4 bg-primary hover:bg-primary-light text-white font-bold rounded-xl text-xs flex items-center gap-2 transition-colors shadow-sm cursor-pointer"
                     >
                         <Plus className="size-4" />
-                        <span>Add Delivery Story</span>
+                        <span>Upload Delivery Photo</span>
                     </button>
                 </div>
             </div>
@@ -456,11 +417,11 @@ const AdminHappyCustomers: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-[var(--shadow-card)] flex items-center gap-4">
                     <div className="size-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
-                        <Award className="size-6 text-amber-500" />
+                        <ImageIcon className="size-6 text-amber-500" />
                     </div>
                     <div>
                         <p className="text-2xl font-black text-primary font-display">{deliveries.length}</p>
-                        <p className="text-xs text-slate-400 font-medium">Total Delivery Stories</p>
+                        <p className="text-xs text-slate-400 font-medium">Total Uploaded Photos</p>
                     </div>
                 </div>
 
@@ -475,24 +436,24 @@ const AdminHappyCustomers: React.FC = () => {
                 </div>
 
                 <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-[var(--shadow-card)] flex items-center gap-4">
-                    <div className="size-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-                        <Star className="size-6 fill-amber-400 text-amber-400" />
+                    <div className="size-12 rounded-2xl bg-slate-50 text-slate-600 flex items-center justify-center font-bold">
+                        <EyeOff className="size-6 text-slate-400" />
                     </div>
                     <div>
-                        <p className="text-2xl font-black text-primary font-display">5.0 / 5.0</p>
-                        <p className="text-xs text-slate-400 font-medium">Verified Customer Rating</p>
+                        <p className="text-2xl font-black text-slate-600 font-display">{deliveries.length - totalFeatured}</p>
+                        <p className="text-xs text-slate-400 font-medium">Hidden / Inactive Photos</p>
                     </div>
                 </div>
             </div>
 
             {/* Controls Bar */}
             <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-100 shadow-xs">
-                {/* Tabs */}
+                {/* Filter Tabs */}
                 <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
                     {[
-                        { id: 'all', label: 'All Stories', count: deliveries.length },
-                        { id: 'featured', label: 'Homepage Featured', count: totalFeatured },
-                        { id: 'five_star', label: '5-Star Ratings', count: deliveries.filter(d => d.rating === 5).length },
+                        { id: 'all', label: 'All Photos', count: deliveries.length },
+                        { id: 'featured', label: 'Active on Homepage', count: totalFeatured },
+                        { id: 'hidden', label: 'Hidden', count: deliveries.length - totalFeatured },
                     ].map(t => (
                         <button
                             key={t.id}
@@ -515,7 +476,7 @@ const AdminHappyCustomers: React.FC = () => {
                         <input
                             value={search}
                             onChange={e => setSearch(e.target.value)}
-                            placeholder="Search customer, vehicle, reg no…"
+                            placeholder="Search by customer, vehicle, city…"
                             className="bg-transparent text-xs text-primary outline-none w-full placeholder:text-slate-400"
                         />
                         {search && (
@@ -544,128 +505,119 @@ const AdminHappyCustomers: React.FC = () => {
                 </div>
             </div>
 
-            {/* Main Content Area */}
+            {/* Main Content Gallery */}
             {loading ? (
                 <div className="bg-white rounded-2xl p-16 text-center text-slate-400 border border-slate-100">
                     <Sparkles className="size-6 text-accent animate-spin mx-auto mb-2" />
-                    <p className="font-medium text-sm">Loading delivery stories...</p>
+                    <p className="font-medium text-sm">Loading delivery photos...</p>
                 </div>
             ) : filteredDeliveries.length === 0 ? (
                 <div className="bg-white rounded-2xl p-16 text-center border border-slate-100 shadow-xs">
                     <span className="material-symbols-outlined text-5xl text-slate-200 mb-3 block">photo_library</span>
-                    <h3 className="text-base font-bold text-slate-700">No delivery stories found</h3>
+                    <h3 className="text-base font-bold text-slate-700">No delivery photos found</h3>
                     <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-                        Add delivery photos and customer testimonials to showcase them on the homepage and build trust.
+                        Upload handover celebration photos or posters to showcase them in the homepage carousel.
                     </p>
                     <button
                         onClick={() => handleOpenModal()}
-                        className="mt-4 px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-light transition-colors"
+                        className="mt-4 px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary-light transition-colors cursor-pointer"
                     >
-                        + Add First Delivery Story
+                        + Upload First Delivery Photo
                     </button>
                 </div>
             ) : viewMode === 'grid' ? (
-                /* Grid View */
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                /* Visual Photo Grid View */
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
                     {filteredDeliveries.map(item => (
                         <div
                             key={item.id}
                             className="bg-white rounded-2xl border border-slate-100 shadow-[var(--shadow-card)] hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col group"
                         >
-                            {/* Photo Thumbnail with ambient background so the full uncropped image is always shown */}
-                            <div className="relative aspect-[16/10] overflow-hidden bg-slate-950 flex items-center justify-center p-1">
+                            {/* Photo Container */}
+                            <div 
+                                className="relative aspect-[3/4] overflow-hidden bg-slate-950 flex items-center justify-center p-2 cursor-pointer"
+                                onClick={() => setLightboxUrl(item.photo_url)}
+                            >
+                                {/* Ambient backdrop */}
                                 <img
                                     src={item.photo_url}
                                     alt=""
-                                    className="absolute inset-0 w-full h-full object-cover blur-md opacity-25 scale-110 pointer-events-none"
+                                    className="absolute inset-0 w-full h-full object-cover blur-xl opacity-35 scale-110 pointer-events-none"
                                     aria-hidden="true"
                                 />
+                                <div className="absolute inset-0 bg-black/20 pointer-events-none" />
+
+                                {/* Main crisp photo */}
                                 <img
                                     src={item.photo_url}
-                                    alt={item.customer_name}
+                                    alt={item.customer_name || 'Delivery photo'}
                                     className="relative z-10 w-auto h-full max-w-full object-contain rounded-lg group-hover:scale-105 transition-transform duration-500"
                                 />
-                                <div className="absolute top-2.5 left-2.5 z-20 flex items-center gap-1.5">
+
+                                {/* Top Left: Status Toggle Pill */}
+                                <div className="absolute top-2.5 left-2.5 z-20" onClick={e => e.stopPropagation()}>
                                     <button
                                         onClick={() => handleToggleFeatured(item.id, item.is_featured)}
-                                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider backdrop-blur-md transition-all flex items-center gap-1 shadow-sm ${
+                                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider backdrop-blur-md transition-all flex items-center gap-1 shadow-md cursor-pointer ${
                                             item.is_featured
                                                 ? 'bg-emerald-500 text-white'
-                                                : 'bg-black/60 text-slate-300 hover:bg-black/80'
+                                                : 'bg-black/70 text-slate-300 hover:bg-black/90'
                                         }`}
+                                        title={item.is_featured ? 'Click to hide from homepage' : 'Click to show on homepage'}
                                     >
                                         {item.is_featured ? <Eye className="size-3" /> : <EyeOff className="size-3" />}
-                                        <span>{item.is_featured ? 'Featured on Home' : 'Hidden'}</span>
+                                        <span>{item.is_featured ? 'On Home' : 'Hidden'}</span>
                                     </button>
                                 </div>
-                                <div className="absolute top-2.5 right-2.5 bg-black/60 backdrop-blur-md text-white text-[10px] font-medium px-2 py-1 rounded-lg">
-                                    {new Date(item.delivery_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+
+                                {/* Top Right: Display Order Badge */}
+                                <div className="absolute top-2.5 right-2.5 z-20 bg-black/70 backdrop-blur-md text-amber-400 text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg border border-white/10">
+                                    #{item.display_order || 0}
+                                </div>
+
+                                {/* Hover Zoom Indicator */}
+                                <div className="absolute bottom-2.5 right-2.5 z-20 size-7 rounded-lg bg-black/60 backdrop-blur-md text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Maximize2 className="size-3.5" />
                                 </div>
                             </div>
 
-                            {/* Card Body */}
-                            <div className="p-4 flex flex-col flex-1 justify-between space-y-3">
+                            {/* Card Footer Info */}
+                            <div className="p-3.5 flex flex-col flex-1 justify-between bg-white border-t border-slate-100 space-y-2">
                                 <div>
-                                    <div className="flex items-start justify-between gap-2">
-                                        <div>
-                                            <h3 className="text-base font-black text-primary leading-tight">
-                                                <HighlightText text={item.customer_name} highlight={search} />
-                                            </h3>
-                                            <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
-                                                <MapPin className="size-3" />
-                                                <span><HighlightText text={item.customer_city || 'Pune'} highlight={search} /></span>
-                                            </p>
-                                        </div>
-                                        <div className="flex items-center gap-0.5 text-amber-400">
-                                            {[...Array(item.rating || 5)].map((_, i) => (
-                                                <Star key={i} className="size-3.5 fill-amber-400 text-amber-400" />
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* Vehicle Info */}
-                                    <div className="mt-3 p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between text-xs">
-                                        <span className="font-bold text-slate-700 truncate max-w-[170px]">
+                                    <h3 className="text-sm font-bold text-primary truncate leading-tight" title={item.customer_name}>
+                                        <HighlightText text={item.customer_name || 'Happy Customer'} highlight={search} />
+                                    </h3>
+                                    {item.car_title && item.car_title !== 'Certified Delivery' && (
+                                        <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5" title={item.car_title}>
                                             <HighlightText text={item.car_title} highlight={search} />
-                                        </span>
-                                        {item.registration_no && (
-                                            <span className="font-mono text-[10px] text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
-                                                <HighlightText text={item.registration_no} highlight={search} />
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    {/* Quote */}
-                                    {item.review_quote && (
-                                        <p className="text-xs text-slate-500 italic mt-3 line-clamp-2 bg-amber-50/50 p-2.5 rounded-xl border border-amber-100">
-                                            "{item.review_quote}"
                                         </p>
                                     )}
+                                    <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-1">
+                                        <Calendar className="size-3" />
+                                        <span>
+                                            {item.delivery_date ? new Date(item.delivery_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                                        </span>
+                                    </p>
                                 </div>
 
-                                {/* Tags & Action buttons */}
-                                <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                                    <div className="flex gap-1 flex-wrap">
-                                        {(item.tags || []).slice(0, 1).map((tag, idx) => (
-                                            <span key={idx} className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600">
-                                                {tag}
-                                            </span>
-                                        ))}
-                                    </div>
-
+                                {/* Actions */}
+                                <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                                    <span className="text-[10px] font-mono text-slate-400">
+                                        {item.registration_no || item.customer_city || ''}
+                                    </span>
                                     <div className="flex items-center gap-1">
                                         <button
                                             onClick={() => handleOpenModal(item)}
-                                            className="p-1.5 text-slate-400 hover:text-primary hover:bg-slate-100 rounded-lg transition-colors"
-                                            title="Edit Story"
+                                            className="p-1.5 text-slate-400 hover:text-primary hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                                            title="Edit Details"
                                         >
                                             <Edit3 className="size-4" />
                                         </button>
                                         <button
                                             onClick={() => handleDelete(item.id)}
                                             disabled={deletingId === item.id}
-                                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                            title="Delete Story"
+                                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                            title="Delete Photo"
                                         >
                                             <Trash2 className="size-4" />
                                         </button>
@@ -682,10 +634,10 @@ const AdminHappyCustomers: React.FC = () => {
                         <table className="w-full min-w-[700px]">
                             <thead>
                                 <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
-                                    <th className="text-left px-5 py-3">Photo & Customer</th>
-                                    <th className="text-left px-5 py-3">Delivered Vehicle</th>
+                                    <th className="text-left px-5 py-3">Photo & Caption</th>
+                                    <th className="text-left px-5 py-3">Vehicle / City</th>
                                     <th className="text-left px-5 py-3">Delivery Date</th>
-                                    <th className="text-left px-5 py-3">Rating & Testimonial</th>
+                                    <th className="text-left px-5 py-3">Order</th>
                                     <th className="text-left px-5 py-3">Homepage Status</th>
                                     <th className="text-right px-5 py-3">Actions</th>
                                 </tr>
@@ -698,11 +650,12 @@ const AdminHappyCustomers: React.FC = () => {
                                                 <img
                                                     src={item.photo_url}
                                                     alt={item.customer_name}
-                                                    className="size-12 rounded-xl object-cover border border-slate-200 shrink-0"
+                                                    onClick={() => setLightboxUrl(item.photo_url)}
+                                                    className="size-14 rounded-xl object-contain bg-slate-900 border border-slate-200 shrink-0 cursor-pointer"
                                                 />
                                                 <div>
                                                     <p className="text-sm font-bold text-primary">
-                                                        <HighlightText text={item.customer_name} highlight={search} />
+                                                        <HighlightText text={item.customer_name || 'Happy Customer'} highlight={search} />
                                                     </p>
                                                     <p className="text-[10px] text-slate-400">
                                                         <HighlightText text={item.customer_city || 'Pune'} highlight={search} />
@@ -712,7 +665,7 @@ const AdminHappyCustomers: React.FC = () => {
                                         </td>
                                         <td className="px-5 py-3">
                                             <p className="text-xs font-bold text-slate-800">
-                                                <HighlightText text={item.car_title} highlight={search} />
+                                                <HighlightText text={item.car_title || 'Certified Delivery'} highlight={search} />
                                             </p>
                                             {item.registration_no && (
                                                 <p className="text-[10px] font-mono text-slate-400 mt-0.5">
@@ -721,45 +674,36 @@ const AdminHappyCustomers: React.FC = () => {
                                             )}
                                         </td>
                                         <td className="px-5 py-3 text-xs text-slate-600 whitespace-nowrap">
-                                            {new Date(item.delivery_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                            {item.delivery_date ? new Date(item.delivery_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
                                         </td>
-                                        <td className="px-5 py-3">
-                                            <div className="flex items-center gap-1 text-amber-400 mb-1">
-                                                {[...Array(item.rating || 5)].map((_, i) => (
-                                                    <Star key={i} className="size-3 fill-amber-400 text-amber-400" />
-                                                ))}
-                                            </div>
-                                            {item.review_quote && (
-                                                <p className="text-[11px] text-slate-500 italic max-w-xs truncate">
-                                                    "{item.review_quote}"
-                                                </p>
-                                            )}
+                                        <td className="px-5 py-3 text-xs font-mono font-bold text-slate-700">
+                                            #{item.display_order || 0}
                                         </td>
                                         <td className="px-5 py-3">
                                             <button
                                                 onClick={() => handleToggleFeatured(item.id, item.is_featured)}
-                                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase transition-colors inline-flex items-center gap-1 ${
+                                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase transition-colors inline-flex items-center gap-1 cursor-pointer ${
                                                     item.is_featured
                                                         ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                                         : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
                                                 }`}
                                             >
                                                 {item.is_featured ? <Eye className="size-3" /> : <EyeOff className="size-3" />}
-                                                <span>{item.is_featured ? 'Featured' : 'Hidden'}</span>
+                                                <span>{item.is_featured ? 'Active on Home' : 'Hidden'}</span>
                                             </button>
                                         </td>
                                         <td className="px-5 py-3 text-right">
                                             <div className="flex items-center justify-end gap-1">
                                                 <button
                                                     onClick={() => handleOpenModal(item)}
-                                                    className="p-1.5 text-slate-400 hover:text-primary hover:bg-slate-100 rounded-lg transition-colors"
+                                                    className="p-1.5 text-slate-400 hover:text-primary hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                                                     title="Edit"
                                                 >
                                                     <Edit3 className="size-4" />
                                                 </button>
                                                 <button
                                                     onClick={() => handleDelete(item.id)}
-                                                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                                                     title="Delete"
                                                 >
                                                     <Trash2 className="size-4" />
@@ -776,21 +720,21 @@ const AdminHappyCustomers: React.FC = () => {
 
             {/* ── Create / Edit Modal ── */}
             {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setIsModalOpen(false)}>
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setIsModalOpen(false)}>
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                         {/* Header */}
-                        <div className="bg-gradient-to-r from-primary to-primary-light text-white p-6 rounded-t-3xl flex items-center justify-between">
+                        <div className="bg-gradient-to-r from-primary to-primary-light text-white p-5 rounded-t-3xl flex items-center justify-between">
                             <div>
                                 <h2 className="text-lg font-black font-display">
-                                    {editingId ? 'Edit Delivery Story' : 'Add New Happy Customer Handover'}
+                                    {editingId ? 'Edit Delivery Photo' : 'Upload Delivery Photo'}
                                 </h2>
                                 <p className="text-xs text-slate-300 mt-0.5">
-                                    Capture the car delivery celebration to display on the public website.
+                                    Add celebration photos and posters to show on the homepage carousel.
                                 </p>
                             </div>
                             <button
                                 onClick={() => setIsModalOpen(false)}
-                                className="size-8 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors"
+                                className="size-8 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors cursor-pointer"
                             >
                                 <X className="size-4" />
                             </button>
@@ -798,139 +742,13 @@ const AdminHappyCustomers: React.FC = () => {
 
                         {/* Form */}
                         <form onSubmit={handleSave} className="p-6 space-y-5">
-                            {/* Quick Link Selectors */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
-                                <div>
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                                        Link Existing Customer (Optional)
-                                    </label>
-                                    <select
-                                        value={form.customer_id}
-                                        onChange={e => handleSelectCustomer(e.target.value)}
-                                        className="w-full h-10 bg-white border border-slate-200 rounded-xl px-3 text-xs text-primary font-medium outline-none focus:ring-2 focus:ring-primary/10"
-                                    >
-                                        <option value="">-- Choose Customer --</option>
-                                        {customers.map(c => (
-                                            <option key={c.id} value={c.id}>
-                                                {c.full_name} ({c.phone || c.city || 'Pune'})
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                                        Link Vehicle from Inventory (Optional)
-                                    </label>
-                                    <select
-                                        value={form.inventory_id}
-                                        onChange={e => handleSelectInventory(e.target.value)}
-                                        className="w-full h-10 bg-white border border-slate-200 rounded-xl px-3 text-xs text-primary font-medium outline-none focus:ring-2 focus:ring-primary/10"
-                                    >
-                                        <option value="">-- Choose Vehicle --</option>
-                                        {inventory.map(c => (
-                                            <option key={c.id} value={c.id}>
-                                                {c.year} {c.make} {c.model} {c.registration_no ? `(${c.registration_no})` : ''}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-
-                            {/* Customer Name & City */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-xs font-bold text-slate-700 block mb-1">Customer Full Name *</label>
-                                    <input
-                                        type="text"
-                                        required
-                                        value={form.customer_name}
-                                        onChange={e => setForm(p => ({ ...p, customer_name: e.target.value }))}
-                                        placeholder="e.g. Abhishek Kulkarni"
-                                        className="w-full h-10 bg-white border border-slate-200 rounded-xl px-3 text-xs text-primary font-medium outline-none focus:ring-2 focus:ring-primary/10"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-bold text-slate-700 block mb-1">Customer City</label>
-                                    <input
-                                        type="text"
-                                        value={form.customer_city}
-                                        onChange={e => setForm(p => ({ ...p, customer_city: e.target.value }))}
-                                        placeholder="e.g. Pune / Mumbai"
-                                        className="w-full h-10 bg-white border border-slate-200 rounded-xl px-3 text-xs text-primary font-medium outline-none focus:ring-2 focus:ring-primary/10"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Car Title, Registration & Date */}
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div className="sm:col-span-2">
-                                    <label className="text-xs font-bold text-slate-700 block mb-1">Car Title / Model *</label>
-                                    <input
-                                        type="text"
-                                        required
-                                        value={form.car_title}
-                                        onChange={e => setForm(p => ({ ...p, car_title: e.target.value }))}
-                                        placeholder="e.g. 2021 Hyundai Creta SX (O)"
-                                        className="w-full h-10 bg-white border border-slate-200 rounded-xl px-3 text-xs text-primary font-medium outline-none focus:ring-2 focus:ring-primary/10"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-bold text-slate-700 block mb-1">Registration No</label>
-                                    <input
-                                        type="text"
-                                        value={form.registration_no}
-                                        onChange={e => setForm(p => ({ ...p, registration_no: e.target.value.toUpperCase() }))}
-                                        placeholder="MH12AB1234"
-                                        className="w-full h-10 bg-white border border-slate-200 rounded-xl px-3 text-xs font-mono text-primary font-medium outline-none focus:ring-2 focus:ring-primary/10"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Delivery Date & Star Rating */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-xs font-bold text-slate-700 block mb-1">Delivery Date</label>
-                                    <input
-                                        type="date"
-                                        value={form.delivery_date}
-                                        onChange={e => setForm(p => ({ ...p, delivery_date: e.target.value }))}
-                                        className="w-full h-10 bg-white border border-slate-200 rounded-xl px-3 text-xs text-primary font-medium outline-none focus:ring-2 focus:ring-primary/10"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-bold text-slate-700 block mb-1">Customer Rating</label>
-                                    <div className="flex items-center gap-2 h-10">
-                                        {[1, 2, 3, 4, 5].map(star => (
-                                            <button
-                                                key={star}
-                                                type="button"
-                                                onClick={() => setForm(p => ({ ...p, rating: star }))}
-                                                className="cursor-pointer"
-                                            >
-                                                <Star
-                                                    className={`size-6 ${
-                                                        star <= form.rating
-                                                            ? 'fill-amber-400 text-amber-400'
-                                                            : 'text-slate-300'
-                                                    }`}
-                                                />
-                                            </button>
-                                        ))}
-                                        <span className="text-xs font-bold text-slate-600 font-mono ml-2">
-                                            {form.rating}.0 / 5.0
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-
                             {/* Delivery Photograph Upload */}
                             <div>
                                 <label className="text-xs font-bold text-slate-700 block mb-1">
-                                    Delivery Celebration Photo *
+                                    Celebration Photo / Poster *
                                 </label>
-                                <div className="flex flex-col sm:flex-row gap-4 items-start">
-                                    <label className="flex-1 flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 hover:border-primary rounded-2xl cursor-pointer bg-slate-50 hover:bg-primary/5 transition-colors w-full">
+                                <div className="flex flex-col gap-3">
+                                    <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-200 hover:border-primary rounded-2xl cursor-pointer bg-slate-50 hover:bg-primary/5 transition-colors w-full">
                                         <input
                                             type="file"
                                             accept="image/*"
@@ -947,81 +765,126 @@ const AdminHappyCustomers: React.FC = () => {
                                             </div>
                                         ) : (
                                             <>
-                                                <Upload className="size-6 text-slate-400 mb-1.5" />
+                                                <Upload className="size-7 text-slate-400 mb-1.5" />
                                                 <span className="text-xs font-bold text-slate-700">Click to Upload Photo</span>
-                                                <span className="text-[10px] text-slate-400 mt-0.5">JPG, PNG (Auto-compressed to &le; 600 KB)</span>
+                                                <span className="text-[10px] text-slate-400 mt-0.5">JPG, PNG, WebP (Auto-compressed to &le; 600 KB)</span>
                                             </>
                                         )}
                                     </label>
 
                                     {form.photo_url && (
-                                        <div className="relative size-24 sm:size-28 rounded-2xl overflow-hidden border border-slate-200 bg-slate-950 flex items-center justify-center p-1 shrink-0 group">
+                                        <div className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-slate-200 bg-slate-950 flex items-center justify-center p-2 group">
                                             <img
                                                 src={form.photo_url}
                                                 alt="Preview"
-                                                className="w-auto h-full max-w-full object-contain"
+                                                className="w-auto h-full max-w-full object-contain rounded-lg"
                                             />
                                             <button
                                                 type="button"
                                                 onClick={() => setForm(p => ({ ...p, photo_url: '' }))}
-                                                className="absolute top-1 right-1 size-6 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm cursor-pointer"
+                                                className="absolute top-2 right-2 size-7 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-md cursor-pointer transition-transform active:scale-95"
+                                                title="Remove photo"
                                             >
-                                                <X className="size-3.5" />
+                                                <X className="size-4" />
                                             </button>
                                         </div>
                                     )}
+
+                                    <div>
+                                        <input
+                                            type="url"
+                                            value={form.photo_url}
+                                            onChange={e => setForm(p => ({ ...p, photo_url: e.target.value }))}
+                                            placeholder="Or paste direct image URL (https://...)"
+                                            className="w-full h-9 bg-white border border-slate-200 rounded-xl px-3 text-xs text-primary outline-none focus:ring-2 focus:ring-primary/10"
+                                        />
+                                    </div>
                                 </div>
-                                <div className="mt-2">
+                            </div>
+
+                            {/* Customer & Vehicle Info */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-700 block mb-1">Customer Name / Label</label>
                                     <input
-                                        type="url"
-                                        value={form.photo_url}
-                                        onChange={e => setForm(p => ({ ...p, photo_url: e.target.value }))}
-                                        placeholder="Or paste direct image URL (https://...)"
-                                        className="w-full h-8 bg-white border border-slate-200 rounded-lg px-2.5 text-[11px] text-primary outline-none focus:ring-1 focus:ring-primary/20"
+                                        type="text"
+                                        value={form.customer_name}
+                                        onChange={e => setForm(p => ({ ...p, customer_name: e.target.value }))}
+                                        placeholder="e.g. Abhishek Kulkarni"
+                                        className="w-full h-10 bg-white border border-slate-200 rounded-xl px-3 text-xs text-primary font-medium outline-none focus:ring-2 focus:ring-primary/10"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-700 block mb-1">Car Model / Title</label>
+                                    <input
+                                        type="text"
+                                        value={form.car_title}
+                                        onChange={e => setForm(p => ({ ...p, car_title: e.target.value }))}
+                                        placeholder="e.g. 2021 Hyundai Creta"
+                                        className="w-full h-10 bg-white border border-slate-200 rounded-xl px-3 text-xs text-primary font-medium outline-none focus:ring-2 focus:ring-primary/10"
                                     />
                                 </div>
                             </div>
 
-                            {/* Customer Review Quote */}
-                            <div>
-                                <label className="text-xs font-bold text-slate-700 block mb-1">
-                                    Customer Testimonial / Review Quote
-                                </label>
-                                <textarea
-                                    rows={3}
-                                    value={form.review_quote}
-                                    onChange={e => setForm(p => ({ ...p, review_quote: e.target.value }))}
-                                    placeholder="e.g. Unbelievably smooth delivery experience! The car was delivered sparkling clean with complete service records."
-                                    className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-primary font-medium outline-none focus:ring-2 focus:ring-primary/10"
-                                />
+                            {/* Delivery Date & Quick Links */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-700 block mb-1">Delivery Date</label>
+                                    <input
+                                        type="date"
+                                        value={form.delivery_date}
+                                        onChange={e => setForm(p => ({ ...p, delivery_date: e.target.value }))}
+                                        className="w-full h-10 bg-white border border-slate-200 rounded-xl px-3 text-xs text-primary font-medium outline-none focus:ring-2 focus:ring-primary/10"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-700 block mb-1">Customer City</label>
+                                    <input
+                                        type="text"
+                                        value={form.customer_city}
+                                        onChange={e => setForm(p => ({ ...p, customer_city: e.target.value }))}
+                                        placeholder="e.g. Pune"
+                                        className="w-full h-10 bg-white border border-slate-200 rounded-xl px-3 text-xs text-primary font-medium outline-none focus:ring-2 focus:ring-primary/10"
+                                    />
+                                </div>
                             </div>
 
-                            {/* Tags */}
-                            <div>
-                                <label className="text-xs font-bold text-slate-700 block mb-1.5">Showcase Tags</label>
-                                <div className="flex flex-wrap gap-1.5">
-                                    {PRESET_TAGS.map(tag => {
-                                        const isSelected = form.tags.includes(tag);
-                                        return (
-                                            <button
-                                                key={tag}
-                                                type="button"
-                                                onClick={() => handleToggleTag(tag)}
-                                                className={`text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-colors cursor-pointer ${
-                                                    isSelected
-                                                        ? 'bg-primary text-white border-primary shadow-xs'
-                                                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                                                }`}
-                                            >
-                                                {isSelected ? '✓ ' : '+ '} {tag}
-                                            </button>
-                                        );
-                                    })}
+                            {/* Optional quick selectors accordion/box */}
+                            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-2">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                                    Quick Auto-Fill from CRM / Inventory (Optional)
+                                </span>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <select
+                                        value={form.customer_id}
+                                        onChange={e => handleSelectCustomer(e.target.value)}
+                                        className="w-full h-8 bg-white border border-slate-200 rounded-lg px-2 text-[11px] text-primary outline-none"
+                                    >
+                                        <option value="">-- Link Customer --</option>
+                                        {customers.map(c => (
+                                            <option key={c.id} value={c.id}>
+                                                {c.full_name} ({c.city || 'Pune'})
+                                            </option>
+                                        ))}
+                                    </select>
+
+                                    <select
+                                        value={form.inventory_id}
+                                        onChange={e => handleSelectInventory(e.target.value)}
+                                        className="w-full h-8 bg-white border border-slate-200 rounded-lg px-2 text-[11px] text-primary outline-none"
+                                    >
+                                        <option value="">-- Link Vehicle --</option>
+                                        {inventory.map(c => (
+                                            <option key={c.id} value={c.id}>
+                                                {c.year} {c.make} {c.model}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
                             </div>
 
                             {/* Featured Switch & Display Order */}
-                            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                            <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
                                 <div className="flex items-center gap-3">
                                     <input
                                         type="checkbox"
@@ -1032,7 +895,7 @@ const AdminHappyCustomers: React.FC = () => {
                                     />
                                     <label htmlFor="featured_switch" className="cursor-pointer">
                                         <p className="text-xs font-bold text-slate-800">Show on Homepage Carousel</p>
-                                        <p className="text-[10px] text-slate-400">Display this handover celebration on the public homepage</p>
+                                        <p className="text-[10px] text-slate-400">Display this photo in the live public carousel</p>
                                     </label>
                                 </div>
 
@@ -1043,6 +906,7 @@ const AdminHappyCustomers: React.FC = () => {
                                         value={form.display_order}
                                         onChange={e => setForm(p => ({ ...p, display_order: Number(e.target.value) || 0 }))}
                                         className="w-14 h-8 text-center bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none"
+                                        title="Lower numbers appear first"
                                     />
                                 </div>
                             </div>
@@ -1052,7 +916,7 @@ const AdminHappyCustomers: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={() => setIsModalOpen(false)}
-                                    className="px-4 h-10 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-100 transition"
+                                    className="px-4 h-10 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-100 transition cursor-pointer"
                                 >
                                     Cancel
                                 </button>
@@ -1064,17 +928,40 @@ const AdminHappyCustomers: React.FC = () => {
                                     {saving ? (
                                         <>
                                             <span className="size-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                            Saving Story…
+                                            Saving Photo…
                                         </>
                                     ) : (
                                         <>
                                             <CheckCircle2 className="size-4" />
-                                            Save Delivery Story
+                                            Save Photo
                                         </>
                                     )}
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Lightbox Modal */}
+            {lightboxUrl && (
+                <div 
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md"
+                    onClick={() => setLightboxUrl(null)}
+                >
+                    <div className="relative max-w-4xl max-h-[90vh] flex flex-col items-center" onClick={e => e.stopPropagation()}>
+                        <button
+                            onClick={() => setLightboxUrl(null)}
+                            className="absolute -top-12 right-0 size-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+                            title="Close"
+                        >
+                            <X className="size-6" />
+                        </button>
+                        <img
+                            src={lightboxUrl}
+                            alt="Full resolution preview"
+                            className="max-h-[80vh] max-w-full w-auto object-contain rounded-2xl shadow-2xl border border-white/20"
+                        />
                     </div>
                 </div>
             )}

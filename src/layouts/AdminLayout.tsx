@@ -531,20 +531,21 @@ const AdminLayout: React.FC = () => {
             {/* Main content */}
             <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden lg:pl-64">
                 {/* Header */}
-                <header className="h-16 bg-white border-b border-slate-100 flex items-center justify-between px-4 sm:px-8 shrink-0">
-                    <div className="flex items-center gap-3 sm:gap-4 flex-1">
+                <header className="h-16 bg-white border-b border-slate-100 flex items-center justify-between px-3 sm:px-8 shrink-0 gap-2 sm:gap-4">
+                    <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
                         <button
                             onClick={() => setSidebarOpen(true)}
-                            className="p-2 -ml-2 text-slate-400 hover:text-primary lg:hidden"
+                            className="p-2 -ml-1 text-slate-400 hover:text-primary lg:hidden shrink-0"
+                            aria-label="Open navigation menu"
                         >
                             <Menu size={22} />
                         </button>
-                        <h2 className="hidden lg:block text-lg font-bold text-primary font-display">Admin Command Center</h2>
-                        <div className="hidden sm:flex items-center gap-2 flex-1 max-w-2xl ml-4">
+                        <h2 className="hidden lg:block text-lg font-bold text-primary font-display shrink-0">Admin Command Center</h2>
+                        <div className="flex items-center gap-2 flex-1 max-w-2xl sm:ml-4 min-w-0">
                             <GlobalSearch />
                         </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                         <AnnouncementBanner />
                         <AttendanceClockWidget />
                         <Link
@@ -556,8 +557,8 @@ const AdminLayout: React.FC = () => {
                             <span className="hidden lg:inline">Website</span>
                         </Link>
                         <NotificationBell />
-                        <div className="flex items-center gap-3 pl-3 border-l border-slate-100">
-                            <div className="size-9 rounded-full bg-gradient-to-br from-primary to-primary-light flex items-center justify-center text-white text-xs font-bold shadow-sm">
+                        <div className="flex items-center gap-2 sm:gap-3 pl-1.5 sm:pl-3 border-l border-slate-100">
+                            <div className="size-8 sm:size-9 rounded-full bg-gradient-to-br from-primary to-primary-light flex items-center justify-center text-white text-xs font-bold shadow-sm">
                                 {profile?.full_name ? profile.full_name.charAt(0).toUpperCase() : 'A'}
                             </div>
                             <div className="hidden md:block">
@@ -568,7 +569,7 @@ const AdminLayout: React.FC = () => {
                         <button
                             onClick={handleLogout}
                             title="Logout"
-                            className="p-2.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                            className="p-2 sm:p-2.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
                         >
                             <LogOut size={18} />
                         </button>

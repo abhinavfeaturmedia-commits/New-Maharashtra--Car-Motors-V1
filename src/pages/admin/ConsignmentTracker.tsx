@@ -52,6 +52,242 @@ const SkeletonRow = () => (
     </tr>
 );
 
+// ─── Mobile Consignment Card Component ──────────────────────────────────────
+interface MobileConsignmentCardProps {
+    car: ConsignmentCar;
+    searchQuery: string;
+    onStatusChange: (id: string, newStatus: string) => void;
+    onOpenSaleModal: (car: ConsignmentCar) => void;
+}
+
+const MobileConsignmentCard: React.FC<MobileConsignmentCardProps> = ({
+    car,
+    searchQuery,
+    onStatusChange,
+    onOpenSaleModal,
+}) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+    const expiry = getExpiryStatus(car.consignment_end_date);
+    const ourFee = (() => {
+        if (!car.consignment_fee_value) return '—';
+        if (car.consignment_fee_type === 'fixed') return `₹${car.consignment_fee_value.toLocaleString('en-IN')}`;
+        if (car.consignment_fee_type === 'percentage') return `${car.consignment_fee_value}%`;
+        return '—';
+    })();
+    const whatsappLink = car.consignment_owner_phone
+        ? toWhatsAppUrl(car.consignment_owner_phone, `Hi, regarding your ${car.year} ${car.make} ${car.model} listed with us`)
+        : null;
+
+    return (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-xs overflow-hidden transition-all hover:border-slate-200">
+            {/* Top Summary Card */}
+            <div className="p-3.5 space-y-2.5">
+                <div className="flex items-start gap-3">
+                    {/* Thumbnail */}
+                    <div 
+                        onClick={() => setIsExpanded(v => !v)}
+                        className="size-16 sm:size-20 rounded-xl overflow-hidden bg-slate-100 shrink-0 cursor-pointer relative"
+                    >
+                        {car.thumbnail ? (
+                            <img src={car.thumbnail} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center text-slate-300">
+                                <span className="material-symbols-outlined text-2xl">directions_car</span>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Title & Price */}
+                    <div 
+                        onClick={() => setIsExpanded(v => !v)}
+                        className="flex-1 min-w-0 cursor-pointer"
+                    >
+                        <div className="flex items-start justify-between gap-1">
+                            <h3 className="text-sm font-bold text-slate-900 truncate leading-tight">
+                                {car.year} <HighlightText text={car.make} highlight={searchQuery} /> <HighlightText text={car.model} highlight={searchQuery} />
+                            </h3>
+                            <div className="text-right shrink-0">
+                                <span className="text-sm font-black text-purple-700 block">
+                                    ₹{((car.consignment_agreed_price || car.price) / 100000).toFixed(2)}L
+                                </span>
+                                {car.consignment_agreed_price && car.price !== car.consignment_agreed_price && (
+                                    <span className="text-[10px] text-slate-400 block -mt-0.5">
+                                        List: ₹{(car.price / 100000).toFixed(2)}L
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                        {car.variant && (
+                            <p className="text-xs text-slate-400 truncate mt-0.5">
+                                <HighlightText text={car.variant} highlight={searchQuery} />
+                            </p>
+                        )}
+
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                            {car.registration_no && (
+                                <span className="text-[10px] text-slate-600 font-mono bg-slate-100 px-1.5 py-0.5 rounded font-semibold">
+                                    <HighlightText text={car.registration_no} highlight={searchQuery} />
+                                </span>
+                            )}
+                            
+                            {/* Fee Badge */}
+                            <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-700">
+                                <span className="material-symbols-outlined text-[10px]">payments</span>
+                                Fee: {ourFee}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Owner info strip & status / expiry */}
+                <div 
+                    onClick={() => setIsExpanded(v => !v)}
+                    className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 text-[11px] text-slate-600 cursor-pointer"
+                >
+                    <div className="flex items-center gap-1.5 truncate">
+                        <span className="material-symbols-outlined text-purple-500 text-[14px]">person</span>
+                        <span className="font-semibold text-slate-700 truncate">
+                            <HighlightText text={car.consignment_owner_name || 'Owner'} highlight={searchQuery} />
+                        </span>
+                        {car.consignment_owner_phone && (
+                            <span className="text-slate-400 text-[10px] font-mono">
+                                ({car.consignment_owner_phone})
+                            </span>
+                        )}
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                        {car.status === 'sold' ? (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase bg-slate-200 text-slate-600">
+                                Sold
+                            </span>
+                        ) : (
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${statusColors[car.status] ?? 'bg-slate-100 text-slate-500'}`}>
+                                {car.status}
+                            </span>
+                        )}
+                        <span className="material-symbols-outlined text-base text-slate-400">
+                            {isExpanded ? 'expand_less' : 'expand_more'}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Expanded Content */}
+            {isExpanded && (
+                <div className="bg-slate-50/80 p-3.5 border-t border-slate-100 space-y-3 animate-in fade-in duration-150">
+                    {/* Status Changer & Expiry Info */}
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="bg-white p-2.5 rounded-xl border border-slate-200/80">
+                            <span className="text-[10px] text-slate-400 block font-semibold uppercase">Change Status</span>
+                            <select
+                                value={car.status}
+                                onChange={e => onStatusChange(car.id, e.target.value)}
+                                className={`w-full mt-1 text-xs font-bold px-2 py-1 rounded-lg border-0 outline-none cursor-pointer ${statusColors[car.status] ?? 'bg-slate-100 text-slate-500'}`}
+                            >
+                                {['available', 'reserved', 'sold', 'pending'].map(s => (
+                                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 space-y-0.5">
+                            <span className="text-[10px] text-slate-400 block font-semibold uppercase">Listing Validity</span>
+                            <div className="mt-1">
+                                {car.status === 'sold' ? (
+                                    <span className="text-xs font-semibold text-slate-500">Deal Closed</span>
+                                ) : (
+                                    <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md ${expiry.cls}`}>
+                                        <span className="material-symbols-outlined text-[11px]">schedule</span>
+                                        {expiry.label}
+                                    </span>
+                                )}
+                            </div>
+                            {car.consignment_end_date && (
+                                <p className="text-[10px] text-slate-400 mt-1">
+                                    Ends {new Date(car.consignment_end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Financial details box */}
+                    <div className="bg-purple-50/70 border border-purple-100 p-2.5 rounded-xl text-xs space-y-1">
+                        <div className="flex justify-between items-center text-purple-900 font-semibold">
+                            <span>Agreed Payout to Owner:</span>
+                            <span>₹{((car.consignment_agreed_price || car.price) / 100000).toFixed(2)} Lakhs</span>
+                        </div>
+                        <div className="flex justify-between items-center text-purple-700">
+                            <span>Listed Selling Price:</span>
+                            <span>₹{(car.price / 100000).toFixed(2)} Lakhs</span>
+                        </div>
+                        <div className="flex justify-between items-center text-purple-800 font-bold border-t border-purple-200/60 pt-1 mt-1">
+                            <span>Our Agency Fee:</span>
+                            <span>
+                                {ourFee}
+                                {car.consignment_fee_type === 'percentage' && car.consignment_fee_value && car.price
+                                    ? ` (≈₹${Math.round(car.price * car.consignment_fee_value / 100).toLocaleString('en-IN')})`
+                                    : ''
+                                }
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* 1-Tap Action Bar */}
+                    <div className="flex items-center gap-1.5 pt-1">
+                        {/* WhatsApp Owner Button */}
+                        {whatsappLink ? (
+                            <a
+                                href={whatsappLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-1 h-9 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-98 transition-transform"
+                            >
+                                <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white shrink-0">
+                                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
+                                </svg>
+                                <span>WhatsApp</span>
+                            </a>
+                        ) : null}
+
+                        {/* Record Sale Button (if not sold) */}
+                        {car.status !== 'sold' && (
+                            <button
+                                onClick={() => onOpenSaleModal(car)}
+                                className="h-9 px-3 rounded-xl bg-purple-600 text-white font-bold text-xs flex items-center justify-center gap-1 active:scale-98 transition-transform cursor-pointer"
+                                title="Record Sale"
+                            >
+                                <span className="material-symbols-outlined text-base">handshake</span>
+                                <span>Settle Sale</span>
+                            </button>
+                        )}
+
+                        {/* Edit Button */}
+                        <Link
+                            to={`/admin/inventory/${car.id}/edit`}
+                            className="h-9 px-3 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center gap-1 active:scale-98 transition-transform"
+                            title="Edit"
+                        >
+                            <span className="material-symbols-outlined text-base text-slate-600">edit</span>
+                        </Link>
+
+                        {/* View on Website */}
+                        <Link
+                            to={`/car/${car.id}`}
+                            target="_blank"
+                            className="h-9 px-3 rounded-xl bg-white border border-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center gap-1 active:scale-98 transition-transform"
+                            title="View on website"
+                        >
+                            <span className="material-symbols-outlined text-base text-slate-600">open_in_new</span>
+                        </Link>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
 const ConsignmentTracker = () => {
     const [cars, setCars] = useState<ConsignmentCar[]>([]);
     const [loading, setLoading] = useState(true);
@@ -278,31 +514,92 @@ const ConsignmentTracker = () => {
             </div>
 
             {/* Filters */}
-            <div className="flex flex-col sm:flex-row gap-3">
-                <div className="flex gap-2 flex-wrap">
-                    {['all', 'available', 'reserved', 'sold', 'pending'].map(s => (
-                        <button
-                            key={s}
-                            onClick={() => setStatusFilter(s)}
-                            className={`h-9 px-4 rounded-xl text-xs font-bold capitalize transition-all border ${statusFilter === s ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
-                        >
-                            {s === 'all' ? 'All' : s}
-                        </button>
-                    ))}
+            <div className="space-y-3">
+                {/* Horizontal Status Pills */}
+                <div className="flex gap-1.5 overflow-x-auto pb-1 border-b border-slate-200 scrollbar-none">
+                    {['all', 'available', 'reserved', 'sold', 'pending'].map(s => {
+                        const count = s === 'all'
+                            ? cars.length
+                            : cars.filter(c => c.status === s).length;
+                        return (
+                            <button
+                                key={s}
+                                onClick={() => setStatusFilter(s)}
+                                className={`px-3.5 py-2 text-xs font-semibold rounded-xl whitespace-nowrap transition-all shrink-0 cursor-pointer ${
+                                    statusFilter === s
+                                        ? 'bg-purple-600 text-white font-bold shadow-xs'
+                                        : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200/80'
+                                }`}
+                            >
+                                {s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}{' '}
+                                <span className={`text-[10px] ml-1 px-1.5 py-0.5 rounded-full ${statusFilter === s ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                    {count}
+                                </span>
+                            </button>
+                        );
+                    })}
                 </div>
-                <div className="relative max-w-xs w-full ml-auto">
+
+                {/* Search Input */}
+                <div className="relative w-full sm:max-w-xs">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-base">search</span>
                     <input
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
                         placeholder="Search owner, car, reg…"
-                        className="w-full h-10 border border-slate-200 rounded-xl pl-9 pr-4 text-sm outline-none focus:ring-2 focus:ring-purple-200"
+                        className="w-full h-10 border border-slate-200 rounded-xl pl-9 pr-4 text-xs sm:text-sm bg-white outline-none focus:ring-2 focus:ring-purple-200 shadow-xs"
                     />
+                    {searchQuery && (
+                        <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                            <span className="material-symbols-outlined text-sm">close</span>
+                        </button>
+                    )}
                 </div>
             </div>
 
-            {/* Table */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-[var(--shadow-card)] overflow-hidden">
+            {/* ── Mobile View (< 640px): Tap-to-Expand Cards ── */}
+            <div className="sm:hidden space-y-3">
+                {loading ? (
+                    [...Array(3)].map((_, i) => (
+                        <div key={i} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-xs space-y-3 animate-pulse">
+                            <div className="flex gap-3">
+                                <div className="size-16 rounded-xl bg-slate-100 shrink-0" />
+                                <div className="flex-1 space-y-2">
+                                    <div className="h-4 bg-slate-100 rounded w-3/4" />
+                                    <div className="h-3 bg-slate-100 rounded w-1/2" />
+                                </div>
+                            </div>
+                        </div>
+                    ))
+                ) : filtered.length === 0 ? (
+                    <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center shadow-xs">
+                        <span className="material-symbols-outlined text-4xl text-slate-200 mb-2 block">handshake</span>
+                        <p className="text-slate-500 font-bold text-sm">
+                            {searchQuery ? `No results for "${searchQuery}"` : 'No Park & Sell cars found'}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-1">Try resetting filters or searching with another term.</p>
+                        <Link to="/admin/inventory/new?source=consignment" className="inline-flex items-center gap-1 mt-3 px-4 py-2 bg-purple-600 text-white font-bold rounded-xl text-xs shadow-xs">
+                            <span className="material-symbols-outlined text-sm">add</span> Add Park &amp; Sell
+                        </Link>
+                    </div>
+                ) : (
+                    filtered.map(car => (
+                        <MobileConsignmentCard
+                            key={car.id}
+                            car={car}
+                            searchQuery={searchQuery}
+                            onStatusChange={handleStatusChange}
+                            onOpenSaleModal={(c) => {
+                                setSaleModal({ car: c });
+                                setSaleForm({ buyer_name: '', buyer_phone: '', final_price: String(c.consignment_agreed_price || c.price || '') });
+                            }}
+                        />
+                    ))
+                )}
+            </div>
+
+            {/* ── Desktop View (≥ 640px): Full Table ── */}
+            <div className="hidden sm:block bg-white rounded-2xl border border-slate-100 shadow-[var(--shadow-card)] overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full min-w-[900px]">
                         <thead>
