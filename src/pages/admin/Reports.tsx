@@ -138,7 +138,9 @@ const Reports = () => {
                         LicensePlate: s.car?.license_plate || s.car?.registration_no || '',
                         SaleType:     s.sale_type || 'purchased',
                         SalePrice:    s.sale_price ?? s.final_price ?? 0,
+                        CostSnapshot: s.purchase_cost_snapshot || 0,
                         Profit:       s.profit || 0,
+                        ConsignmentFee: s.consignment_fee_collected || 0,
                         PaymentStatus: s.payment_status || 'paid',
                         Notes:        s.notes || '',
                     }));
@@ -158,9 +160,11 @@ const Reports = () => {
                         Transmission: i.transmission || '',
                         Mileage:      i.mileage || 0,
                         Status:       i.status,
-                        Source:       i.source || 'own',
+                        Source:       i.source || 'purchased',
                         ListPrice:    i.price,
                         PurchaseCost: i.purchase_cost || '',
+                        DealerCost:   i.dealer_asking_price || '',
+                        MarginOrCommission: i.our_margin || i.dealer_commission || '',
                         AgreedPrice:  i.consignment_agreed_price || '',
                     }));
                     fileName = `Inventory_Report_${today}.csv`;
@@ -244,15 +248,22 @@ const Reports = () => {
                     break;
 
                 case 'Commission Report':
-                    dataToExport = sales.filter(s => localFilterDate(s.sale_date)).map(s => ({
-                        SaleID:     s.id,
-                        Date:       s.sale_date ? new Date(s.sale_date).toLocaleDateString('en-IN') : '',
-                        Vehicle:    s.car ? `${s.car.year || ''} ${s.car.make || ''} ${s.car.model || ''}`.trim() : 'Car',
-                        SalePrice:  s.sale_price ?? s.final_price ?? 0,
-                        NetProfit:  s.profit || 0,
-                        Commission: Math.round((Number(s.profit) || 0) * 0.05),
-                        SoldBy:     s.sold_by || 'Admin',
-                    }));
+                    dataToExport = sales.filter(s => localFilterDate(s.sale_date)).map(s => {
+                        const salePrice = Number(s.sale_price ?? s.final_price ?? 0);
+                        const netProfit = Number(s.profit || 0);
+                        return {
+                            SaleID:             s.id,
+                            Date:               s.sale_date ? new Date(s.sale_date).toLocaleDateString('en-IN') : '',
+                            Vehicle:            s.car ? `${s.car.year || ''} ${s.car.make || ''} ${s.car.model || ''}`.trim() : 'Car',
+                            SaleType:           s.sale_type || 'purchased',
+                            SalePrice:          salePrice,
+                            BaseCost:           Number(s.purchase_cost_snapshot || 0),
+                            DealershipEarnings: netProfit,
+                            StaffIncentive:     Math.round(netProfit * 0.05),
+                            SoldBy:             s.sold_by || 'Admin',
+                            Notes:              s.notes || '',
+                        };
+                    });
                     fileName = `Commission_Report_${today}.csv`;
                     break;
 

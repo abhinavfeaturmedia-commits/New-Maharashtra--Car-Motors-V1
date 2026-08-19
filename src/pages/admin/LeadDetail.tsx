@@ -990,10 +990,10 @@ const LeadDetail = () => {
         if (!convertForm.inventory_id || !convertForm.final_price) return;
 
         try {
-            // ── 1. Fetch full inventory details (source, purchase_cost, fees) ────
+            // ── 1. Fetch full inventory details (source, purchase_cost, fees, dealer) ────
             const { data: carData, error: carFetchErr } = await supabase
                 .from('inventory')
-                .select('id, make, model, year, price, source, purchase_cost, consignment_fee_type, consignment_fee_value, consignment_agreed_price, consignment_owner_name')
+                .select('id, make, model, year, price, source, purchase_cost, consignment_fee_type, consignment_fee_value, consignment_agreed_price, consignment_owner_name, dealer_id, dealer_asking_price, our_margin, dealer_commission')
                 .eq('id', convertForm.inventory_id)
                 .single();
             if (carFetchErr || !carData) throw new Error('Could not fetch car details.');
@@ -1001,13 +1001,15 @@ const LeadDetail = () => {
             const salePrice = Number(convertForm.final_price);
             const source = carData.source || 'purchased';
 
-            // ── 2. Compute profit & sale_type based on source ────────────────────
+            // ── 2. Compute profit, cost snapshot & sale_type based on source ────
             let profit = 0;
             let saleType = 'purchased';
             let consignmentFeeCollected: number | null = null;
+            let costSnapshot: number | null = null;
 
             if (source === 'consignment') {
                 saleType = 'consignment';
+                costSnapshot = carData.consignment_agreed_price || null;
                 // Maharashtra Motors earns only the fee; buyer pays owner directly
                 if (carData.consignment_fee_type === 'fixed') {
                     consignmentFeeCollected = carData.consignment_fee_value || 0;
@@ -1017,10 +1019,12 @@ const LeadDetail = () => {
                 profit = consignmentFeeCollected || 0;
             } else if (source === 'dealer') {
                 saleType = 'dealer';
-                profit = salePrice - (carData.purchase_cost || 0);
+                costSnapshot = carData.dealer_asking_price || 0;
+                profit = Math.max(0, salePrice - (carData.dealer_asking_price || 0));
             } else {
                 // purchased
                 saleType = 'purchased';
+                costSnapshot = carData.purchase_cost || 0;
                 profit = salePrice - (carData.purchase_cost || 0);
             }
 
@@ -1065,13 +1069,13 @@ const LeadDetail = () => {
                 final_price: salePrice,
                 sale_type: saleType,
                 profit: profit,
-                purchase_cost_snapshot: carData.purchase_cost || null,
+                purchase_cost_snapshot: costSnapshot,
                 consignment_fee_collected: consignmentFeeCollected,
                 status: 'completed',
                 payment_status: 'paid',
                 notes: source === 'consignment'
                     ? `Park & Sell — buyer paid ${carData.consignment_owner_name || 'owner'} directly. Maharashtra Motors fee: ₹${profit.toLocaleString('en-IN')}`
-                    : 'Converted from lead workflow'
+                    : (source === 'dealer' ? `Partner Dealer car sold. Dealer cost: ₹${(costSnapshot || 0).toLocaleString('en-IN')}, Dealership Margin: ₹${profit.toLocaleString('en-IN')}` : 'Converted from lead workflow')
             }).select('id').single();
             if (saleErr) throw new Error('Failed to log sale record. ' + saleErr.message);
 

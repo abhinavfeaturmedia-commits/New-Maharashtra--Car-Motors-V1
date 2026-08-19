@@ -1046,8 +1046,8 @@ const DealerManagement = () => {
                                                             <span className="font-medium text-slate-700">{formatCurrency(car.dealer_asking_price)}</span>
                                                         </div>
                                                         <div className="flex items-center justify-between py-1 border-b border-slate-50">
-                                                            <span className="text-slate-400">Commission:</span>
-                                                            <span className="font-bold text-green-600">{formatCurrency(car.dealer_commission)}</span>
+                                                            <span className="text-slate-400">Margin / Commission:</span>
+                                                            <span className="font-bold text-green-600">{formatCurrency(car.our_margin ?? car.dealer_commission ?? (car.dealer_asking_price && car.price > car.dealer_asking_price ? car.price - car.dealer_asking_price : null))}</span>
                                                         </div>
                                                         {dealer && (
                                                             <div className="flex items-center justify-between py-1">
@@ -1091,7 +1091,7 @@ const DealerManagement = () => {
                                             <th className="text-left px-6 py-4">Dealer</th>
                                             <th className="text-left px-6 py-4">Asking Price</th>
                                             <th className="text-left px-6 py-4">Dealer Cost</th>
-                                            <th className="text-left px-6 py-4">Commission</th>
+                                            <th className="text-left px-6 py-4">Our Margin / Comm.</th>
                                             <th className="text-left px-6 py-4">Status</th>
                                         </tr>
                                     </thead>
@@ -1147,7 +1147,7 @@ const DealerManagement = () => {
                                                                 </div>
                                                             ) : <span className="text-slate-300 text-sm">—</span>}
                                                         </td>
-                                                        <td className="px-5 py-3.5 text-sm text-slate-600">{formatCurrency(car.dealer_commission)}</td>
+                                                        <td className="px-5 py-3.5 text-sm font-semibold text-green-700">{formatCurrency(car.our_margin ?? car.dealer_commission ?? (car.dealer_asking_price && car.price > car.dealer_asking_price ? car.price - car.dealer_asking_price : null))}</td>
                                                         <td className="px-5 py-3.5">
                                                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${carStatusColors[car.status] ?? 'bg-slate-100 text-slate-500'}`}>
                                                                 {car.status}

@@ -412,6 +412,134 @@ BEGIN
 END;
 $$;
 
+-- ─────────────────────────────────────────────────────────────
+-- 15. ATOMIC STORED PROCEDURE: COMPLETE SALE (RPC with Dealer & Consignment calculations)
+-- ─────────────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION public.complete_vehicle_sale(
+    p_inventory_id UUID,
+    p_customer_name TEXT,
+    p_customer_phone TEXT,
+    p_customer_email TEXT DEFAULT NULL,
+    p_sale_price NUMERIC DEFAULT 0,
+    p_sale_type TEXT DEFAULT 'purchased',
+    p_lead_id UUID DEFAULT NULL,
+    p_sold_by UUID DEFAULT NULL,
+    p_payment_status TEXT DEFAULT 'paid',
+    p_notes TEXT DEFAULT NULL
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_customer_id UUID;
+    v_source TEXT;
+    v_purchase_cost NUMERIC := 0;
+    v_dealer_cost NUMERIC := 0;
+    v_consignment_fee_type TEXT;
+    v_consignment_fee_value NUMERIC := 0;
+    v_total_expenses NUMERIC := 0;
+    v_net_profit NUMERIC := 0;
+    v_cost_snapshot NUMERIC := 0;
+    v_fee_collected NUMERIC := NULL;
+    v_sale_id UUID;
+    v_current_status TEXT;
+BEGIN
+    -- 1. Acquire row lock and check vehicle availability
+    SELECT status, source, purchase_cost, dealer_asking_price, consignment_fee_type, consignment_fee_value
+    INTO v_current_status, v_source, v_purchase_cost, v_dealer_cost, v_consignment_fee_type, v_consignment_fee_value
+    FROM public.inventory
+    WHERE id = p_inventory_id
+    FOR UPDATE;
+
+    IF v_current_status IS NULL THEN
+        RAISE EXCEPTION 'Vehicle not found.';
+    END IF;
+
+    IF v_current_status = 'sold' THEN
+        RAISE EXCEPTION 'Vehicle is already marked as sold.';
+    END IF;
+
+    -- 2. Upsert Customer Record
+    INSERT INTO public.customers (name, phone, email, lead_id)
+    VALUES (p_customer_name, p_customer_phone, p_customer_email, p_lead_id)
+    ON CONFLICT (phone) DO UPDATE 
+    SET name = EXCLUDED.name,
+        email = COALESCE(EXCLUDED.email, customers.email),
+        total_purchases = customers.total_purchases + 1
+    RETURNING id INTO v_customer_id;
+
+    -- 3. Compute total refurbishment expenses incurred on vehicle
+    SELECT COALESCE(SUM(amount), 0) INTO v_total_expenses
+    FROM public.vehicle_expenses
+    WHERE car_id = p_inventory_id;
+
+    -- 4. Calculate Net Profit based on sourcing type
+    IF v_source = 'dealer' OR p_sale_type = 'dealer' THEN
+        v_cost_snapshot := COALESCE(v_dealer_cost, 0);
+        v_net_profit := GREATEST(0, p_sale_price - v_cost_snapshot - v_total_expenses);
+    ELSIF v_source = 'consignment' OR p_sale_type = 'consignment' THEN
+        IF v_consignment_fee_type = 'percentage' AND v_consignment_fee_value > 0 THEN
+            v_fee_collected := ROUND(p_sale_price * v_consignment_fee_value / 100);
+        ELSE
+            v_fee_collected := COALESCE(v_consignment_fee_value, 0);
+        END IF;
+        v_net_profit := v_fee_collected - v_total_expenses;
+        v_cost_snapshot := p_sale_price - v_net_profit;
+    ELSE
+        v_cost_snapshot := COALESCE(v_purchase_cost, 0);
+        v_net_profit := p_sale_price - v_cost_snapshot - v_total_expenses;
+    END IF;
+
+    -- 5. Insert Sale Record
+    INSERT INTO public.sales (
+        inventory_id,
+        customer_id,
+        customer_name,
+        customer_phone,
+        customer_email,
+        sale_price,
+        final_price,
+        sale_type,
+        profit,
+        consignment_fee_collected,
+        purchase_cost_snapshot,
+        lead_id,
+        sold_by,
+        status,
+        payment_status,
+        sale_date,
+        notes
+    ) VALUES (
+        p_inventory_id,
+        v_customer_id,
+        p_customer_name,
+        p_customer_phone,
+        p_customer_email,
+        p_sale_price,
+        p_sale_price,
+        COALESCE(v_source, p_sale_type),
+        v_net_profit,
+        v_fee_collected,
+        v_cost_snapshot,
+        p_lead_id,
+        p_sold_by,
+        'completed',
+        p_payment_status,
+        CURRENT_DATE,
+        p_notes
+    )
+    RETURNING id INTO v_sale_id;
+
+    -- 6. Mark inventory as sold
+    UPDATE public.inventory
+    SET status = 'sold'
+    WHERE id = p_inventory_id;
+
+    RETURN v_sale_id;
+END;
+$$;
+
 -- ============================================================
 -- DONE. All missing tables created, columns added, RLS applied.
 -- ============================================================

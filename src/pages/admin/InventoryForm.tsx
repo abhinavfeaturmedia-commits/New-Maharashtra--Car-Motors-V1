@@ -111,6 +111,113 @@ const InventoryForm = () => {
 
     const set = (field: string, value: string | number) => setForm(prev => ({ ...prev, [field]: value }));
 
+    // ─── 2-Way Pricing Sync Engine ───────────────────────────────────────────
+    const handleDealerCostChange = (val: string) => {
+        setDealerAskingPrice(val);
+        const cost = Number(val) || 0;
+        const margin = Number(ourMargin) || 0;
+        if (cost > 0 && margin > 0) {
+            set('price', String(cost + margin));
+        } else if (cost > 0 && form.price && Number(form.price) >= cost) {
+            const calculatedMargin = Number(form.price) - cost;
+            setOurMargin(String(calculatedMargin));
+            setDealerCommission(String(calculatedMargin));
+        }
+    };
+
+    const handleDealerMarginChange = (val: string) => {
+        setOurMargin(val);
+        setDealerCommission(val);
+        const cost = Number(dealerAskingPrice) || 0;
+        const margin = Number(val) || 0;
+        if (cost > 0) {
+            set('price', String(cost + margin));
+        }
+    };
+
+    const handlePurchaseCostChange = (val: string) => {
+        setPurchaseCost(val);
+        const cost = Number(val) || 0;
+        const margin = Number(ourMargin) || 0;
+        if (cost > 0 && margin > 0) {
+            set('price', String(cost + margin));
+        } else if (cost > 0 && form.price && Number(form.price) >= cost) {
+            setOurMargin(String(Number(form.price) - cost));
+        }
+    };
+
+    const handlePurchasedMarginChange = (val: string) => {
+        setOurMargin(val);
+        const cost = Number(purchaseCost) || 0;
+        const margin = Number(val) || 0;
+        if (cost > 0) {
+            set('price', String(cost + margin));
+        }
+    };
+
+    const handleConsignmentAgreedPriceChange = (val: string) => {
+        setConsignmentAgreedPrice(val);
+        const agreed = Number(val) || 0;
+        const fee = Number(consignmentFeeValue) || 0;
+        if (agreed > 0) {
+            if (consignmentFeeType === 'fixed') {
+                set('price', String(agreed + fee));
+            } else if (consignmentFeeType === 'percentage' && fee > 0) {
+                set('price', String(Math.round(agreed + (agreed * fee / 100))));
+            } else {
+                set('price', String(agreed));
+            }
+        }
+    };
+
+    const handleConsignmentFeeTypeChange = (newType: 'fixed' | 'percentage') => {
+        setConsignmentFeeType(newType);
+        const agreed = Number(consignmentAgreedPrice) || 0;
+        const fee = Number(consignmentFeeValue) || 0;
+        if (agreed > 0) {
+            if (newType === 'fixed') {
+                set('price', String(agreed + fee));
+            } else if (newType === 'percentage' && fee > 0) {
+                set('price', String(Math.round(agreed + (agreed * fee / 100))));
+            } else {
+                set('price', String(agreed));
+            }
+        }
+    };
+
+    const handleConsignmentFeeValueChange = (val: string) => {
+        setConsignmentFeeValue(val);
+        const agreed = Number(consignmentAgreedPrice) || 0;
+        const fee = Number(val) || 0;
+        if (agreed > 0) {
+            if (consignmentFeeType === 'fixed') {
+                set('price', String(agreed + fee));
+            } else if (consignmentFeeType === 'percentage') {
+                set('price', String(Math.round(agreed + (agreed * fee / 100))));
+            }
+        }
+    };
+
+    const handleAskingPriceChange = (val: string) => {
+        set('price', val);
+        const priceNum = Number(val) || 0;
+        if (source === 'dealer' && dealerAskingPrice) {
+            const cost = Number(dealerAskingPrice) || 0;
+            const diff = priceNum >= cost ? priceNum - cost : 0;
+            setOurMargin(String(diff));
+            setDealerCommission(String(diff));
+        } else if (source === 'purchased' && purchaseCost) {
+            const cost = Number(purchaseCost) || 0;
+            const diff = priceNum >= cost ? priceNum - cost : 0;
+            setOurMargin(String(diff));
+        } else if (source === 'consignment' && consignmentAgreedPrice) {
+            const agreed = Number(consignmentAgreedPrice) || 0;
+            if (priceNum >= agreed && consignmentFeeType === 'fixed') {
+                setConsignmentFeeValue(String(priceNum - agreed));
+            }
+        }
+    };
+
     const handleGenerateDescription = async () => {
         const orSettings = settings?.openrouter_settings;
         if (!orSettings?.api_key || !orSettings?.is_enabled) {
@@ -198,7 +305,8 @@ Condition: ${form.condition}`;
                 description: data.description || '',
             });
             // Populate source fields
-            setSource(data.source || 'purchased');
+            const carSource = data.source || 'purchased';
+            setSource(carSource);
             setPurchaseCost(data.purchase_cost ? String(data.purchase_cost) : '');
             
             setConsignmentOwnerName(data.consignment_owner_name || '');
@@ -211,8 +319,19 @@ Condition: ${form.condition}`;
 
             setDealerId(data.dealer_id || '');
             setDealerAskingPrice(data.dealer_asking_price ? String(data.dealer_asking_price) : '');
-            setOurMargin(data.our_margin ? String(data.our_margin) : '');
-            setDealerCommission(data.dealer_commission ? String(data.dealer_commission) : '');
+
+            const initialMargin = data.our_margin != null
+                ? String(data.our_margin)
+                : (data.dealer_commission != null
+                    ? String(data.dealer_commission)
+                    : (carSource === 'dealer' && data.price && data.dealer_asking_price && Number(data.price) > Number(data.dealer_asking_price)
+                        ? String(Number(data.price) - Number(data.dealer_asking_price))
+                        : (carSource === 'purchased' && data.price && data.purchase_cost && Number(data.price) > Number(data.purchase_cost)
+                            ? String(Number(data.price) - Number(data.purchase_cost))
+                            : '')));
+
+            setOurMargin(initialMargin);
+            setDealerCommission(data.dealer_commission ? String(data.dealer_commission) : initialMargin);
             if (data.images) {
                 setExistingImages(data.images);
             }
@@ -694,8 +813,8 @@ Condition: ${form.condition}`;
                 consignment_end_date: source === 'consignment' ? (consignmentEndDate || null) : null,
                 dealer_id: source === 'dealer' ? (dealerId || null) : null,
                 dealer_asking_price: source === 'dealer' && dealerAskingPrice ? Number(dealerAskingPrice) : null,
-                our_margin: source === 'dealer' && ourMargin ? Number(ourMargin) : null,
-                dealer_commission: source === 'dealer' && dealerCommission ? Number(dealerCommission) : null,
+                our_margin: (source === 'dealer' || source === 'purchased') && ourMargin ? Number(ourMargin) : null,
+                dealer_commission: source === 'dealer' ? (ourMargin ? Number(ourMargin) : (dealerCommission ? Number(dealerCommission) : null)) : null,
             };
 
             if (isEditMode) {
@@ -825,24 +944,49 @@ Condition: ${form.condition}`;
 
                     {/* Source-specific sections */}
                     {source === 'purchased' && (
-                        <div className="bg-slate-50/60 border border-slate-200 rounded-2xl p-4 mb-5">
-                            <div className="flex items-center gap-2 mb-3">
+                        <div className="bg-slate-50/60 border border-slate-200 rounded-2xl p-4 mb-5 space-y-3">
+                            <div className="flex items-center gap-2 mb-1">
                                 <span className="material-symbols-outlined text-primary text-lg">payments</span>
-                                <p className="text-sm font-bold text-primary">Purchase Details</p>
+                                <p className="text-sm font-bold text-primary">Purchased Stock Pricing <span className="text-xs font-normal text-slate-500">(Internal cost &amp; margin)</span></p>
                             </div>
-                            <div className="w-1/2 pr-2">
-                                <label className="text-sm font-medium text-slate-700 mb-1.5 block">Purchase Cost (₹)</label>
-                                <div className="relative">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">₹</span>
-                                    <input
-                                        type="number"
-                                        value={purchaseCost}
-                                        onChange={e => setPurchaseCost(e.target.value)}
-                                        placeholder="What we paid"
-                                        className="w-full h-11 bg-white border border-slate-200 rounded-xl pl-7 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
-                                    />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-sm font-medium text-slate-700 mb-1.5 block">Purchase Cost (₹)</label>
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">₹</span>
+                                        <input
+                                            type="number"
+                                            value={purchaseCost}
+                                            onChange={e => handlePurchaseCostChange(e.target.value)}
+                                            placeholder="What we paid"
+                                            className="w-full h-11 bg-white border border-slate-200 rounded-xl pl-7 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-sm font-medium text-slate-700 mb-1.5 block">Expected Margin / Profit (₹)</label>
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">₹</span>
+                                        <input
+                                            type="number"
+                                            value={ourMargin}
+                                            onChange={e => handlePurchasedMarginChange(e.target.value)}
+                                            placeholder="e.g., 30000"
+                                            className="w-full h-11 bg-white border border-slate-200 rounded-xl pl-7 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20 font-semibold text-green-700"
+                                        />
+                                    </div>
                                 </div>
                             </div>
+                            {/* Live calculation banner */}
+                            {(Number(purchaseCost) > 0 || Number(ourMargin) > 0) && (
+                                <div className="bg-primary/5 border border-primary/15 rounded-xl px-3.5 py-2.5 flex items-center justify-between text-xs text-primary font-medium">
+                                    <span className="flex items-center gap-1.5">
+                                        <span className="material-symbols-outlined text-sm">calculate</span>
+                                        <span>Cost: ₹{Number(purchaseCost || 0).toLocaleString('en-IN')} + Margin: ₹{Number(ourMargin || 0).toLocaleString('en-IN')}</span>
+                                    </span>
+                                    <span className="font-bold">= Asking Price: ₹{Number(form.price || (Number(purchaseCost || 0) + Number(ourMargin || 0))).toLocaleString('en-IN')}</span>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -875,13 +1019,13 @@ Condition: ${form.condition}`;
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-sm font-medium text-slate-700 mb-1.5 block">Agreed Minimum Price (₹)</label>
+                                    <label className="text-sm font-medium text-slate-700 mb-1.5 block">Owner Agreed Minimum Price (₹)</label>
                                     <div className="relative">
                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">₹</span>
                                         <input
                                             type="number"
                                             value={consignmentAgreedPrice}
-                                            onChange={e => setConsignmentAgreedPrice(e.target.value)}
+                                            onChange={e => handleConsignmentAgreedPriceChange(e.target.value)}
                                             placeholder="e.g., 400000"
                                             className="w-full h-11 bg-white border border-purple-200 rounded-xl pl-7 pr-3 text-sm outline-none focus:ring-2 focus:ring-purple-300"
                                         />
@@ -892,7 +1036,7 @@ Condition: ${form.condition}`;
                                         <label className="text-sm font-medium text-slate-700 mb-1.5 block">Fee Type</label>
                                         <select
                                             value={consignmentFeeType}
-                                            onChange={e => setConsignmentFeeType(e.target.value as 'fixed' | 'percentage')}
+                                            onChange={e => handleConsignmentFeeTypeChange(e.target.value as 'fixed' | 'percentage')}
                                             className="w-full h-11 bg-white border border-purple-200 rounded-xl px-3 text-sm outline-none focus:ring-2 focus:ring-purple-300"
                                         >
                                             <option value="fixed">Fixed (₹)</option>
@@ -900,14 +1044,14 @@ Condition: ${form.condition}`;
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="text-sm font-medium text-slate-700 mb-1.5 block">Our Fee</label>
+                                        <label className="text-sm font-medium text-slate-700 mb-1.5 block">Our Fee / Commission</label>
                                         <div className="relative">
                                             {consignmentFeeType === 'fixed' && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">₹</span>}
                                             {consignmentFeeType === 'percentage' && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">%</span>}
                                             <input
                                                 type="number"
                                                 value={consignmentFeeValue}
-                                                onChange={e => setConsignmentFeeValue(e.target.value)}
+                                                onChange={e => handleConsignmentFeeValueChange(e.target.value)}
                                                 placeholder={consignmentFeeType === 'fixed' ? "e.g. 10000" : "e.g. 2.5"}
                                                 className={`w-full h-11 bg-white border border-purple-200 rounded-xl ${consignmentFeeType === 'fixed' ? 'pl-7 pr-3' : 'pl-3 pr-7'} text-sm outline-none focus:ring-2 focus:ring-purple-300`}
                                             />
@@ -933,17 +1077,27 @@ Condition: ${form.condition}`;
                                     />
                                 </div>
                             </div>
+                            {/* Live calculation banner */}
+                            {Number(consignmentAgreedPrice) > 0 && (
+                                <div className="bg-purple-100/60 border border-purple-200 rounded-xl px-3.5 py-2.5 flex items-center justify-between text-xs text-purple-900 font-medium">
+                                    <span className="flex items-center gap-1.5">
+                                        <span className="material-symbols-outlined text-sm">handshake</span>
+                                        <span>Owner Payout: ₹{Number(consignmentAgreedPrice).toLocaleString('en-IN')} + Fee: {consignmentFeeType === 'percentage' ? `${consignmentFeeValue || 0}% (₹${Math.round(Number(consignmentAgreedPrice) * Number(consignmentFeeValue || 0) / 100).toLocaleString('en-IN')})` : `₹${Number(consignmentFeeValue || 0).toLocaleString('en-IN')}`}</span>
+                                    </span>
+                                    <span className="font-bold text-purple-950">= Asking Price: ₹{Number(form.price || 0).toLocaleString('en-IN')}</span>
+                                </div>
+                            )}
                         </div>
                     )}
 
                     {source === 'dealer' && (
-                        <div className="bg-amber-50/60 border border-amber-100 rounded-2xl p-4 mb-5 space-y-3">
-                            <div className="flex items-center gap-2 mb-2">
+                        <div className="bg-amber-50/60 border border-amber-100 rounded-2xl p-4 mb-5 space-y-4">
+                            <div className="flex items-center gap-2 mb-1">
                                 <span className="material-symbols-outlined text-amber-500 text-lg">store</span>
-                                <p className="text-sm font-bold text-amber-800">Dealer Details <span className="text-xs font-normal text-amber-600">(visible to admin only — never public)</span></p>
+                                <p className="text-sm font-bold text-amber-800">Partner Dealer Pricing <span className="text-xs font-normal text-amber-600">(Admin only — automatic 2-way pricing)</span></p>
                             </div>
                             <div>
-                                <label className="text-sm font-medium text-slate-700 mb-1.5 block">Select Dealer</label>
+                                <label className="text-sm font-medium text-slate-700 mb-1.5 block">Select Partner Dealer</label>
 
                                 {/* ── Searchable dealer combobox ── */}
                                 <div className="relative" onBlur={e => {
@@ -964,12 +1118,10 @@ Condition: ${form.condition}`;
                                             onChange={e => {
                                                 setDealerSearch(e.target.value);
                                                 setDealerDropdownOpen(true);
-                                                // Clear selected dealer if user is modifying the text
                                                 if (dealerId) setDealerId('');
                                             }}
                                             className="w-full h-11 bg-white border border-amber-200 rounded-xl pl-9 pr-10 text-sm outline-none focus:ring-2 focus:ring-amber-200 placeholder-slate-400"
                                         />
-                                        {/* Clear button */}
                                         {dealerSearch && (
                                             <button
                                                 type="button"
@@ -1027,47 +1179,47 @@ Condition: ${form.condition}`;
                                     </p>
                                 )}
                             </div>
-                            <div className="grid grid-cols-3 gap-3">
+
+                            {/* Unified Dealer Cost and Our Margin / Commission inputs */}
+                            <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-sm font-medium text-slate-700 mb-1.5 block">Dealer's Cost (₹)</label>
+                                    <label className="text-sm font-medium text-slate-700 mb-1.5 block">Dealer's Cost / Payout (₹) <span className="text-xs text-slate-400">(net to dealer)</span></label>
                                     <div className="relative">
                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">₹</span>
                                         <input
                                             type="number"
                                             value={dealerAskingPrice}
-                                            onChange={e => setDealerAskingPrice(e.target.value)}
-                                            placeholder="e.g., 380000"
-                                            className="w-full h-11 bg-white border border-amber-200 rounded-xl pl-7 pr-3 text-sm outline-none focus:ring-2 focus:ring-amber-200"
+                                            onChange={e => handleDealerCostChange(e.target.value)}
+                                            placeholder="e.g., 630000"
+                                            className="w-full h-11 bg-white border border-amber-200 rounded-xl pl-7 pr-3 text-sm outline-none focus:ring-2 focus:ring-amber-300 font-semibold text-slate-800"
                                         />
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="text-sm font-medium text-slate-700 mb-1.5 block">Our Margin (₹)</label>
+                                    <label className="text-sm font-medium text-slate-700 mb-1.5 block">Our Margin / Commission (₹) <span className="text-xs text-slate-400">(our profit)</span></label>
                                     <div className="relative">
                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">₹</span>
                                         <input
                                             type="number"
                                             value={ourMargin}
-                                            onChange={e => setOurMargin(e.target.value)}
+                                            onChange={e => handleDealerMarginChange(e.target.value)}
                                             placeholder="e.g., 20000"
-                                            className="w-full h-11 bg-white border border-amber-200 rounded-xl pl-7 pr-3 text-sm outline-none focus:ring-2 focus:ring-amber-200"
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium text-slate-700 mb-1.5 block">Commission (₹)</label>
-                                    <div className="relative">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">₹</span>
-                                        <input
-                                            type="number"
-                                            value={dealerCommission}
-                                            onChange={e => setDealerCommission(e.target.value)}
-                                            placeholder="e.g., 5000"
-                                            className="w-full h-11 bg-white border border-amber-200 rounded-xl pl-7 pr-3 text-sm outline-none focus:ring-2 focus:ring-amber-200"
+                                            className="w-full h-11 bg-white border border-amber-200 rounded-xl pl-7 pr-3 text-sm outline-none focus:ring-2 focus:ring-amber-300 font-semibold text-green-700"
                                         />
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Live calculation banner */}
+                            {(Number(dealerAskingPrice) > 0 || Number(ourMargin) > 0) && (
+                                <div className="bg-amber-100/70 border border-amber-200 rounded-xl px-3.5 py-2.5 flex items-center justify-between text-xs text-amber-900 font-medium">
+                                    <span className="flex items-center gap-1.5">
+                                        <span className="material-symbols-outlined text-sm text-amber-600">sync_alt</span>
+                                        <span>Dealer Payout: ₹{Number(dealerAskingPrice || 0).toLocaleString('en-IN')} + Our Margin: ₹{Number(ourMargin || 0).toLocaleString('en-IN')}</span>
+                                    </span>
+                                    <span className="font-bold text-amber-950">= Asking Price: ₹{Number(form.price || (Number(dealerAskingPrice || 0) + Number(ourMargin || 0))).toLocaleString('en-IN')}</span>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -1097,7 +1249,7 @@ Condition: ${form.condition}`;
                             <label className="text-sm font-medium text-slate-700 mb-1.5 block">Asking Price (₹) <span className="text-red-400">*</span></label>
                             <div className="relative">
                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 font-medium">₹</span>
-                                <input type="number" value={form.price} onChange={e => set('price', e.target.value)} placeholder="e.g., 1450000" className="w-full h-11 border border-slate-200 rounded-xl pl-8 pr-4 text-sm outline-none focus:ring-2 focus:ring-primary/10" required />
+                                <input type="number" value={form.price} onChange={e => handleAskingPriceChange(e.target.value)} placeholder="e.g., 1450000" className="w-full h-11 border border-slate-200 rounded-xl pl-8 pr-4 text-sm font-bold text-primary outline-none focus:ring-2 focus:ring-primary/10" required />
                             </div>
                         </div>
                         <div>

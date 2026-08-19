@@ -93,7 +93,8 @@ const AdminSales = () => {
                 final_price: salePrice,
                 sale_type: saleForm.sale_type,
                 profit: saleForm.profit ? Number(saleForm.profit) : null,
-                purchase_cost_snapshot: saleForm.purchase_cost_snapshot ? Number(saleForm.purchase_cost_snapshot) : (selectedCar?.purchase_cost ?? null),
+                purchase_cost_snapshot: saleForm.purchase_cost_snapshot ? Number(saleForm.purchase_cost_snapshot) : (selectedCar?.dealer_asking_price ?? selectedCar?.purchase_cost ?? null),
+                consignment_fee_collected: saleForm.sale_type === 'consignment' ? (saleForm.profit ? Number(saleForm.profit) : null) : null,
                 notes: saleForm.notes || null,
                 sale_date: saleForm.sale_date,
                 sold_by: user?.id ?? null,
@@ -173,13 +174,79 @@ const AdminSales = () => {
         }
     };
 
-    // Auto-fill purchase cost when car is selected
+    // Auto-fill purchase cost, source, and profit when car is selected
     const handleCarSelect = (carId: string) => {
         const car = inventory.find((i: any) => i.id === carId);
+        if (!car) {
+            setSaleForm(f => ({ ...f, inventory_id: '' }));
+            return;
+        }
+
+        const source = car.source || 'purchased';
+        const salePrice = car.price ? String(car.price) : '';
+        let costSnapshot = '';
+        let initialProfit = '';
+
+        if (source === 'dealer') {
+            costSnapshot = car.dealer_asking_price ? String(car.dealer_asking_price) : '';
+            if (car.price && car.dealer_asking_price) {
+                initialProfit = String(Math.max(0, Number(car.price) - Number(car.dealer_asking_price)));
+            } else if (car.our_margin) {
+                initialProfit = String(car.our_margin);
+            }
+        } else if (source === 'consignment') {
+            costSnapshot = car.consignment_agreed_price ? String(car.consignment_agreed_price) : '';
+            if (car.consignment_fee_type === 'percentage' && car.consignment_fee_value && car.price) {
+                initialProfit = String(Math.round(Number(car.price) * Number(car.consignment_fee_value) / 100));
+            } else if (car.consignment_fee_value) {
+                initialProfit = String(car.consignment_fee_value);
+            }
+        } else {
+            // purchased
+            costSnapshot = car.purchase_cost ? String(car.purchase_cost) : '';
+            if (car.price && car.purchase_cost) {
+                initialProfit = String(Math.max(0, Number(car.price) - Number(car.purchase_cost)));
+            }
+        }
+
         setSaleForm(f => ({
             ...f,
             inventory_id: carId,
-            purchase_cost_snapshot: car?.purchase_cost ? String(car.purchase_cost) : '',
+            sale_type: source,
+            sale_price: salePrice,
+            purchase_cost_snapshot: costSnapshot,
+            profit: initialProfit,
+        }));
+    };
+
+    // Reactively compute profit when sale price is edited
+    const handleSalePriceChange = (priceVal: string) => {
+        const selectedCar = inventory.find((i: any) => i.id === saleForm.inventory_id);
+        const source = saleForm.sale_type || selectedCar?.source || 'purchased';
+        const priceNum = Number(priceVal) || 0;
+        let calculatedProfit = saleForm.profit;
+
+        if (source === 'dealer') {
+            const cost = Number(saleForm.purchase_cost_snapshot || selectedCar?.dealer_asking_price || 0);
+            if (cost > 0 && priceNum > 0) {
+                calculatedProfit = String(Math.max(0, priceNum - cost));
+            }
+        } else if (source === 'consignment') {
+            if (selectedCar?.consignment_fee_type === 'percentage' && selectedCar?.consignment_fee_value && priceNum > 0) {
+                calculatedProfit = String(Math.round(priceNum * Number(selectedCar.consignment_fee_value) / 100));
+            }
+        } else {
+            // purchased
+            const cost = Number(saleForm.purchase_cost_snapshot || selectedCar?.purchase_cost || 0);
+            if (cost > 0 && priceNum > 0) {
+                calculatedProfit = String(priceNum - cost);
+            }
+        }
+
+        setSaleForm(f => ({
+            ...f,
+            sale_price: priceVal,
+            profit: calculatedProfit,
         }));
     };
 
@@ -479,7 +546,7 @@ const AdminSales = () => {
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
                                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 block">Sale Price (₹) *</label>
-                                    <input type="number" min="1" value={saleForm.sale_price} onChange={e => setSaleForm(f => ({ ...f, sale_price: e.target.value }))} required placeholder="Final agreed price" className="w-full h-10 px-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-primary transition-colors" />
+                                    <input type="number" min="1" value={saleForm.sale_price} onChange={e => handleSalePriceChange(e.target.value)} required placeholder="Final agreed price" className="w-full h-10 px-3 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-primary transition-colors" />
                                 </div>
                                 <div>
                                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 block">Sale Date *</label>
@@ -489,12 +556,14 @@ const AdminSales = () => {
 
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 block">Purchase Cost Snapshot (₹)</label>
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 block">
+                                        {saleForm.sale_type === 'dealer' ? 'Dealer Cost (₹)' : (saleForm.sale_type === 'consignment' ? 'Owner Base (₹)' : 'Purchase Cost (₹)')}
+                                    </label>
                                     <input type="number" min="0" value={saleForm.purchase_cost_snapshot} onChange={e => setSaleForm(f => ({ ...f, purchase_cost_snapshot: e.target.value }))} placeholder="Auto-filled from inventory" className="w-full h-10 px-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-primary transition-colors" />
                                 </div>
                                 <div>
-                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 block">Net Profit (₹)</label>
-                                    <input type="number" value={saleForm.profit} onChange={e => setSaleForm(f => ({ ...f, profit: e.target.value }))} placeholder="Sale Price − Purchase Cost" className="w-full h-10 px-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-primary transition-colors" />
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 block">Net Profit / Fee (₹)</label>
+                                    <input type="number" value={saleForm.profit} onChange={e => setSaleForm(f => ({ ...f, profit: e.target.value }))} placeholder="Auto-calculated" className="w-full h-10 px-3 border border-slate-200 rounded-xl text-sm font-bold text-green-700 outline-none focus:border-primary transition-colors" />
                                 </div>
                             </div>
 
