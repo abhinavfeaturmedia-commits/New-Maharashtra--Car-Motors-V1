@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Heart, Sparkles, ChevronRight, Landmark } from 'lucide-react';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { getPrimaryImage, formatPriceLakh } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
@@ -177,6 +178,21 @@ const Home = () => {
     const [compareInventory, setCompareInventory] = useState<Car[]>([]);
     const [carAId, setCarAId] = useState('');
     const [carBId, setCarBId] = useState('');
+
+    // Hero Quick Search Ref for smooth scrolling
+    const searchSectionRef = useRef<HTMLDivElement>(null);
+    const heroRef = useRef<HTMLElement>(null);
+
+    // Scroll Parallax & Fade Transforms for Hero Section
+    const { scrollYProgress } = useScroll({
+        target: heroRef,
+        offset: ["start start", "end start"]
+    });
+
+    const videoY = useTransform(scrollYProgress, [0, 1], ["0%", "18%"]);
+    const videoScale = useTransform(scrollYProgress, [0, 1], [1, 1.08]);
+    const contentOpacity = useTransform(scrollYProgress, [0, 0.75], [1, 0]);
+    const contentY = useTransform(scrollYProgress, [0, 0.75], [0, -50]);
 
     useEffect(() => {
         // Load initial wishlist
@@ -477,106 +493,186 @@ const Home = () => {
                 }
             `}} />
 
-            {/* Hero Section — split layout */}
-            <section className="relative overflow-hidden w-full bg-primary">
-                {/* Premium Background image with gradient overlay */}
-                <div className="absolute inset-0 z-0 select-none pointer-events-none">
-                    <img
-                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuA1XK2L7EpsFR7K_eosnwu-nObzshJ1Ty2a8myYaJLGxNfVRumnjS7qbstQgmr0orhubbj2qWZONaSEPe_N7kcPM_1QfK25z_ISQyqhepk7R2dKxgZkvCaLxu1sknYBEuc8ql5XtjjvTxpkgGtcvcz9YskEEhJWegVcLP20ML2BowuulsKcxPJys4ux6Vi6vSqWwbUnsgtemZ2KMzcaeJsz8ZDBvA8U6qYDVmNQ5ksSaho1Svizzl2FUtSrad_4n_fgXjaKl4oo-CEH"
-                        alt=""
-                        className="w-full h-full object-cover opacity-20 sm:opacity-25"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-tr from-primary via-primary/95 to-primary/80" />
+            {/* Hero Section — Video Background with Parallax & Motion */}
+            <section ref={heroRef} className="relative overflow-hidden w-full bg-[#14110e] text-white pt-24 sm:pt-32 pb-14 sm:pb-20 min-h-[88vh] sm:min-h-[94vh] flex flex-col justify-between select-none">
+                {/* 1. Background Video Layer with Parallax & Scale */}
+                <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+                    <motion.video
+                        style={{ y: videoY, scale: videoScale }}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        preload="auto"
+                        className="w-full h-full object-cover select-none will-change-transform"
+                    >
+                        <source src="/hero_section_video_1.mp4" type="video/mp4" />
+                    </motion.video>
+
+                    {/* Clean Cinematic Dark Tint for Maximum Video Clarity & Typography Readability */}
+                    <div className="absolute inset-0 bg-black/40 backdrop-brightness-90" />
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-[#0d0b0a]/90" />
                 </div>
 
-                <div className="relative z-10 container-main">
-                    <div className="grid lg:grid-cols-2 gap-8 items-center min-h-[32.5rem] py-12 lg:py-20">
-                        {/* Left — copy + search */}
-                        <div>
-                            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent/15 border border-accent/30 text-accent text-[11px] font-bold uppercase tracking-widest mb-6">
-                                <span className="material-symbols-outlined text-sm">auto_awesome</span>
-                                Effortless Luxury Discovery
+                {/* Centerpiece Content (Pill Badge + Display Typography + Subtitle + Dual CTAs) */}
+                <motion.div 
+                    style={{ opacity: contentOpacity, y: contentY }}
+                    className="relative z-10 container-main flex flex-col items-center text-center my-auto px-4"
+                >
+                    {/* Eyebrow Capsule Badge */}
+                    <motion.div 
+                        initial={{ opacity: 0, y: -15 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6, delay: 0.1, ease: 'easeOut' }}
+                        className="inline-flex items-center gap-2 px-4 sm:px-5 py-1.5 sm:py-2 rounded-full bg-white/10 border border-white/20 backdrop-blur-md text-amber-400 text-xs sm:text-[13px] font-bold tracking-widest uppercase mb-6 sm:mb-8 shadow-lg shadow-black/40"
+                    >
+                        <span className="size-2 rounded-full bg-amber-400 animate-pulse"></span>
+                        <span>✦ MAHARASHTRA'S MOST TRUSTED AUTOMOTIVE HUB ✦</span>
+                    </motion.div>
+
+                    {/* Display Headline: Bold High-Performance Display Sans + Bold Dynamic Italic Accent */}
+                    <motion.h1 
+                        initial={{ opacity: 0, y: 25 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.7, delay: 0.25, ease: 'easeOut' }}
+                        className="text-4xl sm:text-6xl md:text-7xl font-black text-white leading-[1.06] tracking-tight font-display max-w-4xl mx-auto drop-shadow-[0_4px_30px_rgba(0,0,0,0.9)] mb-4 sm:mb-6"
+                    >
+                        Discover <span className="italic font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 drop-shadow-[0_2px_15px_rgba(245,158,11,0.5)]">Your Dream</span><br />
+                        Vehicle.
+                    </motion.h1>
+
+                    {/* Subtitle Value Proposition with Crisp Legibility */}
+                    <motion.p 
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.7, delay: 0.4, ease: 'easeOut' }}
+                        className="text-sm sm:text-base md:text-lg text-slate-200 max-w-xl sm:max-w-2xl mx-auto leading-relaxed mb-8 sm:mb-10 font-normal sm:font-medium text-center drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)]"
+                    >
+                        Certified commercial trucks, pickups &amp; premium passenger cars with 120-point verified inspection and instant financing.
+                    </motion.p>
+
+                    {/* Dual Action Pill Buttons */}
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.6, delay: 0.55, ease: 'easeOut' }}
+                        className="flex flex-col sm:flex-row items-center justify-center gap-3.5 sm:gap-5 w-full max-w-md mx-auto"
+                    >
+                        {/* Primary Pill Button */}
+                        <Link
+                            to="/inventory"
+                            className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-3.5 sm:py-4 rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:via-orange-400 hover:to-amber-500 text-slate-950 font-black text-sm sm:text-base tracking-wide shadow-[0_0_30px_rgba(245,158,11,0.4)] hover:shadow-[0_0_45px_rgba(245,158,11,0.6)] transition-all hover:scale-105 active:scale-95 whitespace-nowrap cursor-pointer border-none"
+                        >
+                            <span className="material-symbols-outlined text-xl">explore</span>
+                            <span>Explore Vehicles</span>
+                        </Link>
+
+                        {/* Secondary Pill Button */}
+                        <button
+                            onClick={() => searchSectionRef.current?.scrollIntoView({ behavior: 'smooth' })}
+                            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 sm:py-4 rounded-full bg-black/40 hover:bg-black/60 text-white font-bold text-sm sm:text-base border border-white/25 hover:border-white/45 backdrop-blur-md transition-all hover:scale-105 active:scale-95 whitespace-nowrap cursor-pointer"
+                        >
+                            <span>Quick Search</span>
+                            <span className="material-symbols-outlined text-lg">arrow_downward</span>
+                        </button>
+                    </motion.div>
+                </motion.div>
+
+                {/* 6. Floating Bottom Trust Metrics Capsule (Exact match to reference image) */}
+                <motion.div 
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.7, delay: 0.7, ease: 'easeOut' }}
+                    style={{ opacity: contentOpacity }}
+                    className="relative z-10 container-main mt-12 sm:mt-16"
+                >
+                    <div className="bg-[#14110e]/85 backdrop-blur-xl border border-white/20 rounded-full py-3.5 sm:py-4 px-6 sm:px-10 shadow-[0_12px_40px_rgba(0,0,0,0.6)] flex items-center justify-around sm:justify-between flex-wrap gap-y-3 gap-x-4 max-w-4xl mx-auto text-xs sm:text-sm font-medium text-slate-200">
+                        <div className="flex items-center gap-1.5 sm:gap-2">
+                            <span className="font-extrabold text-amber-400 text-sm sm:text-base">3.5K+</span>
+                            <span className="text-slate-200">Happy Owners</span>
+                        </div>
+                        <span className="hidden sm:inline-block text-white/20 text-xs">•</span>
+                        <div className="flex items-center gap-1.5 sm:gap-2">
+                            <span className="font-extrabold text-amber-400 text-sm sm:text-base">200+</span>
+                            <span className="text-slate-200">Commercial &amp; Cars</span>
+                        </div>
+                        <span className="hidden sm:inline-block text-white/20 text-xs">•</span>
+                        <div className="flex items-center gap-1.5 sm:gap-2">
+                            <span className="font-extrabold text-amber-400 text-sm sm:text-base">4.9★</span>
+                            <span className="text-slate-200">Avg. Rating</span>
+                        </div>
+                        <span className="hidden sm:inline-block text-white/20 text-xs">•</span>
+                        <div className="flex items-center gap-1.5 sm:gap-2">
+                            <span className="font-extrabold text-amber-400 text-sm sm:text-base">100%</span>
+                            <span className="text-slate-200">Verified Inspection</span>
+                        </div>
+                    </div>
+                </motion.div>
+            </section>
+
+            {/* Quick Search & Filter Bar Section — Seamlessly Blended */}
+            <section ref={searchSectionRef} id="quick-search" className="relative z-20 pt-2 sm:pt-4 pb-10 sm:pb-14 bg-gradient-to-b from-[#0d0b0a] via-[#161311] to-white">
+                <div className="container-main">
+                    <div className="bg-white rounded-3xl p-5 sm:p-7 shadow-2xl border border-slate-100 max-w-4xl mx-auto">
+                        <div className="flex items-center justify-between gap-4 mb-4 pb-3 border-b border-slate-100">
+                            <div className="flex items-center gap-2">
+                                <span className="material-symbols-outlined text-amber-500 text-xl">tune</span>
+                                <h2 className="text-sm sm:text-base font-black text-slate-900 font-display">Find Your Ideal Vehicle in Seconds</h2>
                             </div>
-
-                            <h1 className="text-4xl sm:text-5xl lg:text-[3.4rem] font-black text-white leading-[1.08] tracking-tight font-display mb-5">
-                                Discover Your<br />
-                                <span className="font-serif-italic font-normal text-amber-400">Dream Ride,</span><br />
-                                <span className="text-accent">Effortlessly.</span>
-                            </h1>
-
-                            <p className="text-base text-slate-400 max-w-md leading-relaxed mb-8">
-                                Experience the freedom of the open road with our meticulously curated collection of premium certified vehicles. Your next adventure starts here.
-                            </p>
-
-                            {/* Search filters */}
-                            <div className="bg-white rounded-2xl p-5 shadow-xl max-w-lg">
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-                                    <div>
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">Budget Range</label>
-                                        <select value={selectedFilters.budget} onChange={e => setSelectedFilters(p => ({...p, budget: e.target.value}))} className="w-full h-10 bg-slate-50 border border-slate-200 rounded-xl px-3 text-sm text-primary font-medium outline-none focus:ring-2 focus:ring-primary/10 appearance-none cursor-pointer">
-                                            <option value="">Any Budget</option>
-                                            <option value="under5">Under ₹5L</option>
-                                            <option value="5to10">₹5L - ₹10L</option>
-                                            <option value="10to20">₹10L - ₹20L</option>
-                                            <option value="20plus">₹20L+</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">Preferred Brand</label>
-                                        <select value={selectedFilters.brand} onChange={e => setSelectedFilters(p => ({...p, brand: e.target.value}))} className="w-full h-10 bg-slate-50 border border-slate-200 rounded-xl px-3 text-sm text-primary font-medium outline-none focus:ring-2 focus:ring-primary/10 appearance-none cursor-pointer">
-                                            <option value="">All Brands</option>
-                                            {brands.map(b => <option key={b} value={b}>{b}</option>)}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">Model Year</label>
-                                        <select value={selectedFilters.year} onChange={e => setSelectedFilters(p => ({...p, year: e.target.value}))} className="w-full h-10 bg-slate-50 border border-slate-200 rounded-xl px-3 text-sm text-primary font-medium outline-none focus:ring-2 focus:ring-primary/10 appearance-none cursor-pointer">
-                                            <option value="">Any Year</option>
-                                            {years.map(y => <option key={y} value={y}>{y}</option>)}
-                                        </select>
-                                    </div>
-                                </div>
-                                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                                    <Link to="/inventory" className="text-xs font-semibold text-slate-500 hover:text-primary flex items-center gap-1 transition-colors">
-                                        <span className="material-symbols-outlined text-sm">tune</span> Advanced Filters
-                                    </Link>
-                                    <button onClick={() => {
-                                        const query = new URLSearchParams();
-                                        if (selectedFilters.budget) query.append('budget', selectedFilters.budget);
-                                        if (selectedFilters.brand) query.append('make', selectedFilters.brand);
-                                        if (selectedFilters.year) query.append('year', selectedFilters.year);
-                                        navigate(`/inventory?${query.toString()}`);
-                                    }} className="inline-flex items-center justify-center gap-2 h-10 px-6 bg-primary text-white font-bold rounded-xl text-sm hover:bg-primary-light transition-all shadow-sm cursor-pointer border-none w-full sm:w-auto">
-                                        <span className="material-symbols-outlined text-lg">search</span> Explore
-                                    </button>
-                                </div>
+                            <Link to="/inventory" className="text-xs font-bold text-amber-600 hover:text-amber-700 flex items-center gap-1 transition-colors">
+                                <span>All Inventory</span>
+                                <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                            </Link>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mb-4">
+                            <div>
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">Budget Range</label>
+                                <select value={selectedFilters.budget} onChange={e => setSelectedFilters(p => ({...p, budget: e.target.value}))} className="w-full h-11 bg-slate-50 border border-slate-200 rounded-xl px-3.5 text-sm text-slate-900 font-medium outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 appearance-none cursor-pointer">
+                                    <option value="">Any Budget</option>
+                                    <option value="under5">Under ₹5L</option>
+                                    <option value="5to10">₹5L - ₹10L</option>
+                                    <option value="10to20">₹10L - ₹20L</option>
+                                    <option value="20plus">₹20L+</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">Preferred Brand</label>
+                                <select value={selectedFilters.brand} onChange={e => setSelectedFilters(p => ({...p, brand: e.target.value}))} className="w-full h-11 bg-slate-50 border border-slate-200 rounded-xl px-3.5 text-sm text-slate-900 font-medium outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 appearance-none cursor-pointer">
+                                    <option value="">All Brands</option>
+                                    {brands.map(b => <option key={b} value={b}>{b}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">Model Year</label>
+                                <select value={selectedFilters.year} onChange={e => setSelectedFilters(p => ({...p, year: e.target.value}))} className="w-full h-11 bg-slate-50 border border-slate-200 rounded-xl px-3.5 text-sm text-slate-900 font-medium outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 appearance-none cursor-pointer">
+                                    <option value="">Any Year</option>
+                                    {years.map(y => <option key={y} value={y}>{y}</option>)}
+                                </select>
                             </div>
                         </div>
 
-                        {/* Right — car images */}
-                        <div className="hidden lg:flex flex-col gap-4 items-end relative">
-                            <div className="rounded-2xl overflow-hidden shadow-2xl w-full max-w-md aspect-[4/3]">
-                                <img
-                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuA1XK2L7EpsFR7K_eosnwu-nObzshJ1Ty2a8myYaJLGxNfVRumnjS7qbstQgmr0orhubbj2qWZONaSEPe_N7kcPM_1QfK25z_ISQyqhepk7R2dKxgZkvCaLxu1sknYBEuc8ql5XtjjvTxpkgGtcvcz9YskEEhJWegVcLP20ML2BowuulsKcxPJys4ux6Vi6vSqWwbUnsgtemZ2KMzcaeJsz8ZDBvA8U6qYDVmNQ5ksSaho1Svizzl2FUtSrad_4n_fgXjaKl4oo-CEH"
-                                    alt="Premium luxury car"
-                                    className="w-full h-full object-cover"
-                                />
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
+                            <div className="flex items-center gap-4 text-xs text-slate-500">
+                                <span className="flex items-center gap-1.5">
+                                    <span className="material-symbols-outlined text-emerald-600 text-base">verified</span>
+                                    Verified RC &amp; History
+                                </span>
+                                <span className="flex items-center gap-1.5">
+                                    <span className="material-symbols-outlined text-emerald-600 text-base">local_shipping</span>
+                                    Commercial Ready
+                                </span>
                             </div>
-                            {/* Secondary card below */}
-                            <div className="flex items-center gap-4 bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4 w-full max-w-md">
-                                <div className="size-20 rounded-xl overflow-hidden shrink-0">
-                                    <img
-                                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuAicROhp9Gf-xzl-F5bNh2DjhBvVjM0t7ucbZNljF7upz9rq-p_8ljMdlqSRXmjZxsHOjtv1vWKs0kT2eRkFpLeiVdeTU8gymd2DLYq1bpuInOt9hJ0FZS7-g-ezBysRMoUzjGsZGYiSggig69oaBm7r_EuJjqTACUVFkzJnfBp42eh4UhYn_xfstqiAmf_tJom5VsITEASM1Kk8hW62SLGl-qS58ebghm-p7UQV73CYWsT-4qFxseupM2iWsPL6uMYT34NG4TMH1-X"
-                                        alt="Performance car"
-                                        className="w-full h-full object-cover"
-                                    />
-                                </div>
-                                <div>
-                                    <span className="text-[10px] font-bold text-accent uppercase tracking-wider">Curated Arrivals</span>
-                                    <h3 className="text-white font-bold font-display text-lg leading-tight mt-1">Drive Beyond Boundaries</h3>
-                                    <p className="text-white/60 text-xs mt-1">Premium Performance Series</p>
-                                </div>
-                            </div>
+
+                            <button onClick={() => {
+                                const query = new URLSearchParams();
+                                if (selectedFilters.budget) query.append('budget', selectedFilters.budget);
+                                if (selectedFilters.brand) query.append('make', selectedFilters.brand);
+                                if (selectedFilters.year) query.append('year', selectedFilters.year);
+                                navigate(`/inventory?${query.toString()}`);
+                            }} className="inline-flex items-center justify-center gap-2 h-11 px-8 bg-slate-950 hover:bg-slate-800 text-white font-bold rounded-xl text-sm transition-all shadow-md cursor-pointer border-none w-full sm:w-auto">
+                                <span className="material-symbols-outlined text-lg">search</span> Search Available Vehicles
+                            </button>
                         </div>
                     </div>
                 </div>

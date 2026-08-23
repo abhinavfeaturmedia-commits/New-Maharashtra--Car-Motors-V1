@@ -79,10 +79,12 @@ const PublicLayout: React.FC = () => {
         return location.pathname.startsWith(path);
     };
 
+    const isHomePage = location.pathname === '/';
+
     return (
-        <div className="min-h-screen flex flex-col w-full bg-background-light font-body antialiased selection:bg-amber-500 selection:text-white">
+        <div className={`min-h-screen flex flex-col w-full font-body antialiased selection:bg-amber-500 selection:text-white ${isHomePage ? 'bg-[#14110e]' : 'bg-background-light'}`}>
             {/* Header — Floating Capsule Navbar */}
-            <header className="sticky top-2 sm:top-4 z-50 w-full px-2.5 sm:px-6 max-w-7xl mx-auto transition-all duration-300">
+            <header className={`sticky top-2 sm:top-4 z-50 w-full px-2.5 sm:px-6 max-w-7xl mx-auto transition-all duration-300 ${isHomePage ? '-mb-14 sm:-mb-16' : ''}`}>
                 <div className="bg-white/95 backdrop-blur-xl rounded-full border border-slate-200/90 shadow-[0_8px_30px_rgba(0,0,0,0.08)] px-3.5 sm:px-6 py-2 sm:py-2.5 flex items-center justify-between gap-4">
                     
                     {/* Left: Brand Identity */}
@@ -238,13 +240,12 @@ const PublicLayout: React.FC = () => {
                             <span>Staff</span>
                         </Link>
 
-                        {/* Primary High-Conversion CTA */}
+                        {/* Primary High-Conversion CTA matching Reference */}
                         <Link
                             to="/contact"
-                            className="hidden sm:inline-flex items-center gap-1.5 h-9 px-4 sm:px-5 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 text-xs sm:text-sm font-black tracking-wide shadow-md shadow-amber-500/20 hover:shadow-lg hover:shadow-amber-500/30 transition-all hover:scale-105 active:scale-95 whitespace-nowrap cursor-pointer shrink-0"
+                            className="hidden sm:inline-flex items-center gap-1.5 h-9 sm:h-10 px-5 sm:px-6 rounded-full bg-gradient-to-r from-[#d97706] to-[#ea580c] hover:from-[#b45309] hover:to-[#c2410c] text-white text-xs sm:text-sm font-bold tracking-wide shadow-md shadow-orange-900/20 hover:shadow-lg hover:shadow-orange-900/30 transition-all hover:scale-105 active:scale-95 whitespace-nowrap cursor-pointer shrink-0"
                         >
                             <span>Get Quote</span>
-                            <ArrowRight size={14} className="stroke-[3]" />
                         </Link>
 
                         {/* Mobile Menu Toggle Button (Strictly Hidden on Desktop lg:) */}
