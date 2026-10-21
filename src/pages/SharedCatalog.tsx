@@ -349,12 +349,12 @@ const SharedCatalog: React.FC = () => {
                                     <span className="material-symbols-outlined text-primary text-2xl">account_circle</span>
                                 </div>
                                 <div>
-                                    <p className="font-bold text-slate-800 text-sm">{catalog.salesperson.full_name || 'New Maharashtra Motors'}</p>
+                                    <p className="font-bold text-slate-800 text-sm">{catalog.salesperson.full_name || 'AGX Dealership'}</p>
                                     <p className="text-xs text-slate-500 font-medium">SALES ADVISOR</p>
                                 </div>
                             </div>
                             <a
-                                href={`https://wa.me/${formattedSalespersonPhone}?text=${encodeURIComponent(`Hello, I had a shared catalog link from New Maharashtra Motors but it seems to have expired. Could you please share an updated catalog?`)}`}
+                                href={`https://wa.me/${formattedSalespersonPhone}?text=${encodeURIComponent(`Hello, I had a shared catalog link from AGX Dealership but it seems to have expired. Could you please share an updated catalog?`)}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="flex items-center justify-center gap-2 w-full h-11 bg-emerald-500 text-white font-bold rounded-xl hover:bg-emerald-600 transition-colors text-sm"
@@ -378,7 +378,7 @@ const SharedCatalog: React.FC = () => {
                 <div>
                     <h2 className="text-2xl font-black text-slate-800">Catalog Not Found</h2>
                     <p className="mt-2 text-slate-500 text-sm">
-                        This shared catalog link might have expired or does not exist. Please check the URL or contact New Maharashtra Motors support.
+                        This shared catalog link might have expired or does not exist. Please check the URL or contact AGX Dealership support.
                     </p>
                 </div>
                 <Link to="/" className="inline-flex h-11 items-center justify-center px-6 bg-primary text-white font-bold rounded-xl hover:bg-primary-light transition-colors text-sm">

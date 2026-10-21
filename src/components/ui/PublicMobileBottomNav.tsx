@@ -62,7 +62,7 @@ export const PublicMobileBottomNav: React.FC = () => {
 
                             <div className="space-y-2.5">
                                 <a
-                                    href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent('Hello New Maharashtra Motors! I am browsing your website and would like assistance.')}`}
+                                    href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent('Hello AGX Dealership! I am browsing your website and would like assistance.')}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     onClick={() => setShowContactSheet(false)}

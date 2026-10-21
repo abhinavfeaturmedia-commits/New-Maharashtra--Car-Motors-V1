@@ -879,7 +879,7 @@ const CarDetails = () => {
                                         : `${window.location.origin}/car/${car.id}`;
                                     const shareData = {
                                         title: `${car.year} ${car.make} ${car.model}`,
-                                        text: `Check out this ${car.year} ${car.make} ${car.model} at New Maharashtra Motors!`,
+                                        text: `Check out this ${car.year} ${car.make} ${car.model} at AGX Dealership!`,
                                         url: shareUrl,
                                     };
                                     
@@ -974,7 +974,7 @@ const CarDetails = () => {
                                 <span className="material-symbols-outlined text-lg">storefront</span>
                             </div>
                             <div>
-                                <p className="text-sm font-bold text-primary">New Maharashtra Motors</p>
+                                <p className="text-sm font-bold text-primary">AGX Dealership</p>
                                 <p className="text-xs text-slate-500 flex items-start gap-1 mt-0.5">
                                     <span className="material-symbols-outlined text-xs text-accent shrink-0 mt-0.5">location_on</span>
                                     <span>Sr.no 515/1, Kasarwadi, Pimpri-Chinchwad, Maharashtra 411034</span>
@@ -1217,7 +1217,7 @@ const CarDetails = () => {
                                     <span className="material-symbols-outlined text-lg">storefront</span>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-bold text-primary">New Maharashtra Motors</p>
+                                    <p className="text-xs font-bold text-primary">AGX Dealership</p>
                                     <p className="text-[10px] text-slate-400 flex items-start gap-1 mt-0.5">
                                         <span className="material-symbols-outlined text-xs text-accent shrink-0 mt-0.5">location_on</span>
                                         <span className="truncate">Kasarwadi, Pimpri-Chinchwad, Maharashtra 411034</span>
@@ -1545,7 +1545,7 @@ const CarDetails = () => {
 
                     {/* WhatsApp */}
                     <a 
-                        href={`https://wa.me/919373721705?text=${encodeURIComponent(`Hello New Maharashtra Motors! I am interested in the ${car.year} ${car.make} ${car.model} (₹${formatPriceLakh(car.price)} Lakh) listed on your website.`)}`} 
+                        href={`https://wa.me/919373721705?text=${encodeURIComponent(`Hello AGX Dealership! I am interested in the ${car.year} ${car.make} ${car.model} (₹${formatPriceLakh(car.price)} Lakh) listed on your website.`)}`} 
                         target="_blank" 
                         rel="noreferrer" 
                         className="size-10 flex items-center justify-center rounded-xl bg-emerald-500 text-white shadow-sm active:scale-95 transition-all shrink-0"

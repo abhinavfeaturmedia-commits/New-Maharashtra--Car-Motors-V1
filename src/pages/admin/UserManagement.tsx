@@ -350,7 +350,7 @@ const UserManagement: React.FC = () => {
 
     const copyNewPasswordToClipboard = () => {
         if (!passwordUser || !newPassword) return;
-        const text = `*New Maharashtra Car Motors - Updated Credentials*\n\n` +
+        const text = `*AGX Dealership - Updated Credentials*\n\n` +
             `👤 *User:* ${passwordUser.full_name || 'Staff User'}\n` +
             `📧 *Email:* ${passwordUser.email}\n` +
             `🔑 *New Password:* ${newPassword}\n` +
@@ -592,7 +592,7 @@ const UserManagement: React.FC = () => {
 
     const copyCredentialsToClipboard = () => {
         if (!createdCredentials) return;
-        const text = `*New Maharashtra Car Motors - Staff Login Details*\n\n` +
+        const text = `*AGX Dealership - Staff Login Details*\n\n` +
             `👤 *Name:* ${createdCredentials.name}\n` +
             `📧 *Email:* ${createdCredentials.email}\n` +
             `🔑 *Temporary Password:* ${createdCredentials.password}\n` +

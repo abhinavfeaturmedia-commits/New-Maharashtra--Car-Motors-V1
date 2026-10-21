@@ -183,7 +183,7 @@ export const FeedPost: React.FC<FeedPostProps> = ({
                     </div>
                     <div>
                         <h4 className="font-extrabold text-slate-800 text-xs sm:text-sm leading-tight flex items-center gap-1.5">
-                            {advisor?.full_name || 'New Maharashtra Motors'}
+                            {advisor?.full_name || 'AGX Dealership'}
                             <span className="material-symbols-outlined text-blue-500 text-sm" title="Verified Advisor">verified</span>
                         </h4>
                         <p className="text-[10px] sm:text-xs text-slate-400 font-medium">Pune, Maharashtra</p>
@@ -348,7 +348,7 @@ export const FeedPost: React.FC<FeedPostProps> = ({
                         ₹ {formatPriceLakh(car.price)} Lakh
                     </span>
                     <p className="text-xs text-slate-500 leading-relaxed mt-1">
-                        {car.transmission} • {car.fuel_type} • {car.mileage?.toLocaleString('en-IN') || 0} km • {car.condition} condition. Handpicked by New Maharashtra Motors team.
+                        {car.transmission} • {car.fuel_type} • {car.mileage?.toLocaleString('en-IN') || 0} km • {car.condition} condition. Handpicked by AGX Dealership team.
                     </p>
                 </div>
 

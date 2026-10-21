@@ -526,8 +526,8 @@ const Home = () => {
                         transition={{ duration: 0.6, delay: 0.1, ease: 'easeOut' }}
                         className="inline-flex items-center gap-2 px-4 sm:px-5 py-1.5 sm:py-2 rounded-full bg-white/10 border border-white/20 backdrop-blur-md text-amber-400 text-xs sm:text-[13px] font-bold tracking-widest uppercase mb-6 sm:mb-8 shadow-lg shadow-black/40"
                     >
-                        <span className="size-2 rounded-full bg-amber-400 animate-pulse"></span>
-                        <span>✦ MAHARASHTRA'S MOST TRUSTED AUTOMOTIVE HUB ✦</span>
+                        <span className="size-2 rounded-full bg-lime-400 animate-pulse"></span>
+                        <span>✦ AGX DEALERSHIP: PUNE'S PREMIER AUTOMOTIVE DESTINATION ✦</span>
                     </motion.div>
 
                     {/* Display Headline: Bold High-Performance Display Sans + Bold Dynamic Italic Accent */}
@@ -844,7 +844,7 @@ const Home = () => {
                                             </div>
                                             <div className="flex items-center gap-1.5">
                                                 <a
-                                                    href={`https://wa.me/919373721705?text=${encodeURIComponent(`Hi New Maharashtra Motors, I am interested in this car: ${car.year} ${car.make} ${car.model} (₹${formatPriceLakh(car.price)} Lakh)`)}`}
+                                                    href={`https://wa.me/919373721705?text=${encodeURIComponent(`Hi AGX Dealership, I am interested in this car: ${car.year} ${car.make} ${car.model} (₹${formatPriceLakh(car.price)} Lakh)`)}`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="size-8 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white flex items-center justify-center transition-colors active:scale-95"
@@ -947,7 +947,7 @@ const Home = () => {
                                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-80" />
                                     <div className="absolute bottom-5 left-5 right-5 flex justify-between items-end">
                                         <div>
-                                            <span className="text-[10px] text-accent font-bold uppercase tracking-wider block mb-1"> NMM Certified Pre-Owned</span>
+                                            <span className="text-[10px] text-accent font-bold uppercase tracking-wider block mb-1">AGX Certified Pre-Owned</span>
                                             <h4 className="text-white text-lg font-black font-display leading-tight">{dealCar.make} {dealCar.model} {dealCar.condition}</h4>
                                         </div>
                                         <Link 

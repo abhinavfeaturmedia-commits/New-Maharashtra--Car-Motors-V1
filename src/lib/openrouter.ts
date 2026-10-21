@@ -77,7 +77,7 @@ export async function generateOpenRouterCompletion({
             'Authorization': `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
             'HTTP-Referer': window.location.origin,
-            'X-Title': 'New Maharashtra Motors CRM',
+            'X-Title': 'AGX Dealership CRM',
         },
         body: JSON.stringify({
             model: model || 'google/gemini-2.5-flash',

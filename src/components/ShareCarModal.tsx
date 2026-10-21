@@ -244,7 +244,7 @@ const ShareCarModal: React.FC<Props> = ({ car, onClose }) => {
 
         return `${greet}
 
-This is *New Maharashtra Motors*, Pune.
+This is *AGX Dealership*, Pune.
 
 We have the perfect car for you:
 
@@ -265,7 +265,7 @@ We also offer:
 - Full RC transfer assistance
 - Thorough inspection report
 
-*New Maharashtra Motors*
+*AGX Dealership*
 Pune, Maharashtra
 
 Feel free to call or WhatsApp us anytime.`;
@@ -485,7 +485,7 @@ Feel free to call or WhatsApp us anytime.`;
                         </div>
                         <div>
                             <p className="text-sm font-bold text-primary">Share via WhatsApp</p>
-                            <p className="text-xs text-slate-400">New Maharashtra Motors</p>
+                            <p className="text-xs text-slate-400">AGX Dealership</p>
                         </div>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
@@ -500,8 +500,8 @@ Feel free to call or WhatsApp us anytime.`;
                         {/* Brand header */}
                         <div className="bg-gradient-to-r from-[#1a2744] to-[#243356] px-5 py-3 flex items-center justify-between">
                             <div>
-                                <p className="text-xs font-bold text-amber-400 uppercase tracking-widest">New Maharashtra Motors</p>
-                                <p className="text-[10px] text-white/60 mt-0.5">Pune · Trusted Pre-Owned Cars</p>
+                                <p className="text-xs font-bold text-amber-400 uppercase tracking-widest">AGX Dealership</p>
+                                <p className="text-[10px] text-white/60 mt-0.5">Pune · Premium Pre-Owned & Automotive Hub</p>
                             </div>
                             <div className="size-9 rounded-full bg-amber-400/20 border border-amber-400/30 flex items-center justify-center">
                                 <span className="material-symbols-outlined text-amber-400 text-lg">directions_car</span>

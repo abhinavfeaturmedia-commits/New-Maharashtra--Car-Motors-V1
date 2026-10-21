@@ -1046,7 +1046,7 @@ const Customers = () => {
             const audienceTag = exportScope === 'all' ? 'All' : exportScope === 'buyers' ? 'Buyers' : exportScope === 'prospects' ? 'Prospects' : 'Filtered';
 
             if (exportFormat === 'csv') {
-                const filename = `Maharashtra_Motors_Customers_${audienceTag}_${timestamp}.csv`;
+                const filename = `AGX_Dealership_Customers_${audienceTag}_${timestamp}.csv`;
                 const headers = Object.keys(formattedRows[0]);
                 const csvRows = [
                     headers.map(h => `"${h.replace(/"/g, '""')}"`).join(','),
@@ -1069,7 +1069,7 @@ const Customers = () => {
                 document.body.removeChild(link);
                 URL.revokeObjectURL(url);
             } else {
-                const filename = `Maharashtra_Motors_Customers_${audienceTag}_${timestamp}.json`;
+                const filename = `AGX_Dealership_Customers_${audienceTag}_${timestamp}.json`;
                 const jsonBlob = new Blob([JSON.stringify(formattedRows, null, 2)], { type: 'application/json;charset=utf-8;' });
                 const url = URL.createObjectURL(jsonBlob);
                 const link = document.createElement('a');

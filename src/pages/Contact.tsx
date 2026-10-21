@@ -67,7 +67,7 @@ const Contact = () => {
                     <div className="rounded-2xl overflow-hidden border border-slate-100 shadow-[var(--shadow-card)] bg-white">
                         <div className="aspect-[4/3] bg-slate-100 relative">
                             <iframe
-                                src="https://maps.google.com/maps?q=New%20Maharashtra%20Motors,%20Kasarwadi,%20Pimpri-Chinchwad,%20Maharashtra%20411034&t=&z=15&ie=UTF8&iwloc=&output=embed"
+                                src="https://maps.google.com/maps?q=AGX%20Dealership,%20Kasarwadi,%20Pimpri-Chinchwad,%20Maharashtra%20411034&t=&z=15&ie=UTF8&iwloc=&output=embed"
                                 className="w-full h-full border-0" allowFullScreen loading="lazy" title="Location Map"
                             />
                             <a 
@@ -86,7 +86,7 @@ const Contact = () => {
                         {[
                             { icon: <MapPin size={18} className="text-primary" />, label: 'Address', value: 'Sr.no 515/1, near Shankar mandir, Kasarwadi, Pimpri-Chinchwad, Maharashtra 411034, India' },
                             { icon: <Phone size={18} className="text-primary" />, label: 'Phone', value: '+91 93737 21705 / +91 98232 37975', sub: 'Mon-Sat: 9AM - 8PM' },
-                            { icon: <Mail size={18} className="text-primary" />, label: 'Email', value: 'sales@newmaharashtramotors.com' },
+                            { icon: <Mail size={18} className="text-primary" />, label: 'Email', value: 'sales@agxdealership.com' },
                         ].map(item => (
                             <div key={item.label} className="flex items-start gap-4">
                                 <div className="size-10 rounded-xl bg-primary-light/10 flex items-center justify-center shrink-0">{item.icon}</div>

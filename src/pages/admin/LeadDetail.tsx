@@ -153,10 +153,10 @@ const AiResponseWidget: React.FC<{ lead: any; linkedCars: any[]; openRouterSetti
         setDraft('');
         
         try {
-            const systemPrompt = `You are a professional sales assistant at "New Maharashtra Motors", a premier automotive dealership and service provider in Pune, Maharashtra, India.
+            const systemPrompt = `You are a professional sales assistant at "AGX Dealership", a premier automotive dealership and service provider in Pune, Maharashtra, India.
 Your goal is to draft a helpful, professional, and persuasive response to a customer enquiry.
 Keep the message concise, friendly, and structured for WhatsApp/email.
-Do NOT use generic placeholders like "[Your Name]" or "[Dealer Name]" - sign off as "Sales Team, New Maharashtra Motors".
+Do NOT use generic placeholders like "[Your Name]" or "[Dealer Name]" - sign off as "Sales Team, AGX Dealership".
 Provide real Indian context (e.g. Pune, prices in Lakhs if mentioned). 
 Write the draft directly without any introductory conversational wrapper (like "Here is the draft:").`;
 
@@ -1010,7 +1010,7 @@ const LeadDetail = () => {
             if (source === 'consignment') {
                 saleType = 'consignment';
                 costSnapshot = carData.consignment_agreed_price || null;
-                // Maharashtra Motors earns only the fee; buyer pays owner directly
+                // AGX Dealership earns only the fee; buyer pays owner directly
                 if (carData.consignment_fee_type === 'fixed') {
                     consignmentFeeCollected = carData.consignment_fee_value || 0;
                 } else if (carData.consignment_fee_type === 'percentage' && carData.consignment_fee_value) {
@@ -1074,7 +1074,7 @@ const LeadDetail = () => {
                 status: 'completed',
                 payment_status: 'paid',
                 notes: source === 'consignment'
-                    ? `Park & Sell — buyer paid ${carData.consignment_owner_name || 'owner'} directly. Maharashtra Motors fee: ₹${profit.toLocaleString('en-IN')}`
+                    ? `Park & Sell — buyer paid ${carData.consignment_owner_name || 'owner'} directly. AGX Dealership fee: ₹${profit.toLocaleString('en-IN')}`
                     : (source === 'dealer' ? `Partner Dealer car sold. Dealer cost: ₹${(costSnapshot || 0).toLocaleString('en-IN')}, Dealership Margin: ₹${profit.toLocaleString('en-IN')}` : 'Converted from lead workflow')
             }).select('id').single();
             if (saleErr) throw new Error('Failed to log sale record. ' + saleErr.message);
@@ -1142,7 +1142,7 @@ const LeadDetail = () => {
 
             // ── 8. Log Activity ──────────────────────────────────────────────────
             const saleNoteText = source === 'consignment'
-                ? `Park & Sell ₹${salePrice.toLocaleString('en-IN')} — Maharashtra Motors earned ₹${profit.toLocaleString('en-IN')} fee.`
+                ? `Park & Sell ₹${salePrice.toLocaleString('en-IN')} — AGX Dealership earned ₹${profit.toLocaleString('en-IN')} fee.`
                 : `Sale closed for ₹${salePrice.toLocaleString('en-IN')}. Profit: ₹${profit.toLocaleString('en-IN')}.`;
             await supabase.from('lead_activities').insert({
                 lead_id: lead?.id,
@@ -1164,7 +1164,7 @@ const LeadDetail = () => {
             const customerMsg = existingCustomer
                 ? `Linked to existing customer: ${existingCustomer.full_name}.`
                 : 'New customer record created.';
-            alert(`Sale recorded! ${customerMsg}\nMaharashtra Motors earnings: ₹${profit.toLocaleString('en-IN')}`);
+            alert(`Sale recorded! ${customerMsg}\nAGX Dealership earnings: ₹${profit.toLocaleString('en-IN')}`);
         } catch (error: any) {
             console.error('Error converting lead', error);
             alert(`Conversion failed: ${error.message}`);
@@ -2210,7 +2210,7 @@ const LeadDetail = () => {
                                                     : car.consignment_fee_type === 'percentage'
                                                         ? Math.round(price * (car.consignment_fee_value || 0) / 100)
                                                         : 0;
-                                                earningLabel = `🤝 Consignment — Maharashtra Motors earns ₹${fee.toLocaleString('en-IN')} fee`;
+                                                earningLabel = `🤝 Consignment — AGX Dealership earns ₹${fee.toLocaleString('en-IN')} fee`;
                                             } else {
                                                 const profit = price - (car.purchase_cost || 0);
                                                 earningLabel = `💰 Est. profit: ₹${profit.toLocaleString('en-IN')}`;

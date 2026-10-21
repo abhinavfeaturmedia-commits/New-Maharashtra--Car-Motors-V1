@@ -26,7 +26,7 @@ export const Chatbot: React.FC = () => {
         {
             id: 'welcome',
             sender: 'bot',
-            text: 'Hello! I am your New Maharashtra Motors AI Assistant. How can I help you today? You can ask me about our available cars, test drive bookings, service packages, or request a call back.',
+            text: 'Hello! I am your AGX Dealership AI Assistant. How can I help you today? You can ask me about our available cars, test drive bookings, service packages, or request a call back.',
             timestamp: new Date()
         }
     ]);
@@ -124,18 +124,18 @@ export const Chatbot: React.FC = () => {
                         `${day}: ${val.status} ${val.status !== 'Closed' ? `(${val.start} - ${val.end})` : ''}`
                     ).join('\n');
 
-                    const systemPrompt = `You are a friendly, professional AI chatbot assistant for "New Maharashtra Motors", a premier automotive dealership and service provider in Pune, Maharashtra, India.
+                    const systemPrompt = `You are a friendly, professional AI chatbot assistant for "AGX Dealership", a premier automotive dealership and service provider in Pune, Maharashtra, India.
 Your goals:
 1. Greet visitors warmly and resolve queries regarding our available cars, services, pricing, timings, and location.
 2. If they are interested in buying, selling, booking a test drive, or request a callback, offer to have a representative call them. Ask them to click the "Request Callback" button in the chat or provide their Name and Phone number.
 3. Keep responses helpful, concise, and structured (use bullet points or emojis where helpful). Do NOT write introductory conversational fillers.
 
 Dealership Details:
-- Name: New Maharashtra Motors
+- Name: AGX Dealership
 - Showroom Location: ${profile.address || 'Sr.no 515/1, near Shankar mandir, Kasarwadi, Pimpri-Chinchwad, Maharashtra 411034'}
 - City: ${profile.city || 'Pune'}
 - Phone: ${profile.phone || '+91 93737 21705'}
-- Email: ${profile.email || 'sales@newmaharashtramotors.com'}
+- Email: ${profile.email || 'sales@agxdealership.com'}
 - GST: ${profile.gst_number || 'N/A'}
 - Timings:\n${hoursText || 'Monday-Saturday (9:30 AM - 7:30 PM), Sunday Closed'}
 
@@ -291,7 +291,7 @@ Conversation Guideline:
                                     <span className="material-symbols-outlined text-accent text-lg">smart_toy</span>
                                 </div>
                                 <div>
-                                    <h3 className="text-sm font-bold font-display leading-tight">Maharashtra Motors Assistant</h3>
+                                    <h3 className="text-sm font-bold font-display leading-tight">AGX Dealership Assistant</h3>
                                     <p className="text-[10px] text-green-300 flex items-center gap-1 mt-0.5">
                                         <span className="inline-block size-1.5 rounded-full bg-green-400 animate-ping" />
                                         {isAiOnline ? 'Online (AI Active)' : 'Online (Direct Assist)'}

@@ -72,7 +72,7 @@ const SellCar = () => {
                 <div className="relative z-10 container-main py-16 lg:py-24">
                     <span className="inline-flex items-center gap-2 bg-accent text-primary text-xs font-bold px-3 py-1.5 rounded-lg mb-6 uppercase"><span className="material-symbols-outlined text-sm">verified</span> Best Price Guaranteed</span>
                     <h1 className="text-3xl sm:text-4xl lg:text-6xl font-black text-white font-display leading-tight mb-4">Sell your car in <span className="text-accent">30 minutes</span></h1>
-                    <p className="text-slate-400 text-sm sm:text-lg max-w-lg mb-6 sm:mb-8">New Maharashtra Motors: Pune&apos;s most trusted vehicle sales & service. Instant payment, free RC transfer.</p>
+                    <p className="text-slate-400 text-sm sm:text-lg max-w-lg mb-6 sm:mb-8">AGX Dealership: Pune&apos;s premier vehicle sales & service. Instant payment, free RC transfer.</p>
                     <div className="flex flex-col sm:flex-row gap-3 max-w-lg">
                         <input type="text" value={heroReg} onChange={e => setHeroReg(e.target.value)} placeholder="Enter Reg (e.g. MH12 AB 1234)" className="flex-1 h-12 bg-white/10 border border-white/20 text-white placeholder:text-white/50 rounded-xl px-4 text-sm outline-none backdrop-blur focus:ring-2 focus:ring-accent/30" />
                         <button onClick={() => {

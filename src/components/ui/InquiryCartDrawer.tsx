@@ -80,8 +80,8 @@ export const InquiryCartDrawer: React.FC = () => {
     };
 
     const getWhatsAppUrl = () => {
-        const adminNumber = '919373721705'; // New Maharashtra Motors main business contact
-        let text = `Hello New Maharashtra Motors, I just submitted an inquiry on your website under the name *${name}* (${phone}).\n\n`;
+        const adminNumber = '919373721705'; // AGX Dealership main business contact
+        let text = `Hello AGX Dealership, I just submitted an inquiry on your website under the name *${name}* (${phone}).\n\n`;
         text += `I am interested in these vehicles:\n`;
         
         cartItems.forEach((car, index) => {

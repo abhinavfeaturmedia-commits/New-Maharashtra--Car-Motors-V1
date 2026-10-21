@@ -340,7 +340,7 @@ const AdminSettings: React.FC = () => {
                             <TextInput
                                 value={businessProfile.name}
                                 onChange={e => patchProfile('name', e.target.value)}
-                                placeholder="e.g. New Maharashtra Motors"
+                                placeholder="e.g. AGX Dealership"
                             />
                         </div>
                         <div>
@@ -365,7 +365,7 @@ const AdminSettings: React.FC = () => {
                             <TextInput
                                 value={businessProfile.email}
                                 onChange={e => patchProfile('email', e.target.value)}
-                                placeholder="e.g. contact@sssmotors.com"
+                                placeholder="e.g. sales@agxdealership.com"
                                 type="email"
                             />
                         </div>
@@ -749,7 +749,7 @@ const AdminSettings: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {[
-                        { label: 'Application',   value: 'New Maharashtra Motors Admin Panel' },
+                        { label: 'Application',   value: 'AGX Dealership Admin Panel' },
                         { label: 'Version',        value: 'v2.4.0' },
                         { label: 'Database',       value: 'Supabase (PostgreSQL)' },
                         { label: 'Last Sync',      value: new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) },

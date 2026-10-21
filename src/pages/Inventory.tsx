@@ -592,7 +592,7 @@ const Inventory = () => {
                                             </div>
                                             <div className="flex items-center gap-1.5">
                                                 <a
-                                                    href={`https://wa.me/919373721705?text=${encodeURIComponent(`Hi New Maharashtra Motors, I am inquiring about this vehicle: ${car.year} ${car.make} ${car.model} (₹${formatPriceLakh(car.price)} Lakh)`)}`}
+                                                    href={`https://wa.me/919373721705?text=${encodeURIComponent(`Hi AGX Dealership, I am inquiring about this vehicle: ${car.year} ${car.make} ${car.model} (₹${formatPriceLakh(car.price)} Lakh)`)}`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="size-10 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white flex items-center justify-center transition-colors active:scale-95 shrink-0"

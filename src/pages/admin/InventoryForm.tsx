@@ -234,10 +234,10 @@ const InventoryForm = () => {
         setGeneratingError(null);
 
         try {
-            const systemPrompt = `You are a professional automotive copywriter at "New Maharashtra Motors", a premier automotive dealership and service provider in Pune, Maharashtra, India.
+            const systemPrompt = `You are a professional automotive copywriter at "AGX Dealership", a premier automotive dealership and service provider in Pune, Maharashtra, India.
 Your goal is to write a premium, compelling marketing description (100-150 words) for a vehicle listing.
 Focus on key benefits, drive quality, condition, pre-owned value, and sign off professionally.
-Do NOT use placeholders like "[Dealer Name]" or "[Your Name]" - refer to us as "New Maharashtra Motors".
+Do NOT use placeholders like "[Dealer Name]" or "[Your Name]" - refer to us as "AGX Dealership".
 Do NOT write conversational introductions. Respond with the listing text directly.`;
 
             const userPrompt = `Write a listing description for:

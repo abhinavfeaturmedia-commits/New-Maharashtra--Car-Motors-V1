@@ -391,12 +391,12 @@ const AdminLayout: React.FC = () => {
                 {/* Header */}
                 <div className="h-[4.5rem] flex items-center justify-between px-5 border-b border-slate-100 shrink-0">
                     <Link to="/admin" className="flex items-center gap-3">
-                        <div className="size-9 bg-primary rounded-xl flex items-center justify-center text-white">
-                            <span className="material-symbols-outlined text-lg">directions_car</span>
+                        <div className="size-9 bg-black rounded-xl overflow-hidden p-0.5 border border-slate-800 shrink-0 shadow-sm">
+                            <img src="/AGX.png" alt="AGX Dealership" className="w-full h-full object-contain" />
                         </div>
                         <div>
-                            <p className="text-sm font-bold text-primary font-display">Maharashtra Motors <span className="font-serif-italic font-normal text-amber-600">{isOwner ? 'Owner' : 'Admin'}</span></p>
-                            <p className="text-[10px] text-slate-400">{isOwner ? 'Business Dashboard' : 'Pune Hub'}</p>
+                            <p className="text-sm font-bold text-primary font-display">AGX Dealership <span className="font-serif-italic font-normal text-amber-600">{isOwner ? 'Owner' : 'Admin'}</span></p>
+                            <p className="text-[10px] text-slate-400">{isOwner ? 'Executive Dashboard' : 'Pune Command Center'}</p>
                         </div>
                     </Link>
                     <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-slate-400 hover:text-slate-600">

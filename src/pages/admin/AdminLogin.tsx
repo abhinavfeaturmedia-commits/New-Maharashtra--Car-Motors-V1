@@ -101,12 +101,12 @@ const AdminLogin = () => {
                 </div>
                 <div className="relative z-10 max-w-lg px-16">
                     <div className="flex items-center gap-3 mb-12">
-                        <div className="size-14 bg-white/10 backdrop-blur rounded-2xl flex items-center justify-center border border-white/10">
-                            <span className="material-symbols-outlined text-accent text-3xl">directions_car</span>
+                        <div className="size-14 bg-black rounded-2xl overflow-hidden p-1.5 border border-white/20 shadow-xl shrink-0">
+                            <img src="/AGX.png" alt="AGX Dealership" className="w-full h-full object-contain" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-bold text-white font-display">New Maharashtra</h2>
-                            <p className="text-white/60 text-sm">Motors Admin Panel</p>
+                            <h2 className="text-xl font-black text-white font-display">AGX Dealership</h2>
+                            <p className="text-white/60 text-sm">Command Center</p>
                         </div>
                     </div>
 
@@ -138,10 +138,10 @@ const AdminLogin = () => {
                 <div className="w-full max-w-sm">
                     {/* Mobile logo */}
                     <div className="lg:hidden flex items-center gap-3 mb-10 justify-center">
-                        <div className="size-11 bg-primary rounded-xl flex items-center justify-center text-white">
-                            <span className="material-symbols-outlined text-xl">directions_car</span>
+                        <div className="size-11 bg-black rounded-xl overflow-hidden p-1 border border-slate-800 shrink-0">
+                            <img src="/AGX.png" alt="AGX Dealership" className="w-full h-full object-contain" />
                         </div>
-                        <span className="text-lg font-bold text-primary font-display">New Maharashtra Motors Admin</span>
+                        <span className="text-lg font-bold text-primary font-display">AGX Dealership Admin</span>
                     </div>
 
                     <Link
@@ -173,7 +173,7 @@ const AdminLogin = () => {
                                     type="email"
                                     value={email}
                                     onChange={e => setEmail(e.target.value)}
-                                    placeholder="admin@newmaharashtramotors.com"
+                                    placeholder="admin@agxdealership.com"
                                     className="w-full h-12 border border-slate-200 rounded-xl pl-11 pr-4 text-sm text-primary placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary/30 transition-all"
                                     required
                                     disabled={loading}
@@ -234,7 +234,7 @@ const AdminLogin = () => {
                             className="inline-flex items-center justify-center gap-1.5 mt-4 h-9 px-4 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:text-primary hover:bg-slate-100 transition-colors"
                         >
                             <span className="material-symbols-outlined text-base">home</span>
-                            Go to New Maharashtra Motors Website
+                            Go to AGX Dealership Website
                         </Link>
                     </div>
 

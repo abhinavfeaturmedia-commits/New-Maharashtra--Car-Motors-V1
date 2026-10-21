@@ -1238,7 +1238,7 @@ const CustomerDetail: React.FC = () => {
             <body>
                 <div class="header">
                     <div>
-                        <div class="brand">NEW MAHARASHTRA CAR MOTORS</div>
+                        <div class="brand">AGX DEALERSHIP</div>
                         <div class="title">Vehicle Deal & Handover Voucher</div>
                     </div>
                     <div style="text-align:right;">
@@ -1303,7 +1303,7 @@ const CustomerDetail: React.FC = () => {
                 </div>
 
                 <div class="footer">
-                    New Maharashtra Car Motors · All rights reserved · System Generated Deal Record
+                    AGX Dealership · All rights reserved · System Generated Deal Record
                 </div>
                 <script>window.print();</script>
             </body>
@@ -3814,7 +3814,7 @@ const CustomerDetail: React.FC = () => {
                                     rows={2}
                                     value={deliveryStoryForm.review_quote}
                                     onChange={e => setDeliveryStoryForm({ ...deliveryStoryForm, review_quote: e.target.value })}
-                                    placeholder="e.g. Excellent condition and smooth delivery experience with Maharashtra Motors!"
+                                    placeholder="e.g. Excellent condition and smooth delivery experience with AGX Dealership!"
                                     className="w-full border border-slate-200 rounded-xl p-3 text-xs outline-none resize-none"
                                 />
                             </div>

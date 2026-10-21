@@ -195,7 +195,7 @@ const AccessoryCatalog: React.FC = () => {
 
     const getWhatsAppUrl = () => {
         const adminNumber = '919823237975';
-        let text = `Hello New Maharashtra Motors, I just built a custom accessory package on your website under the name *${name}* (${phone}).\n\n`;
+        let text = `Hello AGX Dealership, I just built a custom accessory package on your website under the name *${name}* (${phone}).\n\n`;
         text += `*Selected Accessories:*\n`;
         selectedAccessories.forEach((acc) => {
             text += `- ${acc.name} (₹ ${Number(acc.price).toLocaleString('en-IN')})\n`;

@@ -295,7 +295,7 @@ const AdminSales = () => {
         const csv = rows.map(r => r.join(',')).join('\n');
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = 'nmm-sales.csv'; a.click();
+        const a = document.createElement('a'); a.href = url; a.download = 'agx-sales.csv'; a.click();
     };
 
     const formatDate = (d: string) => d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';

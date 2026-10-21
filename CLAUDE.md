@@ -68,3 +68,11 @@ You sit between human intent (directives) and deterministic execution (Python sc
 
 Be pragmatic. Be reliable. Self-anneal.
 
+## Supabase MCP Integration
+- **Project Ref**: `sxshzxbkjsrruqmrwkfb`
+- **Project URL**: `https://sxshzxbkjsrruqmrwkfb.supabase.co`
+- **Personal Access Token**: Stored securely in `.env` / `.env.local` as `SUPABASE_ACCESS_TOKEN`
+- **MCP Endpoint**: `https://mcp.supabase.com/mcp`
+- Configured in `.mcp.json`, `.agents/mcp_config.json`, and `.env` / `.env.local`. Whenever connecting or interacting with Supabase MCP, use this token from environment variables.
+
+

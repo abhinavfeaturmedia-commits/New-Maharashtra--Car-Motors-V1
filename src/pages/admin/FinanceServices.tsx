@@ -759,7 +759,7 @@ const FinanceServices = () => {
                                             
                                             if (isUpcoming) {
                                                 const message = encodeURIComponent(
-                                                    `Hello ${file.full_name}, this is New Maharashtra Motors. We noticed that your insurance policy (${file.policy_number || 'N/A'}) for your vehicle is expiring on ${expDate.toLocaleDateString('en-IN')}. Let's renew this to avoid coverage gaps. Please reply to proceed.`
+                                                    `Hello ${file.full_name}, this is AGX Dealership. We noticed that your insurance policy (${file.policy_number || 'N/A'}) for your vehicle is expiring on ${expDate.toLocaleDateString('en-IN')}. Let's renew this to avoid coverage gaps. Please reply to proceed.`
                                                 );
                                                 const whatsappUrl = `https://wa.me/91${file.phone.replace(/[^0-9]/g, '')}?text=${message}`;
                                                 
@@ -1104,7 +1104,7 @@ const FinanceServices = () => {
                                             type="number"
                                             value={formData.commission_earned}
                                             onChange={e => setFormData({ ...formData, commission_earned: e.target.value })}
-                                            placeholder="Maharashtra Motors Profit"
+                                            placeholder="AGX Dealership Profit"
                                             className="w-full h-10 border border-slate-200 rounded-xl px-3 text-xs outline-none focus:border-primary font-bold text-green-600 bg-green-50/20"
                                         />
                                     </div>

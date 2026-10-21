@@ -331,7 +331,7 @@ const MessageTemplates = () => {
                             {form.category === 'email' && (
                                 <div>
                                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 block">Email Subject</label>
-                                    <input value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} placeholder="e.g. Your enquiry at Maharashtra Motors" className="w-full h-10 px-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-primary transition-colors" />
+                                    <input value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} placeholder="e.g. Your enquiry at AGX Dealership" className="w-full h-10 px-3 border border-slate-200 rounded-xl text-sm outline-none focus:border-primary transition-colors" />
                                 </div>
                             )}
 

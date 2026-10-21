@@ -39,7 +39,7 @@ const About = () => {
                             Redefining Pre-Owned Car Buying in Pune
                         </h1>
                         <p className="text-white/70 text-lg leading-relaxed">
-                            Since 2011, New Maharashtra Motors has helped thousands of families find reliable, verified, and transparently priced pre-owned cars.
+                            Since 2011, AGX Dealership has helped thousands of drivers and families find reliable, verified, and transparently priced pre-owned cars.
                         </p>
                     </div>
                 </div>
@@ -75,7 +75,7 @@ const About = () => {
                             </h2>
                             <div className="space-y-4 text-slate-600 leading-relaxed text-sm">
                                 <p>
-                                    Founded in 2011 in Kasarwadi, Pimpri-Chinchwad, New Maharashtra Motors began with a single mission: to eliminate the ambiguity and mistrust commonly associated with the pre-owned automobile industry in India.
+                                    Founded in 2011 in Kasarwadi, Pimpri-Chinchwad, AGX Dealership began with a single mission: to eliminate the ambiguity and mistrust commonly associated with the pre-owned automobile industry in India.
                                 </p>
                                 <p>
                                     Over the past 13 years, we have grown from a modest dealership into one of Pune's most recommended used car showrooms. Our secret? A strict 120-point inspection protocol, complete paper transparency, and a relentless focus on customer satisfaction after the keys are handed over.
@@ -159,7 +159,7 @@ const About = () => {
                                     </div>
                                     <div>
                                         <p className="font-semibold mb-1">Email</p>
-                                        <a href="mailto:sales@newmaharashtramotors.com" className="text-white/70 text-sm hover:text-accent transition-colors">sales@newmaharashtramotors.com</a>
+                                        <a href="mailto:sales@agxdealership.com" className="text-white/70 text-sm hover:text-accent transition-colors">sales@agxdealership.com</a>
                                     </div>
                                 </div>
                                 <div className="flex items-start gap-4">

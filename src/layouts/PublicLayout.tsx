@@ -89,15 +89,15 @@ const PublicLayout: React.FC = () => {
                     
                     {/* Left: Brand Identity */}
                     <Link to="/" className="flex items-center gap-2.5 shrink-0 group">
-                        <div className="size-9 sm:size-10 rounded-2xl bg-gradient-to-tr from-slate-950 via-slate-900 to-slate-800 flex items-center justify-center text-amber-400 shadow-md group-hover:scale-105 transition-transform shrink-0 border border-slate-700/60">
-                            <span className="material-symbols-outlined text-lg sm:text-xl font-black">directions_car</span>
+                        <div className="size-9 sm:size-10 rounded-xl overflow-hidden bg-black flex items-center justify-center p-0.5 shadow-md group-hover:scale-105 transition-transform shrink-0 border border-slate-800">
+                            <img src="/AGX.png" alt="AGX Dealership" className="w-full h-full object-contain" />
                         </div>
                         <div className="flex flex-col">
                             <span className="text-xs sm:text-sm font-black text-slate-900 font-display tracking-tight whitespace-nowrap leading-tight">
-                                New Maharashtra Motors
+                                AGX Dealership
                             </span>
                             <span className="text-[10px] font-semibold text-slate-400 tracking-wider uppercase hidden sm:block">
-                                Pune's Trusted Showroom
+                                Pune's Premier Automotive Hub
                             </span>
                         </div>
                     </Link>
@@ -391,7 +391,7 @@ const PublicLayout: React.FC = () => {
                                 <div className="pt-3 border-t border-slate-100 space-y-2.5">
                                     <div className="grid grid-cols-2 gap-2">
                                         <a
-                                            href="https://wa.me/919373721705?text=Hello%20New%20Maharashtra%20Motors"
+                                            href="https://wa.me/919373721705?text=Hello%20AGX%20Dealership"
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="flex items-center justify-center gap-1.5 h-11 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold active:scale-95 transition-all shadow-2xs"
@@ -446,13 +446,16 @@ const PublicLayout: React.FC = () => {
                         {/* Brand */}
                         <div className="space-y-4 sm:space-y-6">
                             <Link to="/" className="flex items-center gap-3">
-                                <div className="size-10 bg-accent rounded-xl flex items-center justify-center text-primary">
-                                    <span className="material-symbols-outlined font-bold">directions_car</span>
+                                <div className="size-11 rounded-xl overflow-hidden bg-black p-1 border border-slate-800 shrink-0 shadow-lg">
+                                    <img src="/AGX.png" alt="AGX Dealership" className="w-full h-full object-contain" />
                                 </div>
-                                <h2 className="text-lg font-bold font-display leading-tight">New Maharashtra Motors</h2>
+                                <div>
+                                    <h2 className="text-xl font-black font-display tracking-tight text-white leading-tight">AGX Dealership</h2>
+                                    <p className="text-[10px] uppercase font-bold text-lime-400 tracking-wider">Premium Automotive Hub</p>
+                                </div>
                             </Link>
                             <p className="text-slate-400 text-sm leading-relaxed max-w-xs">
-                                Your trusted destination for quality vehicles, genuine spare parts, and vehicle services in Pune.
+                                Your premier destination for verified luxury, performance, and trusted pre-owned vehicles in Pune.
                             </p>
                             <div className="flex items-center gap-3">
                                 {[
@@ -519,7 +522,7 @@ const PublicLayout: React.FC = () => {
                                 </li>
                                 <li className="flex items-center gap-3">
                                     <Mail size={16} className="text-accent shrink-0" />
-                                    <a href="mailto:sales@newmaharashtramotors.com" className="hover:text-accent transition-colors">sales@newmaharashtramotors.com</a>
+                                    <a href="mailto:sales@agxdealership.com" className="hover:text-accent transition-colors">sales@agxdealership.com</a>
                                 </li>
                             </ul>
                         </div>
@@ -530,7 +533,7 @@ const PublicLayout: React.FC = () => {
                 <div className="border-t border-white/10">
                     <div className="container-main py-6 flex flex-col sm:flex-row justify-between items-center gap-4">
                         <p className="text-xs text-slate-500">
-                            © {new Date().getFullYear()} New Maharashtra Motors. Effortless Discovery Since 2001.
+                            © {new Date().getFullYear()} AGX Dealership. Premium Automotive Hub. All rights reserved.
                         </p>
                         <div className="flex gap-6 text-xs text-slate-500">
                             <Link to="/about" className="hover:text-accent transition-colors">About</Link>

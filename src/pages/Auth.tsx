@@ -93,10 +93,10 @@ const Auth = () => {
                 </div>
                 <div className="relative z-10 max-w-md">
                     <div className="flex items-center gap-3 mb-8">
-                        <div className="size-12 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg">
-                            <span className="material-symbols-outlined text-2xl">directions_car</span>
+                        <div className="size-12 bg-black rounded-xl overflow-hidden p-1 border border-slate-800 shadow-lg shrink-0">
+                            <img src="/AGX.png" alt="AGX Dealership" className="w-full h-full object-contain" />
                         </div>
-                        <h2 className="text-xl font-bold text-primary font-display">New Maharashtra Motors</h2>
+                        <h2 className="text-xl font-bold text-primary font-display">AGX Dealership</h2>
                     </div>
                     <h1 className="text-4xl lg:text-5xl font-black text-primary font-display leading-tight mb-6">
                         Experience the premium journey.
