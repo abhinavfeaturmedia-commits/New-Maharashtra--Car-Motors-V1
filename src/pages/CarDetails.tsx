@@ -487,7 +487,15 @@ const CarDetails = () => {
     };
 
     if (loading) {
-        return <div className="container-main py-20 text-center text-slate-400 font-medium">Loading vehicle details...</div>;
+        return (
+            <div className="container-main py-20 flex flex-col items-center justify-center min-h-[50vh] text-center">
+                <div className="size-12 rounded-2xl bg-primary/5 border border-primary/10 flex items-center justify-center mb-4 shadow-sm">
+                    <span className="size-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+                </div>
+                <h3 className="text-base font-bold text-primary font-display mb-1">Loading Vehicle Details</h3>
+                <p className="text-xs text-slate-400 max-w-sm">Fetching verified 120-point diagnostic inspection and specifications...</p>
+            </div>
+        );
     }
 
     if (error || !car) {

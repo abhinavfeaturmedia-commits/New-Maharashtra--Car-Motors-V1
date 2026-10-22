@@ -11,18 +11,25 @@
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.112.2",
+    "border-beam": "^1.4.1",
+    "bot-avatars": "^0.2.2",
     "browser-image-compression": "^2.0.2",
     "clsx": "^2.1.1",
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.34.3",
+    "img-fx": "^0.5.1",
     "jszip": "^3.10.1",
     "lucide-react": "^0.575.0",
+    "metal-fx": "^2.0.11",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^6.2.108",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.13.1",
-    "tailwind-merge": "^3.5.0"
+    "tailwind-merge": "^3.5.0",
+    "thinking-orbs": "^0.3.2",
+    "three": "^0.186.1",
+    "voice-glow": "^0.3.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.1",

@@ -4,6 +4,7 @@ import { ArrowRight, Heart, Sparkles, ChevronRight, Landmark } from 'lucide-reac
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { getPrimaryImage, formatPriceLakh } from '../lib/utils';
+import { BorderBeam } from 'border-beam';
 import { useAuth } from '../contexts/AuthContext';
 import { useInquiryCart } from '../contexts/InquiryCartContext';
 import { FALLBACK_INVENTORY } from '../data/mockInventory';
@@ -524,10 +525,17 @@ const Home = () => {
                         initial={{ opacity: 0, y: -15 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.6, delay: 0.1, ease: 'easeOut' }}
-                        className="inline-flex items-center gap-2 px-4 sm:px-5 py-1.5 sm:py-2 rounded-full bg-white/10 border border-white/20 backdrop-blur-md text-amber-400 text-xs sm:text-[13px] font-bold tracking-widest uppercase mb-6 sm:mb-8 shadow-lg shadow-black/40"
+                        className="inline-flex items-center gap-2.5 px-4 sm:px-5 py-2 rounded-full bg-black/50 border border-white/20 backdrop-blur-xl text-xs sm:text-[13px] font-bold tracking-wider uppercase mb-6 sm:mb-8 shadow-xl shadow-black/60 transition-all select-none"
                     >
-                        <span className="size-2 rounded-full bg-lime-400 animate-pulse"></span>
-                        <span>✦ AGX DEALERSHIP: PUNE'S PREMIER AUTOMOTIVE DESTINATION ✦</span>
+                        <span className="relative flex size-2 shrink-0">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-lime-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full size-2 bg-lime-400"></span>
+                        </span>
+                        <span className="text-white font-extrabold tracking-widest text-[11px] sm:text-xs">AGX MOTORS</span>
+                        <span className="text-amber-400/50">•</span>
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-amber-400 to-orange-400 font-extrabold tracking-wider">
+                            PUNE'S PREMIER AUTOMOTIVE DESTINATION
+                        </span>
                     </motion.div>
 
                     {/* Display Headline: Bold High-Performance Display Sans + Bold Dynamic Italic Accent */}
@@ -876,16 +884,22 @@ const Home = () => {
                     <div className="absolute bottom-1/4 -left-1/4 size-[30rem] rounded-full bg-white/5 blur-[100px] pointer-events-none" />
 
                     <div className="container-main relative z-10">
-                        <div className="border border-white/10 rounded-3xl p-6 sm:p-10 lg:p-12 bg-white/[0.02] backdrop-blur-xl relative overflow-hidden shadow-2xl">
-                            {/* Accent line */}
-                            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-accent via-amber-400 to-accent" />
+                        <BorderBeam size="md" colorVariant="sunset" theme="dark" strength={0.9}>
+                            <div className="border border-white/10 rounded-3xl p-6 sm:p-10 lg:p-12 bg-white/[0.02] backdrop-blur-xl relative overflow-hidden shadow-2xl">
+                                {/* Accent line */}
+                                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-accent via-amber-400 to-accent" />
                             
                             <div className="grid lg:grid-cols-12 gap-8 items-center">
                                 {/* Copy details */}
                                 <div className="lg:col-span-5 flex flex-col items-start">
-                                    <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-accent text-primary text-[10px] font-black uppercase tracking-wider mb-5">
-                                        <Sparkles size={12} /> Deal of the Week
-                                    </span>
+                                    <div className="mb-5 inline-flex items-center gap-2">
+                                        <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 text-[11px] font-black uppercase tracking-wider shadow-lg shadow-amber-500/20">
+                                            <Sparkles size={12} /> Deal of the Week
+                                        </span>
+                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-400/15 border border-amber-400/30 text-amber-300 text-[10px] font-bold uppercase tracking-wider">
+                                            Verified Deal
+                                        </span>
+                                    </div>
 
                                     <h2 className="text-3xl sm:text-4xl font-black font-display tracking-tight text-white mb-2">
                                         {dealCar.year} {dealCar.make} <span className="font-serif-italic font-normal text-amber-400">{dealCar.model}</span>
@@ -960,7 +974,8 @@ const Home = () => {
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </BorderBeam>
+                </div>
                 </section>
             )}
 

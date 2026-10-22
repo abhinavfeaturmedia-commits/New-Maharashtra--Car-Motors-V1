@@ -1417,14 +1417,29 @@ Condition: ${form.condition}`;
 
                     <input ref={fileInputRef} type="file" multiple accept="image/*" onChange={handleFileSelect} className="hidden" />
 
-                    <div
-                        onClick={() => fileInputRef.current?.click()}
-                        className="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center bg-slate-50/50 hover:bg-slate-50 hover:border-primary/30 transition-all cursor-pointer"
-                    >
-                        <span className="material-symbols-outlined text-4xl text-slate-300 mb-2">cloud_upload</span>
-                        <p className="text-sm font-medium text-slate-600 mb-1">Click to browse photos</p>
-                        <p className="text-xs text-slate-400">JPG, PNG, WebP · Max 20 photos</p>
-                    </div>
+                    {uploading ? (
+                        <div className="border border-slate-200 rounded-xl p-6 bg-slate-900 text-white flex flex-col sm:flex-row items-center gap-4 shadow-xl">
+                            <div className="size-16 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center shrink-0">
+                                <span className="material-symbols-outlined text-3xl text-amber-400 animate-spin">sync</span>
+                            </div>
+                            <div className="text-center sm:text-left">
+                                <h4 className="text-sm font-bold text-amber-400 mb-1 flex items-center justify-center sm:justify-start gap-1.5">
+                                    <span className="inline-block size-2 rounded-full bg-amber-400 animate-ping" />
+                                    Optimizing & Uploading Photos
+                                </h4>
+                                <p className="text-xs text-slate-300">Compressing high-resolution vehicle photos and uploading to showroom storage...</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div
+                            onClick={() => fileInputRef.current?.click()}
+                            className="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center bg-slate-50/50 hover:bg-slate-50 hover:border-primary/30 transition-all cursor-pointer"
+                        >
+                            <span className="material-symbols-outlined text-4xl text-slate-300 mb-2">cloud_upload</span>
+                            <p className="text-sm font-medium text-slate-600 mb-1">Click to browse photos</p>
+                            <p className="text-xs text-slate-400">JPG, PNG, WebP · Max 20 photos</p>
+                        </div>
+                    )}
 
                     {(existingImages.length > 0 || previews.length > 0) && (
                         <div className="grid grid-cols-4 sm:grid-cols-6 gap-3 mt-4">

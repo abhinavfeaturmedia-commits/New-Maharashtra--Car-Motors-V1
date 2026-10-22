@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { generateOpenRouterCompletion } from '../lib/openrouter';
 import { motion, AnimatePresence } from 'framer-motion';
+import { BotAvatar } from 'bot-avatars';
+import { ThinkingOrb } from 'thinking-orbs';
+import { BorderBeam } from 'border-beam';
 
 interface Message {
     id: string;
@@ -287,8 +290,8 @@ Conversation Guideline:
                         {/* Header */}
                         <div className="bg-gradient-to-r from-primary to-primary-light p-4 text-white flex items-center justify-between shrink-0 shadow-md">
                             <div className="flex items-center gap-3">
-                                <div className="size-9 bg-white/10 rounded-xl flex items-center justify-center border border-white/20">
-                                    <span className="material-symbols-outlined text-accent text-lg">smart_toy</span>
+                                <div className="size-9 rounded-xl overflow-hidden bg-white/10 flex items-center justify-center border border-white/20 shrink-0">
+                                    <BotAvatar type="mech" state={isTyping ? 'working' : 'default'} size={32} />
                                 </div>
                                 <div>
                                     <h3 className="text-sm font-bold font-display leading-tight">AGX Dealership Assistant</h3>
@@ -330,10 +333,9 @@ Conversation Guideline:
 
                             {isTyping && (
                                 <div className="flex justify-start">
-                                    <div className="bg-white border border-slate-100 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm flex gap-1 items-center h-8 shrink-0">
-                                        <span className="size-1.5 rounded-full bg-slate-300 animate-bounce" style={{ animationDelay: '0ms' }} />
-                                        <span className="size-1.5 rounded-full bg-slate-300 animate-bounce" style={{ animationDelay: '150ms' }} />
-                                        <span className="size-1.5 rounded-full bg-slate-300 animate-bounce" style={{ animationDelay: '300ms' }} />
+                                    <div className="bg-white border border-slate-100 rounded-2xl rounded-tl-none px-3.5 py-2 shadow-sm flex items-center gap-2 h-9 shrink-0">
+                                        <ThinkingOrb state="composing" size={20} theme="light" />
+                                        <span className="text-[11px] text-slate-500 font-medium">Assistant is thinking...</span>
                                     </div>
                                 </div>
                             )}
@@ -440,47 +442,57 @@ Conversation Guideline:
                             </div>
                         )}
 
-                        {/* Footer Input Form */}
-                        <form
-                            onSubmit={(e) => {
-                                e.preventDefault();
-                                handleSendMessage(input);
-                            }}
-                            className="p-3 border-t border-slate-100 bg-white flex gap-2 items-center shrink-0"
-                        >
-                            <input
-                                type="text"
-                                value={input}
-                                onChange={e => setInput(e.target.value)}
-                                disabled={showLeadForm}
-                                placeholder="Type your message here..."
-                                className="flex-1 h-9 bg-slate-50 border border-slate-200 rounded-xl px-3 text-xs text-primary outline-none focus:border-primary/40 focus:bg-white transition-all disabled:opacity-50"
-                            />
-                            <button
-                                type="submit"
-                                disabled={!input.trim() || showLeadForm}
-                                className="size-9 bg-primary hover:bg-primary-light text-white rounded-xl flex items-center justify-center transition-colors disabled:opacity-50 shadow-sm"
-                            >
-                                <span className="material-symbols-outlined text-[18px]">send</span>
-                            </button>
-                        </form>
+                        {/* Footer Input Form with BorderBeam */}
+                        <div className="p-3 border-t border-slate-100 bg-white shrink-0">
+                            <BorderBeam size="line" active={isTyping} colorVariant="sunset" theme="light">
+                                <form
+                                    onSubmit={(e) => {
+                                        e.preventDefault();
+                                        handleSendMessage(input);
+                                    }}
+                                    className="flex gap-2 items-center bg-slate-50 border border-slate-200 rounded-xl px-2 py-1 focus-within:border-primary/40 focus-within:bg-white transition-all"
+                                >
+                                    <input
+                                        type="text"
+                                        value={input}
+                                        onChange={e => setInput(e.target.value)}
+                                        disabled={showLeadForm || isTyping}
+                                        placeholder={isTyping ? "Assistant is responding..." : "Type your message here..."}
+                                        className="flex-1 h-8 bg-transparent text-xs text-primary outline-none disabled:opacity-50"
+                                    />
+                                    <button
+                                        type="submit"
+                                        disabled={!input.trim() || showLeadForm || isTyping}
+                                        className="size-8 bg-primary hover:bg-primary-light text-white rounded-lg flex items-center justify-center transition-colors disabled:opacity-50 shadow-sm shrink-0 cursor-pointer"
+                                    >
+                                        <span className="material-symbols-outlined text-[16px]">send</span>
+                                    </button>
+                                </form>
+                            </BorderBeam>
+                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>
 
-            {/* Float Toggle Button */}
+            {/* Float Toggle Button with Live Bot Avatar */}
             <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setIsOpen(!isOpen)}
-                className={`size-14 rounded-full flex items-center justify-center text-white shadow-2xl border border-white/10 transition-colors cursor-pointer ${
+                className={`size-14 rounded-full flex items-center justify-center text-white shadow-2xl border border-white/20 transition-all cursor-pointer overflow-hidden ${
                     isOpen ? 'bg-primary-light' : 'bg-primary'
                 }`}
                 aria-label="Toggle AI Assistant"
             >
-                <span className="material-symbols-outlined text-2xl font-bold">
-                    {isOpen ? 'chat_bubble_outline' : 'smart_toy'}
-                </span>
+                {isOpen ? (
+                    <span className="material-symbols-outlined text-2xl font-bold">
+                        close
+                    </span>
+                ) : (
+                    <div className="size-12 flex items-center justify-center pointer-events-none">
+                        <BotAvatar type="mech" state="default" size={44} />
+                    </div>
+                )}
             </motion.button>
         </div>
     );

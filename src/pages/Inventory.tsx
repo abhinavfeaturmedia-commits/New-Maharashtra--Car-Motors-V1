@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { X, Heart } from 'lucide-react';
+import { VoiceBeam, useMicrophone } from 'voice-glow';
 import { supabase } from '../lib/supabase';
 import { getPrimaryImage, formatPriceLakh } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
@@ -32,6 +33,49 @@ const Inventory = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
     const { user } = useAuth();
+
+    const mic = useMicrophone();
+    const isVoiceListening = mic.state === 'live';
+    const recognitionRef = React.useRef<any>(null);
+
+    const toggleVoiceSearch = () => {
+        if (isVoiceListening) {
+            mic.stop();
+            if (recognitionRef.current) {
+                try { recognitionRef.current.stop(); } catch {}
+            }
+        } else {
+            mic.start();
+            const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+            if (SpeechRecognition) {
+                const recognition = new SpeechRecognition();
+                recognition.continuous = false;
+                recognition.interimResults = true;
+                recognition.lang = 'en-IN';
+                recognition.onresult = (event: any) => {
+                    const transcript = Array.from(event.results)
+                        .map((result: any) => result[0].transcript)
+                        .join('');
+                    setSearchQuery(transcript);
+                    const params = new URLSearchParams(window.location.search);
+                    if (transcript) {
+                        params.set('search', transcript);
+                    } else {
+                        params.delete('search');
+                    }
+                    window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
+                };
+                recognition.onend = () => {
+                    mic.stop();
+                };
+                recognition.onerror = () => {
+                    mic.stop();
+                };
+                recognitionRef.current = recognition;
+                recognition.start();
+            }
+        }
+    };
 
     const [sortBy, setSortBy] = useState('newest');
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -357,39 +401,60 @@ const Inventory = () => {
                             <p className="text-xs sm:text-sm text-slate-500 max-w-lg">Certified pre-owned vehicles in Pune with 120+ points check.</p>
                         </div>
 
-                        {/* Search Input Bar */}
+                        {/* Search Input Bar with VoiceBeam */}
                         <div className="relative flex-1 max-w-md w-full">
-                            <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
-                            <input
-                                type="text"
-                                value={searchQuery}
-                                onChange={(e) => {
-                                    setSearchQuery(e.target.value);
-                                    const params = new URLSearchParams(window.location.search);
-                                    if (e.target.value) {
-                                        params.set('search', e.target.value);
-                                    } else {
-                                        params.delete('search');
-                                    }
-                                    window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
-                                }}
-                                className="w-full h-11 bg-white border border-slate-200 rounded-2xl pl-11 pr-10 text-sm outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary/30 shadow-sm transition-all"
-                                placeholder="Search by model, brand, transmission..."
-                            />
-                            {searchQuery && (
-                                <button 
-                                    onClick={() => {
-                                        setSearchQuery('');
-                                        const params = new URLSearchParams(window.location.search);
-                                        params.delete('search');
-                                        window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
-                                    }}
-                                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary flex items-center"
-                                    aria-label="Clear Search"
-                                >
-                                    <span className="material-symbols-outlined text-lg">close</span>
-                                </button>
-                            )}
+                            <VoiceBeam stream={mic.stream}>
+                                <div className="relative w-full">
+                                    <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
+                                    <input
+                                        type="text"
+                                        value={searchQuery}
+                                        onChange={(e) => {
+                                            setSearchQuery(e.target.value);
+                                            const params = new URLSearchParams(window.location.search);
+                                            if (e.target.value) {
+                                                params.set('search', e.target.value);
+                                            } else {
+                                                params.delete('search');
+                                            }
+                                            window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
+                                        }}
+                                        className="w-full h-11 bg-white border border-slate-200 rounded-2xl pl-11 pr-20 text-sm outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary/30 shadow-sm transition-all"
+                                        placeholder={isVoiceListening ? "Listening... Speak vehicle name..." : "Search by model, brand, transmission..."}
+                                    />
+                                    <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                                        {searchQuery && (
+                                            <button 
+                                                onClick={() => {
+                                                    setSearchQuery('');
+                                                    const params = new URLSearchParams(window.location.search);
+                                                    params.delete('search');
+                                                    window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
+                                                }}
+                                                className="p-1 text-slate-400 hover:text-primary flex items-center cursor-pointer"
+                                                aria-label="Clear Search"
+                                            >
+                                                <span className="material-symbols-outlined text-base">close</span>
+                                            </button>
+                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={toggleVoiceSearch}
+                                            className={`size-8 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+                                                isVoiceListening 
+                                                    ? 'bg-rose-500 text-white shadow-md shadow-rose-500/30 animate-pulse' 
+                                                    : 'text-slate-400 hover:text-primary hover:bg-slate-100'
+                                            }`}
+                                            title={isVoiceListening ? "Stop voice search" : "Voice search cars"}
+                                            aria-label="Voice search"
+                                        >
+                                            <span className="material-symbols-outlined text-base">
+                                                {isVoiceListening ? 'mic' : 'mic_none'}
+                                            </span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </VoiceBeam>
                         </div>
                     </div>
 
